@@ -35,5 +35,10 @@ uint32_t serialargs_alloc_and_get_sks_attributes(struct serialargs *args,
 uint32_t serialargs_alloc_and_get(struct serialargs *args,
 				   void **out, size_t size);
 
+/*
+ * Trace content of the serialized object
+ */
+uint32_t trace_attributes_from_sobj_head(const char *prefix, void *ref);
+
 #endif /*__SERIALIZER_H*/
 
