@@ -191,6 +191,8 @@ static uint32_t tee_operarion_params(struct pkcs11_session *session,
 				mode = TEE_MODE_MAC;
 				size = value_size * 8;
 				break;
+
+			default:
 				EMSG("Operation not supported for process %s",
 					sks2str_proc(proc_params->id));
 				return SKS_INVALID_TYPE;
@@ -201,6 +203,69 @@ static uint32_t tee_operarion_params(struct pkcs11_session *session,
 		EMSG("Operation not supported for object type %s",
 			sks2str_key_type(key_type));
 		return SKS_FAILED;
+
+	case SKS_GENERIC_SECRET:
+	case SKS_KEY_HMAC_MD5:
+	case SKS_KEY_HMAC_SHA1:
+	case SKS_KEY_HMAC_SHA224:
+	case SKS_KEY_HMAC_SHA256:
+	case SKS_KEY_HMAC_SHA384:
+	case SKS_KEY_HMAC_SHA512:
+		if (function == SKS_FUNCTION_SIGN ||
+		    function == SKS_FUNCTION_VERIFY) {
+
+			mode = TEE_MODE_MAC;
+			size = value_size * 8;
+
+			switch (proc_params->id) {
+			case SKS_PROC_HMAC_MD5:
+				algo = TEE_ALG_HMAC_MD5;
+				if (key_type != SKS_GENERIC_SECRET &&
+				   key_type != SKS_KEY_HMAC_MD5)
+					return SKS_INVALID_TYPE;
+				break;
+			case SKS_PROC_HMAC_SHA1:
+				algo = TEE_ALG_HMAC_SHA1;
+				if (key_type != SKS_GENERIC_SECRET &&
+				   key_type != SKS_KEY_HMAC_SHA1)
+					return SKS_INVALID_TYPE;
+				break;
+			case SKS_PROC_HMAC_SHA224:
+				algo = TEE_ALG_HMAC_SHA224;
+				if (key_type != SKS_GENERIC_SECRET &&
+				   key_type != SKS_KEY_HMAC_SHA224)
+					return SKS_INVALID_TYPE;
+				break;
+			case SKS_PROC_HMAC_SHA256:
+				algo = TEE_ALG_HMAC_SHA256;
+				if (key_type != SKS_GENERIC_SECRET &&
+				   key_type != SKS_KEY_HMAC_SHA256)
+					return SKS_INVALID_TYPE;
+				break;
+			case SKS_PROC_HMAC_SHA384:
+				algo = TEE_ALG_HMAC_SHA384;
+				if (key_type != SKS_GENERIC_SECRET &&
+				   key_type != SKS_KEY_HMAC_SHA384)
+					return SKS_INVALID_TYPE;
+				break;
+			case SKS_PROC_HMAC_SHA512:
+				algo = TEE_ALG_HMAC_SHA512;
+				if (key_type != SKS_GENERIC_SECRET &&
+				   key_type != SKS_KEY_HMAC_SHA512)
+					return SKS_INVALID_TYPE;
+				break;
+			default:
+				EMSG("Operation not supported for process %s",
+					sks2str_proc(proc_params->id));
+				return SKS_INVALID_TYPE;
+			}
+			break;
+		}
+
+		EMSG("Operation not supported for object type %s",
+			sks2str_key_type(key_type));
+		return SKS_FAILED;
+
 	default:
 		EMSG("Operation not supported for object type %s",
 			sks2str_key_type(key_type));
@@ -212,7 +277,7 @@ static uint32_t tee_operarion_params(struct pkcs11_session *session,
 
 	res = TEE_AllocateOperation(&session->tee_op_handle, algo, mode, size);
 	if (res) {
-		EMSG("Failed to allocateoperation");
+		EMSG("Failed to allocate operation");
 		return tee2sks_error(res);
 	}
 
@@ -223,9 +288,33 @@ static uint32_t tee_operarion_params(struct pkcs11_session *session,
 static uint32_t get_tee_object_info(uint32_t *type, uint32_t *attr,
 				    struct sks_attrs_head *head)
 {
+	//
+	// TODO: SKS_GENERIC_SECRET should be allowed to be used for HMAC_SHAx
+	//
 	switch (get_type(head)) {
 	case SKS_KEY_AES:
 		*type = TEE_TYPE_AES;
+		goto secret;
+	case SKS_GENERIC_SECRET:
+		*type = TEE_TYPE_GENERIC_SECRET;
+		goto secret;
+	case SKS_KEY_HMAC_MD5:
+		*type = TEE_TYPE_HMAC_MD5;
+		goto secret;
+	case SKS_KEY_HMAC_SHA1:
+		*type = TEE_TYPE_HMAC_SHA1;
+		goto secret;
+	case SKS_KEY_HMAC_SHA224:
+		*type = TEE_TYPE_HMAC_SHA224;
+		goto secret;
+	case SKS_KEY_HMAC_SHA256:
+		*type = TEE_TYPE_HMAC_SHA256;
+		goto secret;
+	case SKS_KEY_HMAC_SHA384:
+		*type = TEE_TYPE_HMAC_SHA384;
+		goto secret;
+	case SKS_KEY_HMAC_SHA512:
+		*type = TEE_TYPE_HMAC_SHA512;
 		goto secret;
 	default:
 		EMSG("Operation not supported for object type %s",
@@ -849,6 +938,12 @@ uint32_t entry_signverify_init(int teesess, TEE_Param *ctrl,
 	switch (proc_params->id) {
 	case SKS_PROC_AES_CMAC:
 	case SKS_PROC_AES_CMAC_GENERAL:
+	case SKS_PROC_HMAC_MD5:
+	case SKS_PROC_HMAC_SHA1:
+	case SKS_PROC_HMAC_SHA224:
+	case SKS_PROC_HMAC_SHA256:
+	case SKS_PROC_HMAC_SHA384:
+	case SKS_PROC_HMAC_SHA512:
 		rv = load_key(obj);
 		if (rv)
 			goto bail;
@@ -873,6 +968,12 @@ uint32_t entry_signverify_init(int teesess, TEE_Param *ctrl,
 	switch (proc_params->id) {
 	case SKS_PROC_AES_CMAC_GENERAL:
 	case SKS_PROC_AES_CMAC:
+	case SKS_PROC_HMAC_MD5:
+	case SKS_PROC_HMAC_SHA1:
+	case SKS_PROC_HMAC_SHA224:
+	case SKS_PROC_HMAC_SHA256:
+	case SKS_PROC_HMAC_SHA384:
+	case SKS_PROC_HMAC_SHA512:
 		// TODO: get the desired output size
 		TEE_MACInit(session->tee_op_handle, NULL, 0);
 		break;
@@ -941,6 +1042,12 @@ uint32_t entry_signverify_update(int teesess, TEE_Param *ctrl,
 	switch (session->proc_id) {
 	case SKS_PROC_AES_CMAC_GENERAL:
 	case SKS_PROC_AES_CMAC:
+	case SKS_PROC_HMAC_MD5:
+	case SKS_PROC_HMAC_SHA1:
+	case SKS_PROC_HMAC_SHA224:
+	case SKS_PROC_HMAC_SHA256:
+	case SKS_PROC_HMAC_SHA384:
+	case SKS_PROC_HMAC_SHA512:
 		TEE_MACUpdate(session->tee_op_handle,
 				in->memref.buffer, in->memref.size);
 		break;
@@ -1000,6 +1107,12 @@ uint32_t entry_signverify_final(int teesess, TEE_Param *ctrl,
 	switch (session->proc_id) {
 	case SKS_PROC_AES_CMAC_GENERAL:
 	case SKS_PROC_AES_CMAC:
+	case SKS_PROC_HMAC_MD5:
+	case SKS_PROC_HMAC_SHA1:
+	case SKS_PROC_HMAC_SHA224:
+	case SKS_PROC_HMAC_SHA256:
+	case SKS_PROC_HMAC_SHA384:
+	case SKS_PROC_HMAC_SHA512:
 		if (sign)
 			res = TEE_MACComputeFinal(session->tee_op_handle,
 						  NULL, 0, out->memref.buffer,
