@@ -20,6 +20,19 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
+static void release_active_processing(struct pkcs11_session *session)
+{
+	session->proc_id = SKS_UNDEFINED_ID;
+
+	if (session->tee_op_handle != TEE_HANDLE_NULL) {
+		TEE_FreeOperation(session->tee_op_handle);
+		session->tee_op_handle = TEE_HANDLE_NULL;
+	}
+
+	if (set_pkcs_session_processing_state(session, PKCS11_SESSION_READY))
+		TEE_Panic(0);
+}
+
 uint32_t entry_import_object(int teesess,
 			     TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
@@ -392,7 +405,7 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 	uint32_t key_handle;
 	struct sks_object *obj;
 	struct sks_reference *proc_params = NULL;
-	struct pkcs11_session *pkcs_session = NULL;
+	struct pkcs11_session *session = NULL;
 	struct serialargs ctrlargs;
 	void *init_params;
 	size_t init_size;
@@ -421,19 +434,19 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 	/*
 	 * Check PKCS session (arguments and session state)
 	 */
-	pkcs_session = get_pkcs_session(ck_session);
-	if (!pkcs_session || pkcs_session->tee_session != teesess) {
+	session = get_pkcs_session(ck_session);
+	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto error;
 	}
 
-	if (check_pkcs_session_processing_state(pkcs_session,
+	if (check_pkcs_session_processing_state(session,
 						PKCS11_SESSION_READY)) {
 		rv = SKS_PROCESSING_ACTIVE;
 		goto error;
 	}
 
-	if (set_pkcs_session_processing_state(pkcs_session, decrypt ?
+	if (set_pkcs_session_processing_state(session, decrypt ?
 					      PKCS11_SESSION_DECRYPTING :
 					      PKCS11_SESSION_ENCRYPTING)) {
 		rv = SKS_PROCESSING_ACTIVE;
@@ -443,7 +456,7 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 	/*
 	 * Check parent key handle
 	 */
-	obj = object_get_tee_handle(key_handle, pkcs_session);
+	obj = object_get_tee_handle(key_handle, session);
 	if (!obj) {
 		DMSG("Invalid key handle");
 		rv = SKS_INVALID_KEY;
@@ -460,7 +473,7 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 	if (rv)
 		goto error;
 
-	rv = check_parent_attrs_against_token(pkcs_session, obj->attributes);
+	rv = check_parent_attrs_against_token(session, obj->attributes);
 	if (rv)
 		goto error;
 
@@ -468,7 +481,7 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 	 * Allocate a TEE operation for the target processing and
 	 * fill it with the expected operation parameters.
 	 */
-	rv = tee_operarion_params(pkcs_session, proc_params, obj, decrypt ?
+	rv = tee_operarion_params(session, proc_params, obj, decrypt ?
 				  SKS_FUNCTION_DECRYPT : SKS_FUNCTION_ENCRYPT);
 	if (rv)
 		goto error;
@@ -490,7 +503,7 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 		goto error;
 	}
 
-	res = TEE_SetOperationKey(pkcs_session->tee_op_handle, obj->key_handle);
+	res = TEE_SetOperationKey(session->tee_op_handle, obj->key_handle);
 	if (res) {
 		EMSG("TEE_SetOperationKey failed %x", res);
 		rv = tee2sks_error(res);
@@ -557,24 +570,16 @@ uint32_t entry_cipher_init(int teesess, TEE_Param *ctrl,
 		TEE_Panic(TEE_ERROR_NOT_IMPLEMENTED);
 	}
 
-	TEE_CipherInit(pkcs_session->tee_op_handle, init_params, init_size);
+	TEE_CipherInit(session->tee_op_handle, init_params, init_size);
 
-	pkcs_session->proc_id = proc_params->id;
+	session->proc_id = proc_params->id;
 
 	TEE_Free(proc_params);
 
 	return SKS_OK;
 
 error:
-	if (set_pkcs_session_processing_state(pkcs_session,
-					      PKCS11_SESSION_READY))
-		TEE_Panic(0);
-
-	if (pkcs_session->tee_op_handle != TEE_HANDLE_NULL) {
-		TEE_FreeOperation(pkcs_session->tee_op_handle);
-		pkcs_session->tee_op_handle = TEE_HANDLE_NULL;
-	}
-
+	release_active_processing(session);
 	TEE_Free(proc_params);
 
 	return rv;
@@ -591,7 +596,7 @@ uint32_t entry_cipher_update(int teesess, TEE_Param *ctrl,
 	struct serialargs ctrlargs;
 	TEE_Result res;
 	uint32_t ck_session;
-	struct pkcs11_session *pkcs_session;
+	struct pkcs11_session *session;
 	size_t in_size = in ? in->memref.size : 0;
 	size_t out_size = out ? out->memref.size : 0;
 
@@ -604,30 +609,25 @@ uint32_t entry_cipher_update(int teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	pkcs_session = get_pkcs_session(ck_session);
-	if (!pkcs_session || pkcs_session->tee_session != teesess)
+	session = get_pkcs_session(ck_session);
+	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
-	if (check_pkcs_session_processing_state(pkcs_session, decrypt ?
+	if (check_pkcs_session_processing_state(session, decrypt ?
 						PKCS11_SESSION_DECRYPTING :
 						PKCS11_SESSION_ENCRYPTING))
 		return SKS_PROCESSING_INACTIVE;
 
-	res = TEE_CipherUpdate(pkcs_session->tee_op_handle,
+	res = TEE_CipherUpdate(session->tee_op_handle,
 				in ? in->memref.buffer : NULL, in_size,
 				out ? out->memref.buffer : NULL, &out_size);
 
-	if (res != TEE_SUCCESS && res != TEE_ERROR_SHORT_BUFFER) {
-		if (set_pkcs_session_processing_state(pkcs_session,
-						      PKCS11_SESSION_READY))
-			TEE_Panic(0);
 
-		TEE_FreeOperation(pkcs_session->tee_op_handle);
-		pkcs_session->tee_op_handle = TEE_HANDLE_NULL;
-		pkcs_session->proc_id = SKS_UNDEFINED_ID;
-	} else {
+	if (res == TEE_SUCCESS || res == TEE_ERROR_SHORT_BUFFER) {
 		if (out)
 			out->memref.size = out_size;
+	} else {
+		release_active_processing(session);
 	}
 
 	return tee2sks_error(res);
@@ -644,7 +644,7 @@ uint32_t entry_cipher_final(int teesess, TEE_Param *ctrl,
 	TEE_Result res;
 	struct serialargs ctrlargs;
 	uint32_t ck_session;
-	struct pkcs11_session *pkcs_session;
+	struct pkcs11_session *session;
 	size_t in_size = in ? in->memref.size : 0;
 	size_t out_size = out ? out->memref.size : 0;
 
@@ -657,16 +657,16 @@ uint32_t entry_cipher_final(int teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	pkcs_session = get_pkcs_session(ck_session);
-	if (!pkcs_session || pkcs_session->tee_session != teesess)
+	session = get_pkcs_session(ck_session);
+	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
-	if (check_pkcs_session_processing_state(pkcs_session, decrypt ?
+	if (check_pkcs_session_processing_state(session, decrypt ?
 						PKCS11_SESSION_DECRYPTING :
 						PKCS11_SESSION_ENCRYPTING))
 		return SKS_PROCESSING_INACTIVE;
 
-	res = TEE_CipherDoFinal(pkcs_session->tee_op_handle,
+	res = TEE_CipherDoFinal(session->tee_op_handle,
 				in ? in->memref.buffer : NULL, in_size,
 				out ? out->memref.buffer : NULL, &out_size);
 
@@ -678,13 +678,7 @@ uint32_t entry_cipher_final(int teesess, TEE_Param *ctrl,
 	if (res == TEE_ERROR_SHORT_BUFFER)
 		return SKS_SHORT_BUFFER;
 
-	if (set_pkcs_session_processing_state(pkcs_session,
-					      PKCS11_SESSION_READY))
-		TEE_Panic(0);
-
-	TEE_FreeOperation(pkcs_session->tee_op_handle);
-	pkcs_session->tee_op_handle = TEE_HANDLE_NULL;
-	pkcs_session->proc_id = SKS_UNDEFINED_ID;
+	release_active_processing(session);
 
 	return tee2sks_error(res);
 }
@@ -996,16 +990,8 @@ uint32_t entry_signverify_init(int teesess, TEE_Param *ctrl,
 	rv = SKS_OK;
 
 bail:
-	if (rv && session) {
-		if (set_pkcs_session_processing_state(session,
-						      PKCS11_SESSION_READY))
-			TEE_Panic(0);
-
-		if (session->tee_op_handle != TEE_HANDLE_NULL) {
-			TEE_FreeOperation(session->tee_op_handle);
-			session->tee_op_handle = TEE_HANDLE_NULL;
-		}
-	}
+	if (rv && session)
+		release_active_processing(session);
 
 	TEE_Free(proc_params);
 
@@ -1145,15 +1131,8 @@ bail:
 	if (sign && (rv == SKS_OK || rv == SKS_SHORT_BUFFER))
 		out->memref.size = out_size;
 
-	if (rv != SKS_SHORT_BUFFER) {
-		if (set_pkcs_session_processing_state(session,
-					      PKCS11_SESSION_READY))
-			TEE_Panic(0);
-
-		TEE_FreeOperation(session->tee_op_handle);
-		session->tee_op_handle = TEE_HANDLE_NULL;
-		session->proc_id = SKS_UNDEFINED_ID;
-	}
+	if (rv != SKS_SHORT_BUFFER)
+		release_active_processing(session);
 
 	return rv;
 }
