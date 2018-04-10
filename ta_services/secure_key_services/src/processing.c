@@ -72,7 +72,7 @@ uint32_t entry_import_object(int teesess,
 	 * Free temorary template once done.
 	 */
 	rv = create_attributes_from_template(&head, template, template_size,
-					     SKS_FUNCTION_IMPORT);
+					     NULL, SKS_FUNCTION_IMPORT);
 	TEE_Free(template);
 	template = NULL;
 	if (rv)
@@ -645,7 +645,7 @@ uint32_t entry_generate_object(int teesess,
 	 * Free temorary template once done.
 	 */
 	rv = create_attributes_from_template(&head, template, template_size,
-					     SKS_FUNCTION_GENERATE);
+					     NULL, SKS_FUNCTION_GENERATE);
 	if (rv)
 		goto bail;
 

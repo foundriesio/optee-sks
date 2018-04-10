@@ -246,7 +246,6 @@ static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
 	};
 	size_t n;
 	uint32_t rv;
-	uint8_t bbool;
 
 	rv = create_pkcs11_genkey_attributes(obj, head);
 	if (rv)
@@ -275,20 +274,7 @@ static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
 			return rv;
 	}
 
-	bbool = get_bool(*obj, SKS_SENSITIVE) ? SKS_TRUE : SKS_FALSE;
-	rv = add_attribute(obj, SKS_ALWAYS_SENSITIVE,
-				&bbool, sizeof(uint8_t));
-	if (rv)
-		return rv;
-
-	bbool = get_bool(*obj, SKS_EXTRACTABLE) ? SKS_FALSE : SKS_TRUE;
-	rv = add_attribute(obj, SKS_NEVER_EXTRACTABLE,
-				&bbool, sizeof(uint8_t));
-	if (rv)
-		return rv;
-
 	assert(get_class(*obj) == SKS_OBJ_SYM_KEY);
-
 	return rv;
 }
 
@@ -325,9 +311,27 @@ static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **obj,
 	return rv;
 }
 
-/* Create an attribute list for a new object */
+/*
+ * Create an attribute list for a new object from a template and a parent
+ * object (optional) for an object generation function (generate, copy,
+ * derive...).
+ *
+ * PKCS#11 directves on the supplied template:
+ * - template has aninvalid attribute ID: return ATTRIBUTE_TYPE_INVALID
+ * - template has an invalid value for an attribute: return ATTRIBUTE_VALID_INVALID
+ * - template has value for a read-only attribute: retrun ATTRIBUTE_READ_ONLY
+ * - template+default+parent => still miss an attribute: return TEMPLATE_INCONSISTENT
+ *
+ * INFO on SKS_CMD_COPY_OBJECT:
+ * - parent SKS_COPYIABLE=false => return ACTION_PROHIBITED.
+ * - template can specify SKS_PERSISTENT, SKS_NEED_AUTHENT, SKS_MODIFIABLE,
+ *   SKS_DESTROYABLE.
+ * - SENSITIVE can change from flase to true, not from true to false.
+ * - LOCAL is the parent LOCAL
+ */
 uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 					 void *template, size_t template_size,
+					 struct sks_attrs_head *parent,
 					 enum processing_func func)
 {
 	struct sks_attrs_head *temp = NULL;
@@ -335,18 +339,24 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	uint32_t rv;
 	uint8_t bbool;
 
-#ifdef DEBUG
-	trace_attributes_from_api_head("template", template);
+#ifdef DEBUG	/* Sanity: check func argument */
+	switch (func) {
+	case SKS_FUNCTION_GENERATE:
+	case SKS_FUNCTION_IMPORT:
+		break;
+	default:
+		TEE_Panic(TEE_ERROR_NOT_SUPPORTED);
+	}
 #endif
 
 	rv = sanitize_client_object(&temp, template, template_size);
-
-#ifdef DEBUG
-#endif
-	trace_attributes("sanitized", temp);
 	if (rv)
 		goto bail;
 
+	/*
+	 * TODO: On SKS_FUNCTION_COPY, don't use default values, only template
+	 * and parent object
+	 */
 	switch (get_class(temp)) {
 	case SKS_OBJ_RAW_DATA:
 		rv = create_pkcs11_data_attributes(&attrs, temp);
@@ -363,24 +373,63 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	if (rv)
 		goto bail;
 
-	/* Set SKS_LOCALLY_GENERATED */
+#ifdef DEBUG
+	assert(get_attribute(&attrs, SKS_LOCALLY_GENERATED, NULL, NULL) ==
+		SKS_NOT_FOUND);
+#endif
 	switch (func) {
-	case SKS_FUNCTION_IMPORT:
-		bbool = SKS_FALSE;
-		break;
 	case SKS_FUNCTION_GENERATE:
 		bbool = SKS_TRUE;
 		break;
 	case SKS_FUNCTION_COPY:
-		bbool = get_bool(temp, SKS_LOCALLY_GENERATED);
+		bbool = get_bool(parent, SKS_LOCALLY_GENERATED);
 		break;
 	default:
-		TEE_Panic(func);
+		bbool = SKS_FALSE;
+		break;
 	}
-
 	rv = add_attribute(&attrs, SKS_LOCALLY_GENERATED, &bbool, sizeof(bbool));
 	if (rv)
 		goto bail;
+
+
+	if (get_class(attrs) == SKS_OBJ_SYM_KEY) {	// TODO: also for private asymm keys
+		assert(get_attribute(attrs, SKS_ALWAYS_SENSITIVE,
+					NULL, NULL) == SKS_NOT_FOUND);
+
+		switch (func) {
+		case SKS_FUNCTION_DERIVE:
+		case SKS_FUNCTION_COPY:
+			bbool = get_bool(parent, SKS_ALWAYS_SENSITIVE) &&
+				get_bool(attrs, SKS_SENSITIVE);
+			break;
+		default:
+			bbool = get_bool(attrs, SKS_SENSITIVE);
+			break;
+		}
+		rv = add_attribute(&attrs, SKS_ALWAYS_SENSITIVE,
+				   &bbool, sizeof(bbool));
+		if (rv)
+			goto bail;
+
+		assert(get_attribute(attrs, SKS_NEVER_EXTRACTABLE,
+					NULL, NULL) == SKS_NOT_FOUND);
+
+		switch (func) {
+		case SKS_FUNCTION_DERIVE:
+		case SKS_FUNCTION_COPY:
+			bbool = get_bool(parent, SKS_NEVER_EXTRACTABLE) &&
+				!get_bool(attrs, SKS_EXTRACTABLE);
+			break;
+		default:
+			bbool = !get_bool(attrs, SKS_EXTRACTABLE);
+			break;
+		}
+		rv = add_attribute(&attrs, SKS_NEVER_EXTRACTABLE,
+				   &bbool, sizeof(bbool));
+		if (rv)
+			goto bail;
+	}
 
 	*out = attrs;
 
