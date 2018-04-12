@@ -546,6 +546,7 @@ static uint32_t ck_token_session(int teesess, TEE_Param *ctrl,
 	session->tee_op_handle = TEE_HANDLE_NULL;
 	session->readwrite = !ro;
 	session->token = token;
+	session->proc_id = SKS_UNDEFINED_ID;
 	LIST_INIT(&session->object_list);
 
 	if (ro)
