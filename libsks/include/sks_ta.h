@@ -411,6 +411,7 @@ struct sks_reference {
 #define SKS_SHORT_BUFFER		0x00000004	/* Give a bigger buf */
 #define SKS_FAILED			0x00000005	/* Nicely failed */
 #define SKS_NOT_FOUND			0x00000006	/* Item not found */
+#define SKS_VERIFY_FAILED		0x00000007	/* CKR_ENCRYPTED_DATA_INVALID */
 /* Errors returned when provided invalid identifiers */
 #define SKS_INVALID_ATTRIBUTES		0x00000100	/* Attr do not match */
 #define SKS_INVALID_TYPE		0x00000101	/* type identifier */
@@ -421,7 +422,7 @@ struct sks_reference {
 #define SKS_INVALID_SESSION		0x00000106	/* session handle */
 #define SKS_INVALID_SLOT		0x00000107	/* slot id */
 #define SKS_INVALID_PROC_PARAM		0x00000108	/* processing parameters */
-
+#define SKS_NOT_IMPLEMENTED		0x00000109	/* */
 /* Report on Pin management */
 #define SKS_PIN_INCORRECT		0x00000200
 #define SKS_PIN_LOCKED			0x00000201
@@ -434,7 +435,6 @@ struct sks_reference {
 #define SKS_PROCESSING_ACTIVE		0x00001003
 #define SKS_CK_NOT_PERMITTED		0x00001004	/* SKS_NOT_PERMITED? */
 #define SKS_PROCESSING_INACTIVE		0x00001005
-#define SKS_BAD_PROCESSING_PARAM	0x00001006
 
 /* Attribute specifc values */
 #define SKS_UNDEFINED_ID			((uint32_t)0xFFFFFFFF)
@@ -451,27 +451,27 @@ struct sks_reference {
  */
 #define SKS_PERSISTENT_SHIFT		0	/* Equiv for pkcs11 CKA_TOKEN */
 #define SKS_NEED_AUTHEN_SHIFT		1	/* Equiv for pkcs11 CKA_PRIVATE */
-#define SKS_TRUSTED_SHIFT		3	/* Equiv for pkcs11 CKA_TRUSTED */
-#define SKS_SENSITIVE_SHIFT		4	/* Equiv for pkcs11 CKA_SENSITIVE */
-#define SKS_ENCRYPT_SHIFT		5	/* Equiv for pkcs11 CKA_ENCRYPT */
-#define SKS_DECRYPT_SHIFT		6	/* Equiv for pkcs11 CKA_DECRYPT */
-#define SKS_WRAP_SHIFT			7	/* Equiv for pkcs11 CKA_WRAP */
-#define SKS_UNWRAP_SHIFT		8	/* Equiv for pkcs11 CKA_UNWRAP */
-#define SKS_SIGN_SHIFT			9	/* Equiv for pkcs11 CKA_SIGN */
-#define SKS_SIGN_RECOVER_SHIFT		10	/* Equiv for pkcs11 CKA_SIGN_RECOVER */
-#define SKS_VERIFY_SHIFT		11	/* Equiv for pkcs11 CKA_VERIFY */
-#define SKS_VERIFY_RECOVER_SHIFT	12	/* Equiv for pkcs11 CKA_VERIFY_RECOVER */
-#define SKS_DERIVE_SHIFT		13	/* Equiv for pkcs11 CKA_DERIVE */
-#define SKS_EXTRACTABLE_SHIFT		14	/* Equiv for pkcs11 CKA_EXTRACTABLE */
-#define SKS_LOCALLY_GENERATED_SHIFT	15	/* Equiv for pkcs11 CKA_LOCAL */
-#define SKS_NEVER_EXTRACTABLE_SHIFT	16	/* Equiv for pkcs11 CKA_NEVER_EXTRACTABLE */
-#define SKS_ALWAYS_SENSITIVE_SHIFT	17	/* Equiv for pkcs11 CKA_ALWAYS_SENSITIVE */
-#define SKS_MODIFIABLE_SHIFT		18	/* Equiv for pkcs11 CKA_MODIFIABLE */
-#define SKS_COPYABLE_SHIFT		19	/* Equiv for pkcs11 CKA_COPYABLE */
-#define SKS_DESTROYABLE_SHIFT		20	/* Equiv for pkcs11 CKA_DESTROYABLE */
-#define SKS_ALWAYS_AUTHEN_SHIFT		21	/* Equiv for pkcs11 CKA_ALWAYS_AUTHENTICATE */
-#define SKS_WRAP_FROM_TRUSTED_SHIFT	22	/* Equiv for pkcs11 CKA_WRAP_WITH_TRUSTED */
-#define SKS_BOOLPROP_LAST_SHIFT		22
+#define SKS_TRUSTED_SHIFT		2	/* Equiv for pkcs11 CKA_TRUSTED */
+#define SKS_SENSITIVE_SHIFT		3	/* Equiv for pkcs11 CKA_SENSITIVE */
+#define SKS_ENCRYPT_SHIFT		4	/* Equiv for pkcs11 CKA_ENCRYPT */
+#define SKS_DECRYPT_SHIFT		5	/* Equiv for pkcs11 CKA_DECRYPT */
+#define SKS_WRAP_SHIFT			6	/* Equiv for pkcs11 CKA_WRAP */
+#define SKS_UNWRAP_SHIFT		7	/* Equiv for pkcs11 CKA_UNWRAP */
+#define SKS_SIGN_SHIFT			8	/* Equiv for pkcs11 CKA_SIGN */
+#define SKS_SIGN_RECOVER_SHIFT		9	/* Equiv for pkcs11 CKA_SIGN_RECOVER */
+#define SKS_VERIFY_SHIFT		10	/* Equiv for pkcs11 CKA_VERIFY */
+#define SKS_VERIFY_RECOVER_SHIFT	11	/* Equiv for pkcs11 CKA_VERIFY_RECOVER */
+#define SKS_DERIVE_SHIFT		12	/* Equiv for pkcs11 CKA_DERIVE */
+#define SKS_EXTRACTABLE_SHIFT		13	/* Equiv for pkcs11 CKA_EXTRACTABLE */
+#define SKS_LOCALLY_GENERATED_SHIFT	14	/* Equiv for pkcs11 CKA_LOCAL */
+#define SKS_NEVER_EXTRACTABLE_SHIFT	15	/* Equiv for pkcs11 CKA_NEVER_EXTRACTABLE */
+#define SKS_ALWAYS_SENSITIVE_SHIFT	16	/* Equiv for pkcs11 CKA_ALWAYS_SENSITIVE */
+#define SKS_MODIFIABLE_SHIFT		17	/* Equiv for pkcs11 CKA_MODIFIABLE */
+#define SKS_COPYABLE_SHIFT		18	/* Equiv for pkcs11 CKA_COPYABLE */
+#define SKS_DESTROYABLE_SHIFT		19	/* Equiv for pkcs11 CKA_DESTROYABLE */
+#define SKS_ALWAYS_AUTHEN_SHIFT		20	/* Equiv for pkcs11 CKA_ALWAYS_AUTHENTICATE */
+#define SKS_WRAP_FROM_TRUSTED_SHIFT	21	/* Equiv for pkcs11 CKA_WRAP_WITH_TRUSTED */
+#define SKS_BOOLPROP_LAST_SHIFT		21
 
 #define SKS_BP_PERSISTENT		(1 << SKS_PERSISTENT_SHIFT)
 #define SKS_BP_NEED_AUTHEN		(1 << SKS_NEED_AUTHEN_SHIFT)
@@ -600,34 +600,33 @@ struct sks_reference {
  *
  * AES ECB
  *   head:	32bit type = SKS_PROC_AES_ECB_NOPAD
- *		32bit size = 0
+ *		32bit params byte size = 0
  *
  * AES CBC, CBC_NOPAD and CTS
  *   head:	32bit type = SKS_PROC_AES_CBC
  *			  or SKS_PROC_AES_CBC_NOPAD
  *			  or SKS_PROC_AES_CTS
- *		32bit size = 16
+ *		32bit params byte size = 16
  *  params:	16byte inivial vector
  *
  * AES CTR
  *   head:	32bit type = SKS_PROC_AES_CTR
- *		32bit size = 20
+ *		32bit params byte size = 20
  *  params:	32bit counter bit increment
  *		16byte inivial vector
  *
  * AES GCM
  *   head:	32bit type = SKS_PROC_AES_GCM
- *		32bit size
+ *		32bit params byte size
  *  params:	32bit IV_byte_size
  *		byte array: IV data (IV_byte_size bytes)
- *		32bit IV_bit_size
- *		32bit AAD_byte_size
+  *		32bit AAD_byte_size
  *		byte array: AAD data (AAD_byte_size bytes)
- *		32bit tag byte size
+ *		32bit tag bit size
  *
  * AES CCM
  *   head:	32bit type = SKS_PROC_AES_CCM
- *		32bit size
+ *		32bit params byte size
  *  params:	32bit data_byte_size
  *		32bit nonce_byte_size
  *		byte array: nonce data (nonce_byte_size bytes)
@@ -637,12 +636,12 @@ struct sks_reference {
  *
  * AES GMAC
  *   head:	32bit type = SKS_PROC_AES_GMAC
- *		32bit size = 12
+ *		32bit params byte size = 12
  *  params:	12byte initial vector
 
  * AES CMAC with general length
  *   head:	32bit type = SKS_PROC_AES_CMAC_GENERAL
- *		32bit size = 12
+ *		32bit params byte size = 12
  *  params:	32bit byte size of the output CMAC data
  *
  * AES CMAC fixed size (16byte CMAC)
@@ -651,13 +650,13 @@ struct sks_reference {
  *
  * AES derive by ECB
  *   head:	32bit type = SKS_PROC_AES_DERIVE_BY_ECB
- *		32bit size
+ *		32bit params byte size
  *  params:	32bit byte size of the data to encrypt
  *		byte array: data to encrypt
  *
  * AES derive by CBC
  *   head:	32bit type = SKS_PROC_AES_DERIVE_BY_CBC
- *		32bit size
+ *		32bit params byte size
  *  params:	16byte inivial vector
  *		32bit byte size of the data to encrypt
  *		byte array: data to encrypt
