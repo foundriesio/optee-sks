@@ -196,7 +196,7 @@ CK_RV sks_ck_token_mechanism_ids(CK_SLOT_ID slot,
 				 CK_ULONG_PTR count)
 {
 	uint32_t ctrl[1] = { slot };
-	uint32_t outsize = *count * sizeof(uint32_t);
+	size_t outsize = *count * sizeof(uint32_t);
 	void *outbuf;
 	CK_RV rv;
 
@@ -230,7 +230,7 @@ CK_RV sks_ck_token_mechanism_info(CK_SLOT_ID slot,
 	CK_RV rv;
 	uint32_t ctrl[2];
 	struct sks_ck_mecha_info outbuf;
-	uint32_t outsize = sizeof(outbuf);
+	size_t outsize = sizeof(outbuf);
 
 	ctrl[0] = (uint32_t)slot;
 	ctrl[1] = ck2sks_mechanism_type(type);
