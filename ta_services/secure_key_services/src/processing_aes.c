@@ -274,10 +274,10 @@ bail:
 }
 
 static uint32_t reveale_ae_data(struct ae_aes_context *ctx,
-				void *out, size_t *out_size)
+				void *out, uint32_t *out_size)
 {
 	size_t n;
-	size_t req_size;
+	uint32_t req_size;
 	char *out_ptr = out;
 
 	for (req_size = 0, n = 0; n < ctx->out_count; n++)
