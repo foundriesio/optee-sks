@@ -38,19 +38,23 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t __unused param_types,
 				    void **session)
 {
 	struct tee_session *sess = TEE_Malloc(sizeof(*sess), 0);
+	uintptr_t sess_hld;
 
 	if (!sess)
 		return TEE_ERROR_OUT_OF_MEMORY;
 
-	*session = (void *)handle_get(&sks_session_db, sess);
+	sess_hld = handle_get(&sks_session_db, sess);
+	*session = (void *)sess_hld;
 
 	return TEE_SUCCESS;
 }
 
 void TA_CloseSessionEntryPoint(void *session)
 {
-	ck_token_close_tee_session((int)session);
-	TEE_Free(handle_put(&sks_session_db, (int)session));
+	uintptr_t sess_hld = (uintptr_t)session;
+
+	ck_token_close_tee_session(sess_hld);
+	TEE_Free(handle_put(&sks_session_db, sess_hld));
 }
 
 /*
@@ -66,13 +70,12 @@ void TA_CloseSessionEntryPoint(void *session)
  * will be force to TEE_SUCCESS. Note that some Cryptoki error status are
  * send straight through TEE result code. See sks2tee_noerr().
  */
-TEE_Result TA_InvokeCommandEntryPoint(void *session, uint32_t cmd,
+TEE_Result TA_InvokeCommandEntryPoint(void *teesess, uint32_t cmd,
 				      uint32_t ptypes,
 				      TEE_Param params[TEE_NUM_PARAMS])
 {
 	uint32_t rc;
 	TEE_Result res;
-	int teesess = (int)session;
 	TEE_Param *ctrl = NULL;
 	TEE_Param *in = NULL;
 	TEE_Param *out = NULL;

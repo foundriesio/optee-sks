@@ -510,7 +510,7 @@ uint32_t ck_token_mecha_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-static uint32_t ck_token_session(int teesess, TEE_Param *ctrl,
+static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, bool ro)
 {
 	struct pkcs11_session *session;
@@ -561,14 +561,14 @@ static uint32_t ck_token_session(int teesess, TEE_Param *ctrl,
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t ck_token_ro_session(int teesess, TEE_Param *ctrl,
+uint32_t ck_token_ro_session(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out)
 {
 	return ck_token_session(teesess, ctrl, in, out, true);
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t ck_token_rw_session(int teesess, TEE_Param *ctrl,
+uint32_t ck_token_rw_session(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out)
 {
 	return ck_token_session(teesess, ctrl, in, out, false);
@@ -618,7 +618,7 @@ static void close_ck_session(struct pkcs11_session *session)
 }
 
 /* ctrl=[session-handle], in=unused, out=unused */
-uint32_t ck_token_close_session(int teesess, TEE_Param *ctrl,
+uint32_t ck_token_close_session(void *teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
 	struct pkcs11_session *session;
@@ -637,7 +637,7 @@ uint32_t ck_token_close_session(int teesess, TEE_Param *ctrl,
 	return SKS_OK;
 }
 
-uint32_t ck_token_close_all(int teesess __unused, TEE_Param *ctrl,
+uint32_t ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
 			      TEE_Param *in, TEE_Param *out)
 {
 	uint32_t token_id;

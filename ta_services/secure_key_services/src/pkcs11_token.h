@@ -154,7 +154,7 @@ struct pkcs11_session {
 	LIST_ENTRY(pkcs11_session) link;
 	struct object_list object_list;
 	struct ck_token *token;
-	int tee_session;
+	void *tee_session;
 	int handle;
 	bool readwrite;
 	uint32_t state;
@@ -217,13 +217,13 @@ uint32_t ck_token_initialize(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 uint32_t ck_token_mecha_ids(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 uint32_t ck_token_mecha_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 
-TEE_Result ck_token_ro_session(int teesess, TEE_Param *ctrl,
+TEE_Result ck_token_ro_session(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out);
-TEE_Result ck_token_rw_session(int teesess, TEE_Param *ctrl,
+TEE_Result ck_token_rw_session(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out);
-TEE_Result ck_token_close_session(int teesess, TEE_Param *ctrl,
+TEE_Result ck_token_close_session(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out);
-TEE_Result ck_token_close_all(int teesess, TEE_Param *ctrl,
+TEE_Result ck_token_close_all(void *teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out);
 void ck_token_close_tee_session(int tee_session);
 

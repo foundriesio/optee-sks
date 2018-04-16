@@ -52,7 +52,7 @@ uint32_t destroy_object(struct pkcs11_session *session,
 			struct sks_object *object,
 			bool session_object_only);
 
-uint32_t entry_destroy_object(int teesess, TEE_Param *ctrl,
+uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
 			      TEE_Param *in, TEE_Param *out);
 
 
