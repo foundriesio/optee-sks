@@ -155,7 +155,7 @@ struct pkcs11_session {
 	struct object_list object_list;
 	struct ck_token *token;
 	void *tee_session;
-	int handle;
+	uint32_t handle;
 	bool readwrite;
 	uint32_t state;
 	enum pkcs11_session_processing processing;

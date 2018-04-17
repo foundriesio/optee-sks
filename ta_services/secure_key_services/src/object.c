@@ -29,8 +29,7 @@ static struct handle_db object_handle_db = HANDLE_DB_INITIALIZER;
 struct sks_object *object_get_tee_handle(uint32_t ck_handle,
 					 struct pkcs11_session *session)
 {
-	int handle = (int)ck_handle;
-	struct sks_object *obj = handle_lookup(&object_handle_db, handle);
+	struct sks_object *obj = handle_lookup(&object_handle_db, ck_handle);
 
 	if (obj->session_owner != session)
 		return NULL;
@@ -151,7 +150,7 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 	uint32_t rv;
 	TEE_Result res = TEE_SUCCESS;
 	struct sks_object *obj;
-	int obj_handle;
+	uint32_t obj_handle;
 
 #ifdef DEBUG
 	trace_attributes("[create]", head);
@@ -167,7 +166,7 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 		return SKS_MEMORY;
 
 	obj_handle = handle_get(&object_handle_db, obj);
-	if (obj_handle < 0 || obj_handle > 0x7FFFFFFF) {
+	if (!obj_handle) {
 		TEE_Free(obj);
 		return SKS_FAILED;
 	}
@@ -175,7 +174,7 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 	obj->key_handle = TEE_HANDLE_NULL;
 	obj->attribs_hdl = TEE_HANDLE_NULL;
 	obj->attributes = head;
-	obj->ck_handle = (uint32_t)obj_handle;
+	obj->ck_handle = obj_handle;
 	obj->session_owner = session;
 
 	if (get_bool(obj->attributes, SKS_PERSISTENT)) {

@@ -11,7 +11,7 @@
 
 struct handle_db {
 	void **ptrs;
-	size_t max_ptrs;
+	uint32_t max_ptrs;
 };
 
 #define HANDLE_DB_INITIALIZER { NULL, 0 }
@@ -30,26 +30,20 @@ void handle_db_destroy(struct handle_db *db);
  * >= 0 on success and
  * -1 on failure
  */
-int handle_get(struct handle_db *db, void *ptr);
+uint32_t handle_get(struct handle_db *db, void *ptr);
 
 /*
  * Deallocates a handle. Returns the assiciated pointer of the handle
  * the the handle was valid or NULL if it's invalid.
  */
-void *handle_put(struct handle_db *db, int handle);
+void *handle_put(struct handle_db *db, uint32_t handle);
 
 /*
  * Returns the assiciated pointer of the handle if the handle is a valid
  * handle.
  * Returns NULL on failure.
  */
-void *handle_lookup(struct handle_db *db, int handle);
-
-/*
- * if handle = -1, return the lowest valid handle value
- * if handle >= 0, return the first next valid handle
- */
-int handle_next(struct handle_db *db, int handle);
+void *handle_lookup(struct handle_db *db, uint32_t handle);
 
 #endif /*__HANDLE_H*/
 
