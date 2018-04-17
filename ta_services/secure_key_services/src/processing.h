@@ -51,10 +51,10 @@ uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
 			       void *in, size_t in_size);
 
 uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
-			      void *out, size_t *out_size);
+			      void *out, uint32_t *out_size);
 
 uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
-			      void *out, size_t *out_size);
+			      void *out, uint32_t *out_size);
 
 void tee_release_ccm_operation(struct pkcs11_session *session);
 uint32_t tee_init_ccm_operation(struct pkcs11_session *session,

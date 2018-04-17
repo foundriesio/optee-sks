@@ -33,7 +33,7 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 
 /*
  * Update serialized attributes to remove an entry. Can relocate the attribute
- * list buffer. Only 1 instance of the entry is expected (TODO factory with _check) 
+ * list buffer. Only 1 instance of the entry is expected (TODO factory with _check)
  *
  * Return a SKS_OK on success or a SKS return code.
  */
@@ -45,8 +45,8 @@ uint32_t remove_attribute(struct sks_attrs_head **head, uint32_t attrib);
  *
  * Return a SKS_OK on success or a SKS return code.
  */
-uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attrib,
-				unsigned int max_check);
+uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute,
+				size_t max_check);
 
 /*
  * If *count == 0, count and return in *count the number of attributes matching

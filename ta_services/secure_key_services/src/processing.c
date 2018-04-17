@@ -373,7 +373,7 @@ static uint32_t load_key(struct sks_object *obj)
 	uint32_t tee_obj_attr;
 	TEE_Attribute tee_key_attr;
 	void *value;
-	uint32_t value_size;
+	size_t value_size;
 	uint32_t rv;
 	TEE_Result res;
 
@@ -607,7 +607,7 @@ uint32_t entry_cipher_update(int teesess, TEE_Param *ctrl,
 	uint32_t ck_session;
 	struct pkcs11_session *session;
 	size_t in_size = in ? in->memref.size : 0;
-	size_t out_size = out ? out->memref.size : 0;
+	uint32_t out_size = out ? out->memref.size : 0;
 	uint32_t rv;
 
 	if (!ctrl)
@@ -685,7 +685,7 @@ uint32_t entry_cipher_final(int teesess, TEE_Param *ctrl,
 	uint32_t ck_session;
 	struct pkcs11_session *session;
 	size_t in_size = in ? in->memref.size : 0;
-	size_t out_size = out ? out->memref.size : 0;
+	uint32_t out_size = out ? out->memref.size : 0;
 
 	if (!ctrl)
 		return SKS_BAD_PARAM;

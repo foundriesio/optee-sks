@@ -120,11 +120,11 @@ uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
 {
 	struct ae_aes_context *ctx = session->proc_params;
 	size_t data_len;
-	size_t size;
+	uint32_t size;
 	TEE_Result res;
 	uint32_t rv;
 	char *ct = NULL;
-	size_t ct_size = 0;
+	uint32_t ct_size = 0;
 	void *ptr;
 
 	if (!in_size)
@@ -309,12 +309,12 @@ static uint32_t reveale_ae_data(struct ae_aes_context *ctx,
 }
 
 uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
-			      void *out, size_t *out_size)
+			      void *out, uint32_t *out_size)
 {
 	struct ae_aes_context *ctx = session->proc_params;
 	uint32_t rv;
 	TEE_Result res;
-	size_t data_size;
+	uint32_t data_size;
 	void *data_ptr = NULL;
 
 	if (!out_size) {
@@ -390,13 +390,13 @@ bail:
 }
 
 uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
-			      void *out, size_t *out_size)
+			      void *out, uint32_t *out_size)
 {
 	struct ae_aes_context *ctx = session->proc_params;
 	TEE_Result res;
 	uint8_t *tag;
-	size_t tag_len = 0;
-	size_t size = 0;
+	uint32_t tag_len = 0;
+	uint32_t size = 0;
 
 	if (!out || !out_size)
 		return SKS_BAD_PARAM;
@@ -408,7 +408,7 @@ uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
 
 	if (tag_len != ctx->tag_byte_len ||
 	    (res != TEE_SUCCESS && res != TEE_ERROR_SHORT_BUFFER)) {
-		EMSG("Unexpected tag length %u/%u or rc 0x%" PRIx32,
+		EMSG("Unexpected tag length %u/%zu or rc 0x%" PRIx32,
 			tag_len, ctx->tag_byte_len, res);
 		return SKS_ERROR;
 	}

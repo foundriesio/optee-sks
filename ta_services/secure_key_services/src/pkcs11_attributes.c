@@ -206,7 +206,7 @@ static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **obj,
 
 	/* Following attributes may be defined */
 	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		uint32_t size;
+		size_t size;
 		void *value;
 
 		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
@@ -263,7 +263,7 @@ static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
 
 	/* Following attributes may be defined */
 	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		uint32_t size;
+		size_t size;
 		void *value;
 
 		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
@@ -295,7 +295,7 @@ static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **obj,
 
 	/* Following attributes may be defined */
 	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		uint32_t size;
+		size_t size;
 		void *value;
 
 		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
