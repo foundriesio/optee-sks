@@ -227,8 +227,8 @@ bail:
 	return rv;
 }
 
-uint32_t  entry_destroy_object(void *teesess, TEE_Param *ctrl,
-			    TEE_Param *in, TEE_Param *out)
+uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
+				TEE_Param *in, TEE_Param *out)
 {
 	struct serialargs ctrlargs;
 	uint32_t session_handle;
