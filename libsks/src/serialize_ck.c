@@ -157,7 +157,7 @@ static CK_RV serialize_ck_attribute(struct serializer *obj, CK_ATTRIBUTE *attr)
 	uint32_t sks_data32;
 	void *sks_pdata;
 	int sks_pdata_alloced = 0;
-	CK_ULONG ck_ulong;
+	CK_ULONG ck_ulong = 0;		/* keep compiler happy */
 	CK_RV rv;
 	unsigned int n;
 	unsigned int m;
