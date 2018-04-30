@@ -10,6 +10,8 @@ if(NOT THREADS_FOUND)
 	message(FATAL_ERROR "Threads not found")
 endif()
 
+include(GNUInstallDirs)
+
 ################################################################################
 # Source files
 ################################################################################
@@ -29,7 +31,7 @@ set (SRC
 ################################################################################
 add_library (optee_cryptoki SHARED ${SRC})
 
-set_target_properties (teec PROPERTIES
+set_target_properties (optee_cryptoki PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	SOVERSION ${PROJECT_NAME}
 )
@@ -37,7 +39,7 @@ set_target_properties (teec PROPERTIES
 ################################################################################
 # Flags always set
 ################################################################################
-target_compile_definitions (teec
+target_compile_definitions (optee_cryptoki
 	PRIVATE -D_GNU_SOURCE
 	PRIVATE -DBINARY_PREFIX="LT"
 )
@@ -49,16 +51,26 @@ target_compile_definitions (teec
 ################################################################################
 # Public and private header and library dependencies
 ################################################################################
-target_include_directories(teec PUBLIC include)
+target_include_directories(optee_cryptoki
+	PUBLIC include
+	PRIVATE src
+)
+
+target_include_directories(teec
+	PUBLIC include
+)
 
 target_link_libraries (optee_cryptoki
-	PUBLIC ${CMAKE_THREAD_LIBS_INIT} # this is pthreads
-	PUBLIC optee-client-headers)
+	PRIVATE pthread
+	PRIVATE teec
+	PRIVATE m
+)
 
 ################################################################################
 # Install targets
 ################################################################################
-install (TARGETS optee_cryptoki DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
-	   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install (TARGETS optee_cryptoki
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
+add_subdirectory(include)
