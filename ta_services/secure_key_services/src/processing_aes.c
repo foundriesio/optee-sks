@@ -439,7 +439,7 @@ uint32_t tee_init_ccm_operation(struct pkcs11_session *session,
 				void *proc_params, size_t params_size)
 {
 	uint32_t rv;
-	struct ae_aes_context *params;
+	struct ae_aes_context *params = NULL;
 	struct serialargs args;
 	/* CCM parameters */
 	uint32_t data_len;
@@ -552,7 +552,7 @@ uint32_t tee_init_gcm_operation(struct pkcs11_session *session,
 	struct serialargs args;
 	uint32_t rv;
 	uint32_t tag_len;
-	struct ae_aes_context *params;
+	struct ae_aes_context *params = NULL;
 	/* GCM parameters */
 	uint32_t iv_len;
 	void *iv = NULL;
