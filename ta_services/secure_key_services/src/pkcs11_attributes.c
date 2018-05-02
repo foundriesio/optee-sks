@@ -603,8 +603,8 @@ static bool parent_key_complies_allowed_processings(uint32_t proc_id,
 	 * allowed.
 	 */
 	if (get_attribute_ptr(head, SKS_ALLOWED_PROCESSINGS,
-				     (void **)&attr, &size))
-			return true;
+			      (void *)&attr, &size))
+		return true;
 
 	for (count = size / sizeof(uint32_t); count; count--) {
 		TEE_MemMove(&proc, attr, sizeof(uint32_t));
