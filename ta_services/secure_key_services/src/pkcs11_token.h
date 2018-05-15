@@ -137,7 +137,24 @@ enum pkcs11_session_processing {
 };
 
 /*
- * Structure tracing the PKCS#11 sessions
+ * Pkcs11 objects serach context
+ *
+ * @attributes - matching attributes list searched (null if no search)
+ * @count - number of matching handle found
+ * @handles - array of handle of matching objects (published handles)
+ * @next - index of the next object handle to return to FindObject
+ * @temp_start - index of the trailing not yet published handles
+ */
+struct pkcs11_find_objects {
+	void *attributes;
+	size_t count;
+	uint32_t *handles;
+	size_t next;
+	size_t temp_start;
+};
+
+/*
+ * Structure tracking the PKCS#11 sessions
  *
  * @link - session litsing
  * @token - token/slot this session belongs to
@@ -149,6 +166,7 @@ enum pkcs11_session_processing {
  * @tee_op_handle - halde on active crypto operation
  * @proc_id - SKS ID of the active processing (TODO: args used at final)
  * @proc_params - parameters saved in memory for the active processing
+ * @find_ctx - point to active search context (null if no active search)
  */
 struct pkcs11_session {
 	LIST_ENTRY(pkcs11_session) link;
@@ -162,6 +180,7 @@ struct pkcs11_session {
 	TEE_OperationHandle tee_op_handle;	// HANDLE_NULL or on-going operation
 	uint32_t proc_id;
 	void *proc_params;
+	struct pkcs11_find_objects *find_ctx;
 };
 
 /* pkcs11 token Apis */
@@ -206,6 +225,8 @@ uint32_t create_object_uuid(struct ck_token *token, struct sks_object *obj);
 void destroy_object_uuid(struct ck_token *token, struct sks_object *obj);
 uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid);
 uint32_t register_persistent_object(struct ck_token *token, TEE_UUID *uuid);
+uint32_t get_persistent_objects_list(struct ck_token *token,
+				     TEE_UUID *array, size_t *size);
 
 /* Handler for most PKCS#11 API functions */
 uint32_t ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);

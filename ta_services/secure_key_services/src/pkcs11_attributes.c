@@ -468,6 +468,34 @@ static uint32_t check_attrs_misc_integrity(struct sks_attrs_head *head)
 }
 
 /*
+ * Check access to object against authentication to token
+ */
+uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
+					  struct sks_attrs_head *head)
+{
+	switch(get_class(head)) {
+	case SKS_OBJ_SYM_KEY:
+	case SKS_OBJ_PUB_KEY:
+	case SKS_OBJ_RAW_DATA:
+		if (!get_bool(head, SKS_NEED_AUTHEN))
+			return SKS_OK;
+		break;
+	case SKS_OBJ_PRIV_KEY:
+		break;
+	default:
+		return SKS_CK_NOT_PERMITTED;
+	}
+
+	switch (session->token->login_state) {
+	case PKCS11_TOKEN_STATE_SECURITY_OFFICER:
+	case PKCS11_TOKEN_STATE_USER_SESSIONS:
+		return SKS_OK;
+	default:
+		return SKS_CK_NOT_PERMITTED;
+	}
+}
+
+/*
  * Check the attributes of a to-be-created object matches the token state
  */
 uint32_t check_created_attrs_against_token(struct pkcs11_session *session,

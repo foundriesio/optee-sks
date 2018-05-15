@@ -59,6 +59,22 @@ void destroy_object_uuid(struct ck_token *token __unused,
 	obj->uuid = NULL;
 }
 
+uint32_t get_persistent_objects_list(struct ck_token *token,
+				     TEE_UUID *array, size_t *size)
+{
+	size_t out_size = *size;
+
+	*size = token->db_objs->count * sizeof(TEE_UUID);
+
+	if (out_size < *size)
+		return SKS_SHORT_BUFFER;
+
+	if (array)
+		TEE_MemMove(array, token->db_objs->uuids, *size);
+
+	return SKS_OK;
+}
+
 uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid)
 {
 	int index;
@@ -69,13 +85,16 @@ uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid)
 	if (!uuid)
 		return SKS_OK;
 
-	for (index = (int)(token->db_objs->count) - 1; index >= 0; index--)
+	for (index = (int)(token->db_objs->count) - 1; index >= 0; index--) {
 		if (!TEE_MemCompare(token->db_objs->uuids + index,
 				    uuid, sizeof(TEE_UUID)))
 			break;
+	}
 
-	if (index < 0)
+	if (index < 0) {
+		EMSG("Cannot unregster an invalid persistent object");
 		return SKS_NOT_FOUND;
+	}
 
 	count = token->db_objs->count - index;
 
@@ -84,14 +103,18 @@ uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid)
 				 sizeof(struct token_persistent_objs) +
 				 index * sizeof(TEE_UUID),
 				 TEE_DATA_SEEK_SET);
-	if (res)
+	if (res) {
+		EMSG("Failed to read db");
 		tee2sks_error(res);
+	}
 
 	res = TEE_WriteObjectData(token->db_hdl,
 				  token->db_objs->uuids + index + 1,
 				  (count - 1) * sizeof(TEE_UUID));
-	if (res)
+	if (res) {
+		EMSG("Failed to update db");
 		tee2sks_error(res);
+	}
 
 	/* Below sequence must not fail as persistent database is updated */
 

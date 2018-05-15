@@ -550,7 +550,7 @@ static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 	LIST_INIT(&session->object_list);
 
 	if (ro)
-	    token->session_state = PKCS11_TOKEN_STATE_SESSION_READ_ONLY;
+		token->session_state = PKCS11_TOKEN_STATE_SESSION_READ_ONLY;
 
 	LIST_INSERT_HEAD(&token->session_list, session, link);
 
@@ -584,6 +584,8 @@ static void close_ck_session(struct pkcs11_session *session)
 	while (!LIST_EMPTY(&session->object_list))
 		destroy_object(session, LIST_FIRST(&session->object_list),
 				true);
+
+	release_session_find_obj_context(session);
 
 	LIST_REMOVE(session, link);
 

@@ -22,7 +22,7 @@ struct sks_object {
 	void *attributes;
 	TEE_ObjectHandle key_handle;
 	/* These are for persistent/token objects (TODO: move to attributes) */
-	void *uuid;
+	TEE_UUID *uuid;
 	TEE_ObjectHandle attribs_hdl;
 };
 
@@ -52,8 +52,21 @@ uint32_t destroy_object(struct pkcs11_session *session,
 			struct sks_object *object,
 			bool session_object_only);
 
+/*
+ * Entry function called from the SKS command parser
+ */
 uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
 			      TEE_Param *in, TEE_Param *out);
 
+uint32_t entry_find_objects_init(void *teesess, TEE_Param *ctrl,
+				 TEE_Param *in, TEE_Param *out);
+
+uint32_t entry_find_objects(void *teesess, TEE_Param *ctrl,
+			    TEE_Param *in, TEE_Param *out);
+
+uint32_t entry_find_objects_final(void *teesess, TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out);
+
+void release_session_find_obj_context(struct pkcs11_session *session);
 
 #endif /*__SKS_OBJECT_H*/

@@ -130,4 +130,8 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 uint32_t check_parent_attrs_against_token(struct pkcs11_session *session,
 					  struct sks_attrs_head *head);
 
+/* Check if object can be accessed according to token state (authentication) */
+uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
+					  struct sks_attrs_head *head);
+
 #endif /*__PKCS11_ATTRIBUTE_H*/

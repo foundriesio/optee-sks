@@ -85,6 +85,15 @@ uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 			void *attr, size_t *attr_size);
 
 /*
+ * Return true all attributes from the reference are found and match value
+ * in the candidate attribute list.
+ *
+ * Return a SKS_OK on success, or a SKS return code.
+ */
+bool attributes_match_reference(struct sks_attrs_head *ref,
+				struct sks_attrs_head *candidate);
+
+/*
  * Some helpers
  */
 static inline size_t attributes_size(struct sks_attrs_head *head)

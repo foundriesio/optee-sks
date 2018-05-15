@@ -439,6 +439,37 @@ struct sks_reference {
 #define SKS_CMD_VERIFY_FINAL		0x0000001c
 
 /*
+ * SKS_CMD_FIND_OBJECTS_INIT - Initialize a objects search
+ *
+ * param#0: in(*)-memref : [uint32_t session_handle]
+ *			   [struct sks_object_head attribs + attributes data]
+ * param#1: none
+ * param#2: none
+ * param#3: none
+ */
+#define SKS_CMD_FIND_OBJECTS_INIT	0x0000001d
+
+/*
+ * SKS_CMD_FIND_OBJECTS - Get handles of matching objects
+ *
+ * param#0: in(*)-memref : [uint32_t session_handle]
+ * param#1: none
+ * param#2: out-memref : [uint32_t object_handle[max_handles_number]]
+ * param#3: none
+ */
+#define SKS_CMD_FIND_OBJECTS		0x0000001e
+
+/*
+ * SKS_CMD_FIND_OBJECTS_FINAL - Finalize current objects search
+ *
+ * param#0: in(*)-memref : [uint32_t session_handle]
+ * param#1: none
+ * param#2: none
+ * param#3: none
+ */
+#define SKS_CMD_FIND_OBJECTS_FINAL	0x0000001f
+
+/*
  * Return codes
  */
 #define SKS_OK				0x00000000	/* Success */

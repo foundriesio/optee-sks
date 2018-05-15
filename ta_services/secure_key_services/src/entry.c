@@ -186,6 +186,18 @@ TEE_Result TA_InvokeCommandEntryPoint(void *teesess, uint32_t cmd,
 						cmd == SKS_CMD_SIGN_FINAL);
 		break;
 
+	case SKS_CMD_FIND_OBJECTS_INIT:
+		rc = entry_find_objects_init(teesess, ctrl, in, out);
+		break;
+
+	case SKS_CMD_FIND_OBJECTS:
+		rc = entry_find_objects(teesess, ctrl, in, out);
+		break;
+
+	case SKS_CMD_FIND_OBJECTS_FINAL:
+		rc = entry_find_objects_final(teesess, ctrl, in, out);
+		break;
+
 	default:
 		EMSG("Command ID 0x%x is not supported", cmd);
 		return TEE_ERROR_NOT_SUPPORTED;

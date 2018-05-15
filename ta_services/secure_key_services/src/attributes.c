@@ -352,6 +352,38 @@ found:
 	return SKS_OK;
 }
 
+bool attributes_match_reference(struct sks_attrs_head *candidate,
+				struct sks_attrs_head *ref)
+{
+	size_t count = ref->blobs_count;
+	unsigned char *ref_attr = ref->blobs;
+	uint32_t rc;
+
+	if (!ref->blobs_count ||
+	    get_attribute(ref, SKS_CLASS, NULL, NULL)) {
+		return false;
+	}
+
+	for (count = 0; count < ref->blobs_count; count++) {
+		struct sks_ref sks_ref;
+		void *found;
+		size_t size;
+
+		TEE_MemMove(&sks_ref, ref_attr, sizeof(sks_ref));
+
+		rc = get_attribute_ptr(candidate, sks_ref.id, &found, &size);
+
+		if (rc || !found || size != sks_ref.size ||
+		    TEE_MemCompare(ref_attr + sizeof(sks_ref), found, size)) {
+			return false;
+		}
+
+		ref_attr += sizeof(sks_ref) + sks_ref.size;
+	}
+
+	return true;
+}
+
 /*
  * Debug: dump CK attribute array to output trace
  */
