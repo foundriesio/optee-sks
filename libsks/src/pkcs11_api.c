@@ -9,8 +9,8 @@
 
 #include "invoke_ta.h"
 #include "local_utils.h"
-#include "pkcs11_token.h"
 #include "pkcs11_processing.h"
+#include "pkcs11_token.h"
 
 static int inited;
 
@@ -63,9 +63,9 @@ static const CK_FUNCTION_LIST libsks_function_list = {
 	DO_NOT_REGISTER_CK_FUNCTION(C_GetObjectSize),
 	DO_NOT_REGISTER_CK_FUNCTION(C_GetAttributeValue),
 	DO_NOT_REGISTER_CK_FUNCTION(C_SetAttributeValue),
-	DO_NOT_REGISTER_CK_FUNCTION(C_FindObjectsInit),
-	DO_NOT_REGISTER_CK_FUNCTION(C_FindObjects),
-	DO_NOT_REGISTER_CK_FUNCTION(C_FindObjectsFinal),
+	REGISTER_CK_FUNCTION(C_FindObjectsInit),
+	REGISTER_CK_FUNCTION(C_FindObjects),
+	REGISTER_CK_FUNCTION(C_FindObjectsFinal),
 	REGISTER_CK_FUNCTION(C_EncryptInit),
 	REGISTER_CK_FUNCTION(C_Encrypt),
 	REGISTER_CK_FUNCTION(C_EncryptUpdate),
@@ -617,7 +617,6 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session,
 	}
 
 	return rv;
-
 }
 
 CK_RV C_GetObjectSize(CK_SESSION_HANDLE session,
@@ -664,12 +663,34 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session,
 			CK_ATTRIBUTE_PTR attribs,
 			CK_ULONG count)
 {
-	(void)session;
-	(void)attribs;
-	(void)count;
+	CK_RV rv;
+
 	SANITY_LIB_INIT;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = ck_find_objects_init(session, attribs, count);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_ATTRIBUTE_TYPE_INVALID:
+	case CKR_ATTRIBUTE_VALUE_INVALID:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_ACTIVE:
+	case CKR_PIN_EXPIRED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+		break;
+	default:
+		ASSERT(rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_FindObjects(CK_SESSION_HANDLE session,
@@ -678,21 +699,59 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session,
 		    CK_ULONG_PTR count)
 
 {
-	(void)session;
-	(void)obj;
-	(void)max_count;
-	(void)count;
+	CK_RV rv;
+
 	SANITY_LIB_INIT;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = ck_find_objects(session, obj, max_count, count);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+		break;
+	default:
+		ASSERT(rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session)
 {
-	(void)session;
+	CK_RV rv;
+
 	SANITY_LIB_INIT;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = ck_find_objects_final(session);
+
+	switch (rv) {
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+		break;
+	default:
+		ASSERT(rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_EncryptInit(CK_SESSION_HANDLE session,
