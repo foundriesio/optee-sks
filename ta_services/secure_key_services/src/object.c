@@ -26,8 +26,8 @@
  */
 static struct handle_db object_handle_db = HANDLE_DB_INITIALIZER;
 
-struct sks_object *object_get_tee_handle(uint32_t ck_handle,
-					 struct pkcs11_session *session)
+struct sks_object *sks_handle2object(uint32_t ck_handle,
+				     struct pkcs11_session *session)
 {
 	struct sks_object *obj = handle_lookup(&object_handle_db, ck_handle);
 
@@ -295,7 +295,7 @@ uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
-	object = object_get_tee_handle(object_handle, session);
+	object = sks_handle2object(object_handle, session);
 	if (!object || object->session_owner != session)
 		return SKS_BAD_PARAM;
 

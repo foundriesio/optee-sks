@@ -473,7 +473,7 @@ uint32_t entry_cipher_init(void *teesess, TEE_Param *ctrl,
 	/*
 	 * Check parent key handle
 	 */
-	obj = object_get_tee_handle(key_handle, session);
+	obj = sks_handle2object(key_handle, session);
 	if (!obj) {
 		DMSG("Invalid key handle");
 		rv = SKS_INVALID_KEY;
@@ -972,7 +972,7 @@ uint32_t entry_signverify_init(void *teesess, TEE_Param *ctrl,
 		goto bail;
 	}
 
-	obj = object_get_tee_handle(key_handle, session);
+	obj = sks_handle2object(key_handle, session);
 	if (!obj) {
 		DMSG("Invalid key handle");
 		rv = SKS_INVALID_KEY;

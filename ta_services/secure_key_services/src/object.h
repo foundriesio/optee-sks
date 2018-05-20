@@ -28,8 +28,8 @@ struct sks_object {
 
 LIST_HEAD(object_list, sks_object);
 
-struct sks_object *object_get_tee_handle(uint32_t ck_handle,
-					 struct pkcs11_session *session);
+struct sks_object *sks_handle2object(uint32_t ck_handle,
+				     struct pkcs11_session *session);
 
 /*
  * create_object - create an SKS object from its attributes and value
