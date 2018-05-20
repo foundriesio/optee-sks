@@ -291,7 +291,7 @@ uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -467,7 +467,7 @@ uint32_t entry_find_objects_init(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto bail;
@@ -641,7 +641,7 @@ uint32_t entry_find_objects(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -705,7 +705,7 @@ uint32_t entry_find_objects_final(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 

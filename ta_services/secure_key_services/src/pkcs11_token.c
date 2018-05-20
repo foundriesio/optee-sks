@@ -104,7 +104,7 @@ bool pkcs11_session_is_read_write(struct pkcs11_session *session)
 	return true;
 }
 
-struct pkcs11_session *get_pkcs_session(uint32_t ck_handle)
+struct pkcs11_session *sks_handle2session(uint32_t ck_handle)
 {
 	return handle_lookup(&session_handle_db, (int)ck_handle);
 }
@@ -630,7 +630,7 @@ uint32_t ck_token_close_session(void *teesess, TEE_Param *ctrl,
 		return SKS_BAD_PARAM;
 
 	TEE_MemMove(&handle, ctrl->memref.buffer, sizeof(uint32_t));
-	session = get_pkcs_session(handle);
+	session = sks_handle2session(handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 

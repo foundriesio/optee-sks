@@ -82,7 +82,7 @@ uint32_t entry_import_object(void *teesess,
 	template_size = sizeof(*template) + template->blobs_size;
 
 	/* Check session/token state against object import */
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto bail;
@@ -451,7 +451,7 @@ uint32_t entry_cipher_init(void *teesess, TEE_Param *ctrl,
 	/*
 	 * Check PKCS session (arguments and session state)
 	 */
-	session = get_pkcs_session(ck_session);
+	session = sks_handle2session(ck_session);
 	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto bail;
@@ -619,7 +619,7 @@ uint32_t entry_cipher_update(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(ck_session);
+	session = sks_handle2session(ck_session);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -696,7 +696,7 @@ uint32_t entry_cipher_final(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(ck_session);
+	session = sks_handle2session(ck_session);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -829,7 +829,7 @@ uint32_t entry_generate_object(void *teesess,
 	 * Check arguments
 	 */
 
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto bail;
@@ -953,7 +953,7 @@ uint32_t entry_signverify_init(void *teesess, TEE_Param *ctrl,
 	 * Check arguments
 	 */
 
-	session = get_pkcs_session(session_handle);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto bail;
@@ -1090,7 +1090,7 @@ uint32_t entry_signverify_update(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(ck_session);
+	session = sks_handle2session(ck_session);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -1156,7 +1156,7 @@ uint32_t entry_signverify_final(void *teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = get_pkcs_session(ck_session);
+	session = sks_handle2session(ck_session);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 

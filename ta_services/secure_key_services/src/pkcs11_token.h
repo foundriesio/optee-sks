@@ -186,7 +186,7 @@ struct pkcs11_session {
 /* pkcs11 token Apis */
 int pkcs11_init(void);
 
-struct pkcs11_session *get_pkcs_session(uint32_t ck_handle);
+struct pkcs11_session *sks_handle2session(uint32_t ck_handle);
 
 int set_pkcs_session_processing_state(struct pkcs11_session *session,
 				      enum pkcs11_session_processing state);
