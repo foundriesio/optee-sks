@@ -26,10 +26,10 @@
  */
 static struct handle_db object_handle_db = HANDLE_DB_INITIALIZER;
 
-struct sks_object *sks_handle2object(uint32_t ck_handle,
+struct sks_object *sks_handle2object(uint32_t handle,
 				     struct pkcs11_session *session)
 {
-	struct sks_object *obj = handle_lookup(&object_handle_db, ck_handle);
+	struct sks_object *obj = handle_lookup(&object_handle_db, handle);
 
 	if (obj->session_owner != session)
 		return NULL;
@@ -75,16 +75,16 @@ static void cleanup_volatile_obj_ref(struct sks_object *obj)
 	if (obj->attribs_hdl != TEE_HANDLE_NULL)
 		TEE_CloseObject(obj->attribs_hdl);
 
-	handle_put(&object_handle_db, obj->ck_handle);
+	handle_put(&object_handle_db, obj->client_handle);
 
 	TEE_Free(obj->attributes);
 	TEE_Free(obj->uuid);
 	TEE_Free(obj);
 }
 
-static void release_object_from_handle(uint32_t ck_handle)
+static void release_object_from_handle(uint32_t handle)
 {
-	struct sks_object *obj = handle_lookup(&object_handle_db, ck_handle);
+	struct sks_object *obj = handle_lookup(&object_handle_db, handle);
 
 	cleanup_volatile_obj_ref(obj);
 }
@@ -189,7 +189,7 @@ static struct sks_object *create_object_instance(void *session,
 	obj->key_handle = TEE_HANDLE_NULL;
 	obj->attribs_hdl = TEE_HANDLE_NULL;
 	obj->attributes = head;
-	obj->ck_handle = obj_handle;
+	obj->client_handle = obj_handle;
 	obj->session_owner = session;
 
 	return obj;
@@ -255,7 +255,7 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 	}
 
 	LIST_INSERT_HEAD(get_session_objects(session), obj, link);
-	*out_handle = obj->ck_handle;
+	*out_handle = obj->client_handle;
 
 bail:
 	if (rv) {
@@ -547,7 +547,7 @@ uint32_t entry_find_objects_init(void *teesess, TEE_Param *ctrl,
 		}
 		find_ctx->handles = handles;
 
-		*(find_ctx->handles + find_ctx->count) = obj->ck_handle;
+		*(find_ctx->handles + find_ctx->count) = obj->client_handle;
 		find_ctx->count++;
 	}
 
@@ -593,7 +593,7 @@ uint32_t entry_find_objects_init(void *teesess, TEE_Param *ctrl,
 
 		/* Store object handle for later publishing */
 		find_ctx->handles = handles;
-		*(handles + find_ctx->count) = obj->ck_handle;
+		*(handles + find_ctx->count) = obj->client_handle;
 		find_ctx->count++;
 	}
 

@@ -17,7 +17,7 @@ struct pkcs11_session;
 struct sks_object {
 	LIST_ENTRY(sks_object) link;
 	void *session_owner;
-	uint32_t ck_handle;	// TODO: rename client_handle
+	uint32_t client_handle;
 	/* pointer to the serialized object attributes */
 	void *attributes;
 	TEE_ObjectHandle key_handle;
@@ -28,7 +28,7 @@ struct sks_object {
 
 LIST_HEAD(object_list, sks_object);
 
-struct sks_object *sks_handle2object(uint32_t ck_handle,
+struct sks_object *sks_handle2object(uint32_t client_handle,
 				     struct pkcs11_session *session);
 
 /*

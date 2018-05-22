@@ -104,9 +104,9 @@ bool pkcs11_session_is_read_write(struct pkcs11_session *session)
 	return true;
 }
 
-struct pkcs11_session *sks_handle2session(uint32_t ck_handle)
+struct pkcs11_session *sks_handle2session(uint32_t handle)
 {
-	return handle_lookup(&session_handle_db, (int)ck_handle);
+	return handle_lookup(&session_handle_db, (int)handle);
 }
 
 /*
