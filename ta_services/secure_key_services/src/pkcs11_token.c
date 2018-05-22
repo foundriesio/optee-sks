@@ -181,7 +181,8 @@ int check_pkcs_session_processing_state(struct pkcs11_session *pkcs_session,
 }
 
 /* ctrl=[slot-id][pin-size][pin][label], in=unused, out=unused */
-uint32_t ck_token_initialize(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out)
 {
 	struct serialargs ctrlargs;
 	uint32_t token_id;
@@ -283,7 +284,7 @@ inited:
 	return SKS_OK;
 }
 
-uint32_t ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	const size_t out_size = sizeof(uint32_t) * TOKEN_COUNT;
 	uint32_t *id;
@@ -304,7 +305,7 @@ uint32_t ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	return SKS_OK;
 }
 
-uint32_t ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	const char desc[] = SKS_CRYPTOKI_SLOT_DESCRIPTION;
 	const char manuf[] = SKS_CRYPTOKI_SLOT_MANUFACTURER;
@@ -351,7 +352,7 @@ uint32_t ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	return SKS_OK;
 }
 
-uint32_t ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	const char manuf[] = SKS_CRYPTOKI_TOKEN_MANUFACTURER;
 	const char sernu[] = SKS_CRYPTOKI_TOKEN_SERIAL_NUMBER;
@@ -414,7 +415,8 @@ uint32_t ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	return SKS_OK;
 }
 
-uint32_t ck_token_mecha_ids(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out)
 {
 	// TODO: get the list of supported mechanism
 	const uint32_t mecha_list[] = {
@@ -453,7 +455,8 @@ uint32_t ck_token_mecha_ids(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	return SKS_OK;
 }
 
-uint32_t ck_token_mecha_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out)
 {
 	struct sks_ck_mecha_info info;
 	uint32_t type;
@@ -511,7 +514,7 @@ uint32_t ck_token_mecha_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
 static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
-				TEE_Param *in, TEE_Param *out, bool ro)
+				 TEE_Param *in, TEE_Param *out, bool ro)
 {
 	struct pkcs11_session *session;
 	uint32_t token_id;
@@ -561,15 +564,15 @@ static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t ck_token_ro_session(void *teesess, TEE_Param *ctrl,
-				TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_ro_session(void *teesess, TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out)
 {
 	return ck_token_session(teesess, ctrl, in, out, true);
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t ck_token_rw_session(void *teesess, TEE_Param *ctrl,
-				TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_rw_session(void *teesess, TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out)
 {
 	return ck_token_session(teesess, ctrl, in, out, false);
 }
@@ -620,8 +623,8 @@ static void close_ck_session(struct pkcs11_session *session)
 }
 
 /* ctrl=[session-handle], in=unused, out=unused */
-uint32_t ck_token_close_session(void *teesess, TEE_Param *ctrl,
-				  TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_close_session(void *teesess, TEE_Param *ctrl,
+				      TEE_Param *in, TEE_Param *out)
 {
 	struct pkcs11_session *session;
 	uint32_t handle;
@@ -639,8 +642,8 @@ uint32_t ck_token_close_session(void *teesess, TEE_Param *ctrl,
 	return SKS_OK;
 }
 
-uint32_t ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
-			      TEE_Param *in, TEE_Param *out)
+uint32_t entry_ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out)
 {
 	uint32_t token_id;
 	struct ck_token *token;

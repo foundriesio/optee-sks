@@ -111,36 +111,36 @@ TEE_Result TA_InvokeCommandEntryPoint(void *teesess, uint32_t cmd,
 		return TEE_SUCCESS;
 
 	case SKS_CMD_CK_SLOT_LIST:
-		rc = ck_slot_list(ctrl, in, out);
+		rc = entry_ck_slot_list(ctrl, in, out);
 		break;
 	case SKS_CMD_CK_SLOT_INFO:
-		rc = ck_slot_info(ctrl, in, out);
+		rc = entry_ck_slot_info(ctrl, in, out);
 		break;
 	case SKS_CMD_CK_TOKEN_INFO:
-		rc = ck_token_info(ctrl, in, out);
+		rc = entry_ck_token_info(ctrl, in, out);
 		break;
 	case SKS_CMD_CK_INIT_TOKEN:
-		rc = ck_token_initialize(ctrl, in, out);
+		rc = entry_ck_token_initialize(ctrl, in, out);
 		break;
 
 	case SKS_CMD_CK_MECHANISM_IDS:
-		rc = ck_token_mecha_ids(ctrl, in, out);
+		rc = entry_ck_token_mecha_ids(ctrl, in, out);
 		break;
 	case SKS_CMD_CK_MECHANISM_INFO:
-		rc = ck_token_mecha_info(ctrl, in, out);
+		rc = entry_ck_token_mecha_info(ctrl, in, out);
 		break;
 
 	case SKS_CMD_CK_OPEN_RO_SESSION:
-		rc = ck_token_ro_session(teesess, ctrl, in, out);
+		rc = entry_ck_token_ro_session(teesess, ctrl, in, out);
 		break;
 	case SKS_CMD_CK_OPEN_RW_SESSION:
-		rc = ck_token_rw_session(teesess, ctrl, in, out);
+		rc = entry_ck_token_rw_session(teesess, ctrl, in, out);
 		break;
 	case SKS_CMD_CK_CLOSE_SESSION:
-		rc = ck_token_close_session(teesess, ctrl, in, out);
+		rc = entry_ck_token_close_session(teesess, ctrl, in, out);
 		break;
 	case SKS_CMD_CK_CLOSE_ALL_SESSIONS:
-		rc = ck_token_close_all(teesess, ctrl, in, out);
+		rc = entry_ck_token_close_all(teesess, ctrl, in, out);
 		break;
 
 	case SKS_CMD_IMPORT_OBJECT:
