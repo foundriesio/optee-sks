@@ -14,8 +14,6 @@
 #define TA_SKS_UUID { 0xfd02c9da, 0x306c, 0x48c7, \
                         { 0xa4, 0x9c, 0xbb, 0xd8, 0x27, 0xae, 0x86, 0xee } }
 
-#define CK_VENDOR_INVALID_ID		0xffffffff
-
 /*
  * SKS trusted application may recieve requests requesting a number of
  * parameters that may not suit the GPD 4 parameters directives.
