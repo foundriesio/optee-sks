@@ -193,7 +193,7 @@ static struct id2str proc_flag2str_table[] = {
 
 static struct id2str sks_proc2str_table[] = {
 	SKS_PROCESSING_IDS
-	/* Add below retrun codes not exported to TA API */
+	/* Add below processing IDs are not exported by the TA API */
 	SKS_ID(SKS_PROC_RAW_IMPORT)
 	SKS_ID(SKS_PROC_RAW_COPY)
 };
