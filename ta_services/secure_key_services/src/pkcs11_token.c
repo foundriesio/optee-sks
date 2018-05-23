@@ -303,74 +303,78 @@ uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t token_id;
+	struct ck_token *token;
 	const char desc[] = SKS_CRYPTOKI_SLOT_DESCRIPTION;
 	const char manuf[] = SKS_CRYPTOKI_SLOT_MANUFACTURER;
 	const char hwver[2] = SKS_CRYPTOKI_SLOT_HW_VERSION;
 	const char fwver[2] = SKS_CRYPTOKI_SLOT_FW_VERSION;
-	struct sks_ck_slot_info *info;
-	uint32_t token_id;
-	struct ck_token *token;
+	struct sks_ck_slot_info info;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
-
-	if (ctrl->memref.size != sizeof(token_id))
-		return SKS_BAD_PARAM;
-
-	TEE_MemMove(&token_id, ctrl->memref.buffer, sizeof(token_id));
 
 	if (out->memref.size < sizeof(struct sks_ck_slot_info)) {
 		out->memref.size = sizeof(struct sks_ck_slot_info);
 		return SKS_SHORT_BUFFER;
 	}
 
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
 	token = get_token(token_id);
 	if (!token)
 		return SKS_INVALID_SLOT;
 
-	/* TODO: prevent crash on unaligned buffers */
-	info = (void *)out->memref.buffer;
+	TEE_MemFill(&info, 0, sizeof(info));
 
-	TEE_MemFill(info, 0, sizeof(*info));
+	PADDED_STRING_COPY(info.slotDescription, desc);
+	PADDED_STRING_COPY(info.manufacturerID, manuf);
 
-	PADDED_STRING_COPY(info->slotDescription, desc);
-	PADDED_STRING_COPY(info->manufacturerID, manuf);
+	info.flags |= SKS_TOKEN_PRESENT;
+	info.flags |= SKS_TOKEN_REMOVABLE;
+	info.flags &= ~SKS_TOKEN_HW;
 
-	info->flags |= SKS_TOKEN_PRESENT;
-	info->flags |= SKS_TOKEN_REMOVABLE;
-	info->flags &= ~SKS_TOKEN_HW;		/* are we a HW or SW slot? */
-
-	TEE_MemMove(&info->hardwareVersion, &hwver, sizeof(hwver));
-	TEE_MemMove(&info->firmwareVersion, &fwver, sizeof(fwver));
+	TEE_MemMove(&info.hardwareVersion, &hwver, sizeof(hwver));
+	TEE_MemMove(&info.firmwareVersion, &fwver, sizeof(fwver));
 
 	out->memref.size = sizeof(struct sks_ck_slot_info);
+	TEE_MemMove(out->memref.buffer, &info, out->memref.size);
 
 	return SKS_OK;
 }
 
 uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t token_id;
+	struct ck_token *token;
 	const char manuf[] = SKS_CRYPTOKI_TOKEN_MANUFACTURER;
 	const char sernu[] = SKS_CRYPTOKI_TOKEN_SERIAL_NUMBER;
 	const char model[] = SKS_CRYPTOKI_TOKEN_MODEL;
 	const char hwver[] = SKS_CRYPTOKI_TOKEN_HW_VERSION;
 	const char fwver[] = SKS_CRYPTOKI_TOKEN_FW_VERSION;
 	struct sks_ck_token_info info;
-	uint32_t token_id;
-	struct ck_token *token;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
-
-	if (ctrl->memref.size != sizeof(token_id))
-		return SKS_BAD_PARAM;
-
-	TEE_MemMove(&token_id, ctrl->memref.buffer, sizeof(token_id));
 
 	if (out->memref.size < sizeof(struct sks_ck_token_info)) {
 		out->memref.size = sizeof(struct sks_ck_token_info);
 		return SKS_SHORT_BUFFER;
 	}
+
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
+	if (rv)
+		return rv;
 
 	token = get_token(token_id);
 	if (!token)
@@ -414,7 +418,10 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
-	// TODO: get the list of supported mechanism
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t token_id;
+	struct ck_token *token;
 	const uint32_t mecha_list[] = {
 		SKS_PROC_AES_ECB_NOPAD,
 		SKS_PROC_AES_CBC_NOPAD,
@@ -424,8 +431,6 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 		SKS_PROC_AES_GCM,
 		SKS_PROC_AES_CCM,
 	};
-	uint32_t token_id;
-	struct ck_token *token;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -435,10 +440,11 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 		return SKS_SHORT_BUFFER;
 	}
 
-	if (ctrl->memref.size != sizeof(token_id))
-		return SKS_BAD_PARAM;
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	TEE_MemMove(&token_id, ctrl->memref.buffer, sizeof(token_id));
+	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
+	if (rv)
+		return rv;
 
 	token = get_token(token_id);
 	if (!token)
@@ -454,11 +460,12 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
-	struct sks_ck_mecha_info info;
-	uint32_t type;
+	uint32_t rv;
+	struct serialargs ctrlargs;
 	uint32_t token_id;
+	uint32_t type;
 	struct ck_token *token;
-	char *ctrl_ptr;
+	struct sks_ck_mecha_info info;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -468,13 +475,15 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 		return SKS_SHORT_BUFFER;
 	}
 
-	if (ctrl->memref.size != 2 * sizeof(uint32_t))
-		return SKS_BAD_PARAM;
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	ctrl_ptr = ctrl->memref.buffer;
-	TEE_MemMove(&token_id, ctrl_ptr, sizeof(uint32_t));
-	ctrl_ptr += sizeof(uint32_t);
-	TEE_MemMove(&type, ctrl_ptr, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	rv = serialargs_get(&ctrlargs, &type, sizeof(uint32_t));
+	if (rv)
+		return rv;
 
 	token = get_token(token_id);
 	if (!token)
