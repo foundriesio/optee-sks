@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <assert.h>
 #include <sks_ta.h>
 #include <string.h>
 #include <string_ext.h>
@@ -36,14 +37,9 @@ struct ck_token *get_token(unsigned int token_id)
 
 unsigned int get_token_id(struct ck_token *token)
 {
-	int count;
+	assert(token >= ck_token && token < &ck_token[TOKEN_COUNT]);
 
-	for (count = 0; count < TOKEN_COUNT; count++)
-		if (token == &ck_token[count])
-			return count;
-
-	TEE_Panic(0);
-	return 0;
+	return (token - ck_token) / sizeof(struct ck_token);
 }
 
 static int pkcs11_token_init(unsigned int id)
