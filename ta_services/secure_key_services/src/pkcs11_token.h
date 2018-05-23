@@ -101,7 +101,6 @@ struct token_persistent_objs {
 struct ck_token {
 	uint32_t session_counter;
 	uint32_t rw_session_counter;
-	uint32_t user_type;			/* SecurityOfficer, User or Public */
 
 	enum pkcs11_token_login_state login_state;
 	enum pkcs11_token_session_state	session_state;
