@@ -47,8 +47,7 @@ enum pkcs11_token_session_state {
 	PKCS11_TOKEN_STATE_SESSION_READ_ONLY,
 };
 
-/* List of toen sessions */
-LIST_HEAD(session_list, pkcs11_session);
+TAILQ_HEAD(session_list, pkcs11_session);
 
 #define SKS_MAX_USERS			2
 #define SKS_TOKEN_PIN_SIZE		128
@@ -168,7 +167,7 @@ struct pkcs11_find_objects {
  * @find_ctx - point to active search context (null if no active search)
  */
 struct pkcs11_session {
-	LIST_ENTRY(pkcs11_session) link;
+	TAILQ_ENTRY(pkcs11_session) link;
 	struct object_list object_list;
 	struct ck_token *token;
 	uintptr_t tee_session;

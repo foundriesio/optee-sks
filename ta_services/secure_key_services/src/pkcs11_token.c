@@ -23,7 +23,6 @@
 /* Static allocation of tokens runtime instances (reset to 0 at load) */
 struct ck_token ck_token[TOKEN_COUNT];
 
-// TODO: move session_handle_db into struct ck_token
 static struct handle_db session_handle_db = HANDLE_DB_INITIALIZER;
 
 /* Static allocation of tokens runtime instances */
@@ -55,7 +54,7 @@ static int pkcs11_token_init(unsigned int id)
 	/* Initialize the token runtime state */
 	token->login_state = PKCS11_TOKEN_STATE_PUBLIC_SESSIONS;
 	token->session_state = PKCS11_TOKEN_STATE_SESSION_NONE;
-	LIST_INIT(&token->session_list);
+	TAILQ_INIT(&token->session_list);
 	TEE_MemFill(&token->session_handle_db, 0,
 		    sizeof(token->session_handle_db));
 
@@ -254,7 +253,7 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 		return SKS_PIN_LOCKED;
 	}
 
-	if (!LIST_EMPTY(&token->session_list)) {
+	if (!TAILQ_EMPTY(&token->session_list)) {
 		IMSG("SO cannot log in, pending session(s)");
 		return SKS_CK_SESSION_PENDING;
 	}
@@ -616,7 +615,7 @@ static uint32_t ck_token_session(uintptr_t teesess, TEE_Param *ctrl,
 	if (readonly)
 		token->session_state = PKCS11_TOKEN_STATE_SESSION_READ_ONLY;
 
-	LIST_INSERT_HEAD(&token->session_list, session, link);
+	TAILQ_INSERT_HEAD(&token->session_list, session, link);
 
 	*(uint32_t *)out->memref.buffer = session->handle;
 	out->memref.size = sizeof(uint32_t);
@@ -640,6 +639,8 @@ uint32_t entry_ck_token_rw_session(uintptr_t teesess, TEE_Param *ctrl,
 
 static void close_ck_session(struct pkcs11_session *session)
 {
+	struct ck_token *token = session->token;
+
 	(void)handle_put(&session_handle_db, session->handle);
 
 	if (session->tee_op_handle != TEE_HANDLE_NULL)
@@ -651,7 +652,7 @@ static void close_ck_session(struct pkcs11_session *session)
 
 	release_session_find_obj_context(session);
 
-	LIST_REMOVE(session, link);
+	TAILQ_REMOVE(&token->session_list, session, link);
 
 	/* Closing last read-only session switches token to read/write state */
 	if (!session->readwrite) {
@@ -659,7 +660,7 @@ static void close_ck_session(struct pkcs11_session *session)
 		bool last_ro = true;
 		bool last = true;
 
-		LIST_FOREACH(sess, &session->token->session_list, link) {
+		TAILQ_FOREACH(sess, &session->token->session_list, link) {
 			last = false;
 
 			if (sess->readwrite)
@@ -676,9 +677,9 @@ static void close_ck_session(struct pkcs11_session *session)
 					PKCS11_TOKEN_STATE_SESSION_READ_WRITE;
 	}
 
-	if (LIST_EMPTY(&session->token->session_list)) {
-		// TODO: if last session closed, token moves to Public state
-	}
+	if (TAILQ_EMPTY(&session->token->session_list))
+		session->token->login_state =
+					PKCS11_TOKEN_STATE_PUBLIC_SESSIONS;
 
 	TEE_Free(session);
 }
@@ -731,8 +732,8 @@ uint32_t entry_ck_token_close_all(uintptr_t teesess __unused, TEE_Param *ctrl,
 	if (!token)
 		return SKS_INVALID_SLOT;
 
-	while (!LIST_EMPTY(&token->session_list))
-		close_ck_session(LIST_FIRST(&token->session_list));
+	while (!TAILQ_EMPTY(&token->session_list))
+		close_ck_session(TAILQ_FIRST(&token->session_list));
 
 	return SKS_OK;
 }
@@ -745,7 +746,7 @@ void ck_token_close_tee_session(uintptr_t tee_session)
 {
 	struct ck_token *token;
 	struct pkcs11_session *session;
-	struct pkcs11_session *next_session;
+	struct pkcs11_session *next;
 	int n;
 
 	for (n = 0; n < TOKEN_COUNT; n++) {
@@ -753,8 +754,8 @@ void ck_token_close_tee_session(uintptr_t tee_session)
 		if (!token)
 			continue;
 
-		TAILQ_FOREACH_SAFE(session, &token->session_list, link, next_session) {
-			if ((int)session->tee_session == tee_session)
+		TAILQ_FOREACH_SAFE(session, &token->session_list, link, next) {
+			if (session->tee_session == tee_session)
 				close_ck_session(session);
 		}
 	}
