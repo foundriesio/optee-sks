@@ -57,6 +57,26 @@ void TA_CloseSessionEntryPoint(void *session)
 	TEE_Free(handle_put(&sks_session_db, sess_hld));
 }
 
+static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+{
+	uint32_t *ver;
+
+	if (ctrl || in)
+		return SKS_BAD_PARAM;
+
+	if (!out)
+		return SKS_OK;
+
+	if (out->memref.size < 2 * sizeof(uint32_t))
+		return SKS_SHORT_BUFFER;
+
+	ver = (uint32_t *)out->memref.buffer;
+	*ver = SKS_VERSION_ID0;
+	*(ver + 1) = SKS_VERSION_ID1;
+
+	return SKS_OK;
+}
+
 /*
  * Entry point for SKS TA commands
  *
@@ -108,7 +128,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *teesess, uint32_t cmd,
 
 	switch (cmd) {
 	case SKS_CMD_PING:
-		return TEE_SUCCESS;
+		rc = entry_ping(ctrl, in, out);
+		break;
 
 	case SKS_CMD_CK_SLOT_LIST:
 		rc = entry_ck_slot_list(ctrl, in, out);

@@ -14,6 +14,10 @@
 #define TA_SKS_UUID { 0xfd02c9da, 0x306c, 0x48c7, \
                         { 0xa4, 0x9c, 0xbb, 0xd8, 0x27, 0xae, 0x86, 0xee } }
 
+/* SKS trusted application version information */
+#define SKS_VERSION_ID0		0
+#define SKS_VERSION_ID1		0
+
 /*
  * SKS trusted application may recieve requests requesting a number of
  * parameters that may not suit the GPD 4 parameters directives.
@@ -42,11 +46,12 @@
  */
 
 /*
- * SKS_CMD_PING		Acknowledge TA presence
+ * SKS_CMD_PING		Acknowledge TA presence and return TA versioning info
  *
  * param#0: none
  * param#1: none
- * param#2: none
+ * param#2: none | out-memref : [uint32_t version1]
+ *				[uint32_t version2]
  * param#3: none
  */
 #define SKS_CMD_PING			0x00000000
