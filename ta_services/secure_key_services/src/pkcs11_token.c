@@ -521,20 +521,21 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out, bool ro)
 {
-	struct pkcs11_session *session;
+	uint32_t rv;
+	struct serialargs ctrlargs;
 	uint32_t token_id;
 	struct ck_token *token;
+	struct pkcs11_session *session;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(uint32_t))
-		return SKS_BAD_PARAM;
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	if (ctrl->memref.size != sizeof(uint32_t))
-		return SKS_BAD_PARAM;
+	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
+	if (rv)
+		return rv;
 
-	TEE_MemMove(&token_id, ctrl->memref.buffer, sizeof(uint32_t));
 	token = get_token(token_id);
 	if (!token)
 		return SKS_INVALID_SLOT;
@@ -631,14 +632,21 @@ static void close_ck_session(struct pkcs11_session *session)
 uint32_t entry_ck_token_close_session(void *teesess, TEE_Param *ctrl,
 				      TEE_Param *in, TEE_Param *out)
 {
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t session_handle;
 	struct pkcs11_session *session;
-	uint32_t handle;
 
 	if (!ctrl || in || out || ctrl->memref.size < sizeof(uint32_t))
 		return SKS_BAD_PARAM;
 
-	TEE_MemMove(&handle, ctrl->memref.buffer, sizeof(uint32_t));
-	session = sks_handle2session(handle);
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -650,16 +658,20 @@ uint32_t entry_ck_token_close_session(void *teesess, TEE_Param *ctrl,
 uint32_t entry_ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
+	uint32_t rv;
+	struct serialargs ctrlargs;
 	uint32_t token_id;
 	struct ck_token *token;
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
 
-	if (ctrl->memref.size != sizeof(uint32_t))
-		return SKS_BAD_PARAM;
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	TEE_MemMove(&token_id, ctrl->memref.buffer, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
 	token = get_token(token_id);
 	if (!token)
 		return SKS_INVALID_SLOT;
