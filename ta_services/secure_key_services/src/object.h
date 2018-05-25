@@ -55,16 +55,16 @@ uint32_t destroy_object(struct pkcs11_session *session,
 /*
  * Entry function called from the SKS command parser
  */
-uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
+uint32_t entry_destroy_object(uintptr_t teesess, TEE_Param *ctrl,
 			      TEE_Param *in, TEE_Param *out);
 
-uint32_t entry_find_objects_init(void *teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out);
 
-uint32_t entry_find_objects(void *teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
 			    TEE_Param *in, TEE_Param *out);
 
-uint32_t entry_find_objects_final(void *teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out);
 
 void release_session_find_obj_context(struct pkcs11_session *session);

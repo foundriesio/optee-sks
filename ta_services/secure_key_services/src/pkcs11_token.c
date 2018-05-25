@@ -573,7 +573,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
+static uint32_t ck_token_session(uintptr_t teesess, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out, bool readonly)
 {
 	uint32_t rv;
@@ -625,14 +625,14 @@ static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t entry_ck_token_ro_session(void *teesess, TEE_Param *ctrl,
+uint32_t entry_ck_token_ro_session(uintptr_t teesess, TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
 	return ck_token_session(teesess, ctrl, in, out, true);
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t entry_ck_token_rw_session(void *teesess, TEE_Param *ctrl,
+uint32_t entry_ck_token_rw_session(uintptr_t teesess, TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
 	return ck_token_session(teesess, ctrl, in, out, false);
@@ -684,7 +684,7 @@ static void close_ck_session(struct pkcs11_session *session)
 }
 
 /* ctrl=[session-handle], in=unused, out=unused */
-uint32_t entry_ck_token_close_session(void *teesess, TEE_Param *ctrl,
+uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 				      TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -710,7 +710,7 @@ uint32_t entry_ck_token_close_session(void *teesess, TEE_Param *ctrl,
 	return SKS_OK;
 }
 
-uint32_t entry_ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
+uint32_t entry_ck_token_close_all(uintptr_t teesess __unused, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -741,7 +741,7 @@ uint32_t entry_ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
  * Parse all tokens and all sessions. Close all sessions that are relying
  * on the target TEE session ID which is being closed by caller.
  */
-void ck_token_close_tee_session(int tee_session)
+void ck_token_close_tee_session(uintptr_t tee_session)
 {
 	struct ck_token *token;
 	struct pkcs11_session *session;

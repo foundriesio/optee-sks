@@ -171,7 +171,7 @@ struct pkcs11_session {
 	LIST_ENTRY(pkcs11_session) link;
 	struct object_list object_list;
 	struct ck_token *token;
-	void *tee_session;
+	uintptr_t tee_session;
 	uint32_t handle;
 	bool readwrite;
 	uint32_t state;
@@ -186,6 +186,10 @@ struct pkcs11_session {
 int pkcs11_init(void);
 void pkcs11_deinit(void);
 
+/*
+ * Pkcs11 session support
+ */
+void ck_token_close_tee_session(uintptr_t tee_session);
 struct pkcs11_session *sks_handle2session(uint32_t client_handle);
 
 int set_pkcs_session_processing_state(struct pkcs11_session *session,
@@ -230,7 +234,6 @@ uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid);
 uint32_t register_persistent_object(struct ck_token *token, TEE_UUID *uuid);
 uint32_t get_persistent_objects_list(struct ck_token *token,
 				     TEE_UUID *array, size_t *size);
-void ck_token_close_tee_session(int tee_session);
 
 /* Handler for most PKCS#11 API functions */
 uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
@@ -242,13 +245,13 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl, TEE_Param *in, TEE_Param *ou
 uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 
-TEE_Result entry_ck_token_ro_session(void *teesess, TEE_Param *ctrl,
-				     TEE_Param *in, TEE_Param *out);
-TEE_Result entry_ck_token_rw_session(void *teesess, TEE_Param *ctrl,
-				     TEE_Param *in, TEE_Param *out);
-TEE_Result entry_ck_token_close_session(void *teesess, TEE_Param *ctrl,
-					TEE_Param *in, TEE_Param *out);
-TEE_Result entry_ck_token_close_all(void *teesess, TEE_Param *ctrl,
-				    TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_ro_session(uintptr_t teesess, TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_rw_session(uintptr_t teesess, TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
+				      TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_close_all(uintptr_t teesess, TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out);
 
 #endif /*__SKS_TA_PKCS11_TOKEN_H*/

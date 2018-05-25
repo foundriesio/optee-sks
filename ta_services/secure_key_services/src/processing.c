@@ -47,7 +47,7 @@ static void release_active_processing(struct pkcs11_session *session)
 		TEE_Panic(0);
 }
 
-uint32_t entry_import_object(void *teesess,
+uint32_t entry_import_object(uintptr_t teesess,
 			     TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -416,7 +416,7 @@ static uint32_t load_key(struct sks_object *obj)
  * in = none
  * out = none
  */
-uint32_t entry_cipher_init(void *teesess, TEE_Param *ctrl,
+uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 			   TEE_Param *in, TEE_Param *out, int decrypt)
 {
 	uint32_t rv;
@@ -599,7 +599,7 @@ bail:
  * in = data buffer
  * out = data buffer
  */
-uint32_t entry_cipher_update(void *teesess, TEE_Param *ctrl,
+uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
 			     TEE_Param *in, TEE_Param *out, int decrypt)
 {
 	struct serialargs ctrlargs;
@@ -676,7 +676,7 @@ uint32_t entry_cipher_update(void *teesess, TEE_Param *ctrl,
  * in = none
  * out = data buffer
  */
-uint32_t entry_cipher_final(void *teesess, TEE_Param *ctrl,
+uint32_t entry_cipher_final(uintptr_t teesess, TEE_Param *ctrl,
 			    TEE_Param *in, TEE_Param *out, int decrypt)
 {
 	TEE_Result res;
@@ -786,7 +786,7 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 	return rv;
 }
 
-uint32_t entry_generate_object(void *teesess,
+uint32_t entry_generate_object(uintptr_t teesess,
 			       TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -916,7 +916,7 @@ bail:
  * in = none
  * out = none
  */
-uint32_t entry_signverify_init(void *teesess, TEE_Param *ctrl,
+uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, int sign)
 {
 	uint32_t rv;
@@ -1073,7 +1073,7 @@ bail:
  * in = input data
  * out = none
  */
-uint32_t entry_signverify_update(void *teesess, TEE_Param *ctrl,
+uint32_t entry_signverify_update(uintptr_t teesess, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out, int sign)
 {
 	struct serialargs ctrlargs;
@@ -1137,7 +1137,7 @@ bail:
  * in = none
  * out = data buffer
  */
-uint32_t entry_signverify_final(void *teesess, TEE_Param *ctrl,
+uint32_t entry_signverify_final(uintptr_t teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, int sign)
 {
 	TEE_Result res;

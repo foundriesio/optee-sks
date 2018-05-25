@@ -91,7 +91,7 @@ static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
  * will be force to TEE_SUCCESS. Note that some Cryptoki error status are
  * send straight through TEE result code. See sks2tee_noerr().
  */
-TEE_Result TA_InvokeCommandEntryPoint(void *teesess, uint32_t cmd,
+TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 				      uint32_t ptypes,
 				      TEE_Param params[TEE_NUM_PARAMS])
 {
@@ -100,6 +100,7 @@ TEE_Result TA_InvokeCommandEntryPoint(void *teesess, uint32_t cmd,
 	TEE_Param *ctrl = NULL;
 	TEE_Param *in = NULL;
 	TEE_Param *out = NULL;
+	uintptr_t teesess = (uintptr_t)tee_session;
 
 	if (TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INPUT ||
 	    TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INOUT)

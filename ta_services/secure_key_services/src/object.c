@@ -268,7 +268,7 @@ bail:
 	return rv;
 }
 
-uint32_t entry_destroy_object(void *teesess, TEE_Param *ctrl,
+uint32_t entry_destroy_object(uintptr_t teesess, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out)
 {
 	struct serialargs ctrlargs;
@@ -440,7 +440,7 @@ static void release_find_obj_context(struct pkcs11_find_objects *find_ctx)
 /*
  * Entry for command SKS_CMD_FIND_OBJECTS_INIT
  */
-uint32_t entry_find_objects_init(void *teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -616,7 +616,7 @@ bail:
 /*
  * Entry for command SKS_CMD_FIND_OBJECTS
  */
-uint32_t entry_find_objects(void *teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
 			    TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -688,7 +688,7 @@ void release_session_find_obj_context(struct pkcs11_session *session)
 /*
  * Entry for command SKS_CMD_FIND_OBJECTS_FINAL
  */
-uint32_t entry_find_objects_final(void *teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
