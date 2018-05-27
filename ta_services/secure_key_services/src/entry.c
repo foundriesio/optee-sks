@@ -31,6 +31,7 @@ TEE_Result TA_CreateEntryPoint(void)
 
 void TA_DestroyEntryPoint(void)
 {
+	pkcs11_deinit();
 }
 
 TEE_Result TA_OpenSessionEntryPoint(uint32_t __unused param_types,

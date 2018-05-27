@@ -39,7 +39,7 @@ unsigned int get_token_id(struct ck_token *token)
 {
 	assert(token >= ck_token && token < &ck_token[TOKEN_COUNT]);
 
-	return (token - ck_token) / sizeof(struct ck_token);
+	return token - ck_token;
 }
 
 static int pkcs11_token_init(unsigned int id)
@@ -62,9 +62,6 @@ static int pkcs11_token_init(unsigned int id)
 	return 0;
 }
 
-/*
- * Initialization routine for the trsuted application.
- */
 int pkcs11_init(void)
 {
 	unsigned int id;
@@ -74,6 +71,14 @@ int pkcs11_init(void)
 			return 1;
 
 	return 0;
+}
+
+void pkcs11_deinit(void)
+{
+	unsigned int id;
+
+	for (id = 0; id < TOKEN_COUNT; id++)
+		close_persistent_db(get_token(id));
 }
 
 bool pkcs11_session_is_read_write(struct pkcs11_session *session)
@@ -176,19 +181,45 @@ int check_pkcs_session_processing_state(struct pkcs11_session *pkcs_session,
 	return (pkcs_session->processing == state) ? 0 : 1;
 }
 
+static void cipher_pin(TEE_ObjectHandle key_handle, uint8_t *buf, size_t len)
+{
+	uint8_t iv[16] = { 0 };
+	uint32_t size = len;
+	TEE_OperationHandle tee_op_handle = TEE_HANDLE_NULL;
+	TEE_Result res;
+
+	res = TEE_AllocateOperation(&tee_op_handle,
+				    TEE_ALG_AES_CBC_NOPAD,
+				    TEE_MODE_ENCRYPT, 128);
+	if (res)
+		TEE_Panic(0);
+
+	res = TEE_SetOperationKey(tee_op_handle, key_handle);
+	if (res)
+		TEE_Panic(0);
+
+	TEE_CipherInit(tee_op_handle, iv, sizeof(iv));
+
+	res = TEE_CipherDoFinal(tee_op_handle, buf, len, buf, &size);
+	if (res || size != SKS_TOKEN_PIN_SIZE)
+		TEE_Panic(0);
+
+	TEE_FreeOperation(tee_op_handle);
+}
+
 /* ctrl=[slot-id][pin-size][pin][label], in=unused, out=unused */
 uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
+	uint32_t rv;
 	struct serialargs ctrlargs;
 	uint32_t token_id;
-	struct ck_token *token;
 	uint32_t pin_size;
-	uint32_t test_size;
 	void *pin;
 	char label[32 + 1];
+	struct ck_token *token;
+	uint8_t *cpin = NULL;
 	int pin_rc;
-	uint32_t rv;
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -211,11 +242,8 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	// TODO: check label against already registered tokens.
-	// 2 tokens can have the same label!
-
-	if (pin_size > SKS_TOKEN_SO_PIN_SIZE)
-		return SKS_FAILED;	//FIXME: errno
+	if (pin_size > SKS_TOKEN_PIN_SIZE)
+		return SKS_FAILED;
 
 	token = get_token(token_id);
 	if (!token)
@@ -231,24 +259,31 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 		return SKS_CK_SESSION_PENDING;
 	}
 
+	cpin = TEE_Malloc(SKS_TOKEN_PIN_SIZE, TEE_MALLOC_FILL_ZERO);
+	TEE_MemMove(cpin, pin, pin_size);
+	cipher_pin(token->pin_hdl[0], cpin, SKS_TOKEN_PIN_SIZE);
+
 	if (!token->db_main->so_pin_size) {
+		TEE_MemMove(token->db_main->so_pin, cpin, SKS_TOKEN_PIN_SIZE);
 		token->db_main->so_pin_size = pin_size;
-		TEE_MemMove(token->db_main->so_pin, pin, pin_size);
+
+		update_persistent_db(token,
+				     offsetof(struct token_persistent_main,
+					      so_pin),
+				     sizeof(token->db_main->so_pin));
+		update_persistent_db(token,
+				     offsetof(struct token_persistent_main,
+					      so_pin_size),
+				     sizeof(token->db_main->so_pin_size));
 		goto inited;
 	}
 
-	/*
-	 * TODO: store an encrypted version of the PINs
-	 */
-	pin_rc = pin_size - token->db_main->so_pin_size;
-	while (pin_size) {
-		test_size = MIN(token->db_main->so_pin_size, pin_size);
-
-		if (buf_compare_ct(token->db_main->so_pin, pin, test_size))
-			pin_rc = 1;
-
-		pin_size -= test_size;
-	}
+	pin_rc = 0;
+	if (token->db_main->so_pin_size != pin_size)
+		pin_rc = 1;
+	if (buf_compare_ct(token->db_main->so_pin, cpin,
+			   SKS_TOKEN_PIN_SIZE))
+		pin_rc = 1;
 
 	if (pin_rc) {
 		token->db_main->flags |= SKS_TOKEN_SO_PIN_FAILURE;
@@ -259,24 +294,44 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 		if (token->db_main->so_pin_count == 7)
 			token->db_main->flags |= SKS_TOKEN_SO_PIN_LOCKED;
 
-		// TODO: save in token state in persistent storage
+		update_persistent_db(token,
+				     offsetof(struct token_persistent_main,
+					      flags),
+				     sizeof(token->db_main->flags));
+		update_persistent_db(token,
+				     offsetof(struct token_persistent_main,
+					      so_pin_count),
+				     sizeof(token->db_main->so_pin_count));
 
+		TEE_Free(cpin);
 		return SKS_PIN_INCORRECT;
-	} else {
-		token->db_main->flags &= ~(SKS_TOKEN_SO_PIN_FAILURE |
-					SKS_TOKEN_SO_PIN_LAST);
-		token->db_main->so_pin_count = 0;
 	}
+
+	token->db_main->flags &= ~(SKS_TOKEN_SO_PIN_FAILURE |
+				   SKS_TOKEN_SO_PIN_LAST);
+	token->db_main->so_pin_count = 0;
 
 inited:
 	TEE_MemMove(token->db_main->label, label, SKS_TOKEN_LABEL_SIZE);
 	token->db_main->flags |= SKS_TOKEN_INITED;
 
-	// TODO: save in token state in persistent storage
+	update_persistent_db(token,
+			     offsetof(struct token_persistent_main, label),
+			     sizeof(token->db_main->label));
+
+	update_persistent_db(token,
+			     offsetof(struct token_persistent_main,
+				      so_pin_count),
+			     sizeof(token->db_main->so_pin_count));
+
+	update_persistent_db(token,
+			     offsetof(struct token_persistent_main, flags),
+			     sizeof(token->db_main->flags));
 
 	label[32] = '\0';
 	IMSG("Token \"%s\" is happy to be initilialized", label);
 
+	TEE_Free(cpin);
 	return SKS_OK;
 }
 
@@ -519,7 +574,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
 static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
-				 TEE_Param *in, TEE_Param *out, bool ro)
+				 TEE_Param *in, TEE_Param *out, bool readonly)
 {
 	uint32_t rv;
 	struct serialargs ctrlargs;
@@ -540,7 +595,7 @@ static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 	if (!token)
 		return SKS_INVALID_SLOT;
 
-	if (ro &&
+	if (readonly &&
 	    token->login_state == PKCS11_TOKEN_STATE_SECURITY_OFFICER &&
 	    token->session_state == PKCS11_TOKEN_STATE_SESSION_READ_WRITE)
 		return SKS_CK_SO_IS_LOGGED_READ_WRITE;
@@ -553,12 +608,12 @@ static uint32_t ck_token_session(void *teesess, TEE_Param *ctrl,
 	session->tee_session = teesess;
 	session->processing = PKCS11_SESSION_READY;
 	session->tee_op_handle = TEE_HANDLE_NULL;
-	session->readwrite = !ro;
+	session->readwrite = !readonly;
 	session->token = token;
 	session->proc_id = SKS_UNDEFINED_ID;
 	LIST_INIT(&session->object_list);
 
-	if (ro)
+	if (readonly)
 		token->session_state = PKCS11_TOKEN_STATE_SESSION_READ_ONLY;
 
 	LIST_INSERT_HEAD(&token->session_list, session, link);
@@ -686,19 +741,21 @@ uint32_t entry_ck_token_close_all(void *teesess __unused, TEE_Param *ctrl,
  * Parse all tokens and all sessions. Close all sessions that are relying
  * on the target TEE session ID which is being closed by caller.
  */
-void ck_token_close_tee_session(int tee_session __unused)
+void ck_token_close_tee_session(int tee_session)
 {
 	struct ck_token *token;
+	struct pkcs11_session *session;
+	struct pkcs11_session *next_session;
 	int n;
 
-	// FIXME: this is buggy!!!
-	// This will close all sessions to all tokens...
 	for (n = 0; n < TOKEN_COUNT; n++) {
 		token = get_token(n);
 		if (!token)
 			continue;
 
-		while (!LIST_EMPTY(&token->session_list))
-			close_ck_session(LIST_FIRST(&token->session_list));
+		TAILQ_FOREACH_SAFE(session, &token->session_list, link, next_session) {
+			if ((int)session->tee_session == tee_session)
+				close_ck_session(session);
+		}
 	}
 }

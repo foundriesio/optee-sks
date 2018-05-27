@@ -50,8 +50,8 @@ enum pkcs11_token_session_state {
 /* List of toen sessions */
 LIST_HEAD(session_list, pkcs11_session);
 
-#define SKS_TOKEN_SO_PIN_SIZE		128
-#define SKS_TOKEN_USER_PIN_SIZE		128
+#define SKS_MAX_USERS			2
+#define SKS_TOKEN_PIN_SIZE		128
 
 /*
  * Persistent state of the token
@@ -74,11 +74,11 @@ struct token_persistent_main {
 
 	uint32_t so_pin_count;
 	uint32_t so_pin_size;
-	uint8_t so_pin[SKS_TOKEN_SO_PIN_SIZE];	/* TODO: encrypted */
+	uint8_t so_pin[SKS_TOKEN_PIN_SIZE];	/* TODO: encrypted */
 
 	uint32_t user_pin_count;
 	uint32_t user_pin_size;
-	uint8_t user_pin[SKS_TOKEN_USER_PIN_SIZE]; /* TODO: encrypted */
+	uint8_t user_pin[SKS_TOKEN_PIN_SIZE]; /* TODO: encrypted */
 };
 
 /*
@@ -109,9 +109,9 @@ struct ck_token {
 	struct handle_db session_handle_db;
 
 	TEE_ObjectHandle db_hdl;	/* Opened handle to persistent database */
+	TEE_ObjectHandle pin_hdl[SKS_MAX_USERS];	/* Opened handle to PIN keys */
 	struct token_persistent_main *db_main;		/* Copy persistent database */
 	struct token_persistent_objs *db_objs;		/* Copy persistent database */
-
 };
 
 /*
@@ -162,7 +162,7 @@ struct pkcs11_find_objects {
  * @readwrite - true if the session is read/write, false if read-only
  * @state - R/W SO, R/W user, RO user, R/W public, RO public. See PKCS11.
  * @processing - ongoing active processing function
- * @tee_op_handle - halde on active crypto operation
+ * @tee_op_handle - handle on active crypto operation or TEE_HANDLE_NULL
  * @proc_id - SKS ID of the active processing (TODO: args used at final)
  * @proc_params - parameters saved in memory for the active processing
  * @find_ctx - point to active search context (null if no active search)
@@ -176,7 +176,7 @@ struct pkcs11_session {
 	bool readwrite;
 	uint32_t state;
 	enum pkcs11_session_processing processing;
-	TEE_OperationHandle tee_op_handle;	// HANDLE_NULL or on-going operation
+	TEE_OperationHandle tee_op_handle;
 	uint32_t proc_id;
 	void *proc_params;
 	struct pkcs11_find_objects *find_ctx;
@@ -184,6 +184,7 @@ struct pkcs11_session {
 
 /* pkcs11 token Apis */
 int pkcs11_init(void);
+void pkcs11_deinit(void);
 
 struct pkcs11_session *sks_handle2session(uint32_t client_handle);
 
@@ -218,6 +219,9 @@ struct ck_token *pkcs11_session2token(struct pkcs11_session *session)
 struct ck_token *get_token(unsigned int token_id);
 unsigned int get_token_id(struct ck_token *token);
 struct ck_token *init_token_db(unsigned int token_id);
+
+int update_persistent_db(struct ck_token *token, size_t offset, size_t size);
+void close_persistent_db(struct ck_token *token);
 
 /* Token persistent objects */
 uint32_t create_object_uuid(struct ck_token *token, struct sks_object *obj);

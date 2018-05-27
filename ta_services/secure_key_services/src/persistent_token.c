@@ -27,6 +27,95 @@
 /* 'X' will be replaced by the token decimal id (up to 9!) */
 #define TOKEN_DB_FILE_BASE		"token.db.X"
 
+void close_persistent_db(struct ck_token *token)
+{
+	int n;
+
+	for (n = 0; n < SKS_MAX_USERS; n++) {
+		TEE_CloseObject(token->pin_hdl[n]);
+		token->pin_hdl[n] = TEE_HANDLE_NULL;
+	}
+
+	TEE_CloseObject(token->db_hdl);
+	token->db_hdl = TEE_HANDLE_NULL;
+}
+
+int update_persistent_db(struct ck_token *token, size_t offset, size_t size)
+{
+	unsigned int token_id = get_token_id(token);
+	char file[] = TOKEN_DB_FILE_BASE;
+	uint8_t *field = (uint8_t *)token->db_main + offset;
+	TEE_Result res;
+
+	if (snprintf(file + sizeof(file) - 2, 2, "%1d", token_id) >= 2)
+		TEE_Panic(0);
+
+	if (token->db_hdl == TEE_HANDLE_NULL)
+		return 1;
+
+	res = TEE_SeekObjectData(token->db_hdl, offset, TEE_DATA_SEEK_SET);
+	if (res)
+		return tee2sks_error(res);
+
+	res = TEE_WriteObjectData(token->db_hdl, field, size);
+	if (res)
+		return tee2sks_error(res);
+
+	return 0;
+}
+
+static void init_pin_keys(struct ck_token *token, unsigned int uid)
+{
+	TEE_Result res;
+	unsigned int token_id = get_token_id(token);
+	TEE_ObjectHandle *key_hdl = &token->pin_hdl[uid];
+	char file[32] = { 0 };
+
+	assert(token_id < 10 && uid < 10);
+
+	if (snprintf(file, 32, "token.db.%1d-pin%1d", token_id, uid) >= 32)
+		TEE_Panic(0);
+
+	res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
+					file, sizeof(file), 0, key_hdl);
+	if (res == TEE_SUCCESS) {
+		MSG("pin key found");
+		return;
+	}
+
+	if (res == TEE_ERROR_ITEM_NOT_FOUND) {
+		TEE_Attribute attr;
+		TEE_ObjectHandle hdl = TEE_HANDLE_NULL;
+		uint8_t pin_key[16];
+
+		TEE_GenerateRandom(pin_key, sizeof(pin_key));
+		TEE_InitRefAttribute(&attr, TEE_ATTR_SECRET_VALUE,
+				     pin_key, sizeof(pin_key));
+
+		res = TEE_AllocateTransientObject(TEE_TYPE_AES, 128, key_hdl);
+		if (res)
+			TEE_Panic(0);
+
+		res = TEE_PopulateTransientObject(*key_hdl, &attr, 1);
+		if (res)
+			TEE_Panic(0);
+
+		res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
+						 file, sizeof(file),
+						 0 /*no need to access the value*/,
+						 *key_hdl,
+						 pin_key, sizeof(pin_key),
+						 &hdl);
+		if (res)
+			TEE_Panic(0);
+
+		TEE_CloseObject(hdl);
+		return;
+	}
+
+	TEE_Panic(0);
+}
+
 /* UUID for persistent object */
 uint32_t create_object_uuid(struct ck_token *token __unused,
 			    struct sks_object *obj)
@@ -191,14 +280,18 @@ struct ck_token *init_token_db(unsigned int token_id)
 	TEE_Result res;
 	char db_file[] = TOKEN_DB_FILE_BASE;
 	TEE_ObjectHandle db_hdl = TEE_HANDLE_NULL;
-	struct token_persistent_main *db_main;		/* Copy persistent database */
-	struct token_persistent_objs *db_objs;		/* Copy persistent database */
+	struct token_persistent_main *db_main;	/* Copy persistent database */
+	struct token_persistent_objs *db_objs;	/* Copy persistent database */
+	int n;
 
 	if (!token)
 		return NULL;
 
-	db_main = TEE_Malloc(sizeof(struct token_persistent_main), 0);
-	db_objs = TEE_Malloc(sizeof(struct token_persistent_objs), 0);
+	for (n = 0; n < SKS_MAX_USERS; n++)
+		init_pin_keys(token, n);
+
+	db_main = TEE_Malloc(sizeof(*db_main), 0);
+	db_objs = TEE_Malloc(sizeof(*db_objs), 0);
 	if (!db_main || !db_objs)
 		goto error;
 
@@ -208,18 +301,20 @@ struct ck_token *init_token_db(unsigned int token_id)
 
 	res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
 					db_file, sizeof(db_file),
-					TEE_DATA_FLAG_ACCESS_READ, &db_hdl);
+					TEE_DATA_FLAG_ACCESS_READ |
+					TEE_DATA_FLAG_ACCESS_WRITE,
+					&db_hdl);
 	if (res == TEE_SUCCESS) {
 		uint32_t size;
 
-		size = sizeof(struct token_persistent_main);
+		size = sizeof(*db_main);
 		res = TEE_ReadObjectData(db_hdl, db_main, size, &size);
-		if (res || size != sizeof(struct token_persistent_main))
+		if (res || size != sizeof(*db_main))
 			TEE_Panic(0);
 
-		size = sizeof(struct token_persistent_objs);
+		size = sizeof(*db_objs);
 		res = TEE_ReadObjectData(db_hdl, db_objs, size, &size);
-		if (res || size != sizeof(struct token_persistent_objs))
+		if (res || size != sizeof(*db_objs))
 			TEE_Panic(0);
 
 		size += db_objs->count * sizeof(TEE_UUID);
@@ -227,7 +322,7 @@ struct ck_token *init_token_db(unsigned int token_id)
 		if (!db_objs)
 			goto error;
 
-		size -= sizeof(struct token_persistent_objs);
+		size -= sizeof(*db_objs);
 		res = TEE_ReadObjectData(db_hdl, db_objs, size, &size);
 		if (res || size != (db_objs->count * sizeof(TEE_UUID)))
 			TEE_Panic(0);
@@ -258,23 +353,23 @@ struct ck_token *init_token_db(unsigned int token_id)
 						 TEE_DATA_FLAG_ACCESS_READ |
 						 TEE_DATA_FLAG_ACCESS_WRITE,
 						 TEE_HANDLE_NULL,
-						 &db_main, sizeof(db_main),
+						 db_main, sizeof(*db_main),
 						 &db_hdl);
 		if (res)
 			TEE_Panic(0);
 
-		res = TEE_TruncateObjectData(db_hdl,
-					     sizeof(db_main) + sizeof(db_objs));
+		res = TEE_TruncateObjectData(db_hdl, sizeof(*db_main) +
+							sizeof(*db_objs));
 		if (res)
 			TEE_Panic(0);
 
-		res = TEE_SeekObjectData(db_hdl, sizeof(db_main),
+		res = TEE_SeekObjectData(db_hdl, sizeof(*db_main),
 					 TEE_DATA_SEEK_SET);
 		if (res)
 			TEE_Panic(0);
 
 		db_objs->count = 0;
-		res = TEE_WriteObjectData(db_hdl, db_objs, sizeof(db_objs));
+		res = TEE_WriteObjectData(db_hdl, db_objs, sizeof(*db_objs));
 		if (res)
 			TEE_Panic(0);
 
