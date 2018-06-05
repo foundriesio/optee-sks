@@ -66,6 +66,8 @@ CK_RV sks_ck_slot_get_list(CK_BBOOL present,
 
 	if (!slots || *count < (size / sizeof(uint32_t))) {
 		*count = size / sizeof(uint32_t);
+		if (!slots)
+			return CKR_OK;
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -197,19 +199,28 @@ CK_RV sks_ck_token_mechanism_ids(CK_SLOT_ID slot,
 {
 	uint32_t ctrl[1] = { slot };
 	size_t outsize = *count * sizeof(uint32_t);
-	void *outbuf;
+	void *outbuf = NULL;
 	CK_RV rv;
 
-	outbuf = malloc(outsize);
-	if (!outbuf)
-		return CKR_HOST_MEMORY;
+	if (mechanisms) {
+		outbuf = malloc(outsize);
+		if (!outbuf)
+			return CKR_HOST_MEMORY;
+	}
 
 	rv = ck_invoke_ta(NULL, SKS_CMD_CK_MECHANISM_IDS,
 			  &ctrl, sizeof(ctrl), NULL, 0, outbuf, &outsize);
-	if (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL)
+
+	if (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL) {
 		*count = outsize / sizeof(uint32_t);
-	if (rv)
+	}
+	if (!mechanisms && rv == CKR_BUFFER_TOO_SMALL) {
+		rv = CKR_OK;
 		goto bail;
+	}
+	if (rv) {
+		goto bail;
+	}
 
 	if (sks2ck_mechanism_type_list(mechanisms, outbuf, *count)) {
 		LOG_ERROR("unexpected bad mechanism_type list\n");
