@@ -109,7 +109,6 @@ static CK_RV serialize_indirect_attribute(struct serializer *obj,
 	/* These are serialized each seperately */
 	case CKA_WRAP_TEMPLATE:
 	case CKA_UNWRAP_TEMPLATE:
-	case CKA_DERIVE_TEMPLATE:
 		count = attribute->ulValueLen / sizeof(CK_ATTRIBUTE);
 		attr = (CK_ATTRIBUTE_PTR)attribute->pValue;
 		break;
@@ -190,7 +189,6 @@ static CK_RV serialize_ck_attribute(struct serializer *obj, CK_ATTRIBUTE *attr)
 
 	case CKA_WRAP_TEMPLATE:
 	case CKA_UNWRAP_TEMPLATE:
-	case CKA_DERIVE_TEMPLATE:
 		return serialize_indirect_attribute(obj, attr);
 
 	case CKA_ALLOWED_MECHANISMS:
@@ -759,7 +757,6 @@ static CK_RV trace_attributes(char *prefix, void *src, void *end)
 		switch (ref.id) {
 		case SKS_WRAP_ATTRIBS:
 		case SKS_UNWRAP_ATTRIBS:
-		case SKS_DERIVE_ATTRIBS:
 			serial_trace_attributes_from_head(prefix2,
 							  cur + sizeof(ref));
 			break;
