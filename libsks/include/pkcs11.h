@@ -695,11 +695,6 @@ struct CK_FUNCTION_LIST {
 	CK_RV (*C_GetSlotInfo)(
 			CK_SLOT_ID slot,
 			CK_SLOT_INFO_PTR info);
-	CK_RV (*C_InitToken)(
-			CK_SLOT_ID slot,
-			CK_UTF8CHAR_PTR pin,
-			CK_ULONG pin_len,
-			CK_UTF8CHAR_PTR label);
 	CK_RV (*C_GetTokenInfo)(
 			CK_SLOT_ID slot,
 			CK_TOKEN_INFO_PTR info);
@@ -711,6 +706,21 @@ struct CK_FUNCTION_LIST {
 			CK_SLOT_ID slot,
 			CK_MECHANISM_TYPE type,
 			CK_MECHANISM_INFO_PTR info);
+	CK_RV (*C_InitToken)(
+			CK_SLOT_ID slot,
+			CK_UTF8CHAR_PTR pin,
+			CK_ULONG pin_len,
+			CK_UTF8CHAR_PTR label);
+	CK_RV (*C_InitPIN)(
+			CK_SESSION_HANDLE session,
+			CK_UTF8CHAR_PTR pin,
+			CK_ULONG pin_len);
+	CK_RV (*C_SetPIN)(
+			CK_SESSION_HANDLE session,
+			CK_UTF8CHAR_PTR old,
+			CK_ULONG old_len,
+			CK_UTF8CHAR_PTR new,
+			CK_ULONG new_len);
 	CK_RV (*C_OpenSession)(CK_SLOT_ID slot,
 			CK_FLAGS flags,
 			CK_VOID_PTR cookie,
@@ -723,23 +733,6 @@ struct CK_FUNCTION_LIST {
 	CK_RV (*C_GetSessionInfo)(
 			CK_SESSION_HANDLE session,
 			CK_SESSION_INFO_PTR info);
-	CK_RV (*C_InitPIN)(
-			CK_SESSION_HANDLE session,
-			CK_UTF8CHAR_PTR pin,
-			CK_ULONG pin_len);
-	CK_RV (*C_SetPIN)(
-			CK_SESSION_HANDLE session,
-			CK_UTF8CHAR_PTR old,
-			CK_ULONG old_len,
-			CK_UTF8CHAR_PTR new,
-			CK_ULONG new_len);
-	CK_RV (*C_Login)(
-			CK_SESSION_HANDLE session,
-			CK_USER_TYPE user_type,
-			CK_UTF8CHAR_PTR pin,
-			CK_ULONG pin_len);
-	CK_RV (*C_Logout)(
-			CK_SESSION_HANDLE session);
 	CK_RV (*C_GetOperationState)(
 			CK_SESSION_HANDLE session,
 			CK_BYTE_PTR state,
@@ -750,6 +743,13 @@ struct CK_FUNCTION_LIST {
 			CK_ULONG state_len,
 			CK_OBJECT_HANDLE ciph_key,
 			CK_OBJECT_HANDLE auth_key);
+	CK_RV (*C_Login)(
+			CK_SESSION_HANDLE session,
+			CK_USER_TYPE user_type,
+			CK_UTF8CHAR_PTR pin,
+			CK_ULONG pin_len);
+	CK_RV (*C_Logout)(
+			CK_SESSION_HANDLE session);
 	CK_RV (*C_CreateObject)(
 			CK_SESSION_HANDLE session,
 			CK_ATTRIBUTE_PTR attribs,
