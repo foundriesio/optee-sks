@@ -15,7 +15,8 @@
 
 /*
  * All requests (invocation of the SKS) currently go through a
- * single GPD TEE session toward the SKS TA.
+ * single GPD TEE session toward the SKS TA. This helps the
+ * TA identifying application that open several sessions.
  */
 struct sks_primary_context {
 	TEEC_Context context;
