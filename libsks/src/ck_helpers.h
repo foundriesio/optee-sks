@@ -17,6 +17,12 @@
  * Various conversion between PKCS#11 IDs and SKS IDs
  */
 
+/*
+ * SKS reserves vendor ID 0xffffffff to represent an invalid ID
+ * (attribute class, type, ...)
+ */
+#define CK_VENDOR_INVALID_ID		0xffffffff
+
 /* sks-to-ck only: this is not a one-to-one relationship */
 #define CK_SKS_ERROR_CODES \
 	CK_SKS_ID(CKR_OK,			SKS_OK) \
