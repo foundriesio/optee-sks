@@ -1,7 +1,7 @@
 project (optee-cryptoki-headers C)
 
-add_library(${PROJECT_NAME} INTERFACE)
-#target_include_directories(optee_cryptoki PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+FILE(GLOB INSTALL_HEADERS "*.h")
 
-install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
-	   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+add_library(${PROJECT_NAME} INTERFACE)
+
+install (FILES ${INSTALL_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
