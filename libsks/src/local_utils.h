@@ -13,4 +13,6 @@
 #define LOG_INFO(...)	printf(__VA_ARGS__)
 #define LOG_DEBUG(...)	printf(__VA_ARGS__)
 
+#define ARRAY_SIZE(array)	(sizeof(array) / sizeof(array[0]))
+
 #endif /*__LOCAL_UTILS_H*/
