@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <assert.h>
@@ -17,7 +16,7 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
-/* Provide 3 slots/tokens */
+/* Provide 3 slots/tokens, ID is token index */
 #define TOKEN_COUNT	3
 
 /* Static allocation of tokens runtime instances (reset to 0 at load) */
@@ -274,6 +273,7 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 				     offsetof(struct token_persistent_main,
 					      so_pin_size),
 				     sizeof(token->db_main->so_pin_size));
+
 		goto inited;
 	}
 
@@ -331,6 +331,7 @@ inited:
 	IMSG("Token \"%s\" is happy to be initilialized", label);
 
 	TEE_Free(cpin);
+
 	return SKS_OK;
 }
 
@@ -352,6 +353,7 @@ uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 		*id = (uint32_t)n;
 
 	out->memref.size = out_size;
+
 	return SKS_OK;
 }
 

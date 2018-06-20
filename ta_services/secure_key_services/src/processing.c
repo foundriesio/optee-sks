@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <assert.h>
@@ -118,11 +117,11 @@ uint32_t entry_import_object(uintptr_t teesess,
 		goto bail;
 
 	/*
-	 * Execute the target processing and add value as attribute SKS_VALUE.
-	 * Raw import => key value in clear already as attribute SKS_VALUE.
+	 * Execute the target processing and add value as attribute SKS_CKA_VALUE.
+	 * Raw import => key value in clear already as attribute SKS_CKA_VALUE.
 	 *
-	 * Here we only check attribute that attribute SKS_VALUE is defined.
-	 * TODO: check value size? check SKS_VALUE_LEN? check SKS_CHECKSUM.
+	 * Here we only check attribute that attribute SKS_CKA_VALUE is defined.
+	 * TODO: check value size? check SKS_CKA_VALUE_LEN? check SKS_CHECKSUM.
 	 */
 	rv = get_attribute_ptr(head, SKS_VALUE, NULL, NULL);
 	if (rv)
@@ -421,22 +420,19 @@ uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 {
 	uint32_t rv;
 	TEE_Result res;
-	uint32_t ck_session;
+	struct serialargs ctrlargs;
+	uint32_t session_handle;
 	uint32_t key_handle;
 	struct sks_object *obj;
 	struct sks_reference *proc_params = NULL;
 	struct pkcs11_session *session = NULL;
-	struct serialargs ctrlargs;
 
-	/*
-	 * Arguments: ctrl=[32b-session-hld][32b-key-hdl][proc-parameters]
-	 */
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	rv = serialargs_get(&ctrlargs, &ck_session, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
@@ -451,7 +447,7 @@ uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 	/*
 	 * Check PKCS session (arguments and session state)
 	 */
-	session = sks_handle2session(ck_session);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess) {
 		rv = SKS_INVALID_SESSION;
 		goto bail;
@@ -475,7 +471,6 @@ uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 	 */
 	obj = sks_handle2object(key_handle, session);
 	if (!obj) {
-		DMSG("Invalid key handle");
 		rv = SKS_INVALID_KEY;
 		goto bail;
 	}
@@ -602,24 +597,24 @@ bail:
 uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
 			     TEE_Param *in, TEE_Param *out, int decrypt)
 {
+	uint32_t rv;
 	struct serialargs ctrlargs;
+	uint32_t session_handle;
 	TEE_Result res;
-	uint32_t ck_session;
 	struct pkcs11_session *session;
 	size_t in_size = in ? in->memref.size : 0;
 	uint32_t out_size = out ? out->memref.size : 0;
-	uint32_t rv;
 
 	if (!ctrl)
 		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	rv = serialargs_get(&ctrlargs, &ck_session, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(ck_session);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -679,24 +674,25 @@ uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
 uint32_t entry_cipher_final(uintptr_t teesess, TEE_Param *ctrl,
 			    TEE_Param *in, TEE_Param *out, int decrypt)
 {
-	TEE_Result res;
 	uint32_t rv;
 	struct serialargs ctrlargs;
-	uint32_t ck_session;
+	uint32_t session_handle;
+	TEE_Result res;
 	struct pkcs11_session *session;
 	size_t in_size = in ? in->memref.size : 0;
 	uint32_t out_size = out ? out->memref.size : 0;
 
+	/* May or may not provide input and/or output data */
 	if (!ctrl)
 		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	rv = serialargs_get(&ctrlargs, &ck_session, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(ck_session);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -798,10 +794,6 @@ uint32_t entry_generate_object(uintptr_t teesess,
 	struct sks_object_head *template = NULL;
 	size_t template_size;
 	uint32_t obj_handle;
-
-	/*
-	 * Collect the arguments
-	 */
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -928,10 +920,6 @@ uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
 	uint32_t key_handle;
 	struct sks_object *obj;
 
-	/*
-	 * Collect the arguments
-	 */
-
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
 
@@ -974,7 +962,6 @@ uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
 
 	obj = sks_handle2object(key_handle, session);
 	if (!obj) {
-		DMSG("Invalid key handle");
 		rv = SKS_INVALID_KEY;
 		goto bail;
 	}
@@ -1077,20 +1064,21 @@ uint32_t entry_signverify_update(uintptr_t teesess, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out, int sign)
 {
 	struct serialargs ctrlargs;
-	uint32_t ck_session;
+	uint32_t session_handle;
 	struct pkcs11_session *session;
 	uint32_t rv;
 
+	/* May or may not provide input and/or output data */
 	if (!ctrl)
 		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	rv = serialargs_get(&ctrlargs, &ck_session, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(ck_session);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 
@@ -1143,7 +1131,7 @@ uint32_t entry_signverify_final(uintptr_t teesess, TEE_Param *ctrl,
 	TEE_Result res;
 	uint32_t rv;
 	struct serialargs ctrlargs;
-	uint32_t ck_session;
+	uint32_t session_handle;
 	struct pkcs11_session *session;
 	uint32_t out_size = out ? out->memref.size : 0;
 
@@ -1152,11 +1140,11 @@ uint32_t entry_signverify_final(uintptr_t teesess, TEE_Param *ctrl,
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
-	rv = serialargs_get(&ctrlargs, &ck_session, sizeof(uint32_t));
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(ck_session);
+	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
 		return SKS_INVALID_SESSION;
 

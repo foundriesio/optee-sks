@@ -23,7 +23,6 @@
  * storage.
  */
 
-
 /* 'X' will be replaced by the token decimal id (up to 9!) */
 #define TOKEN_DB_FILE_BASE		"token.db.X"
 
@@ -101,8 +100,7 @@ static void init_pin_keys(struct ck_token *token, unsigned int uid)
 			TEE_Panic(0);
 
 		res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
-						 file, sizeof(file),
-						 0 /*no need to access the value*/,
+						 file, sizeof(file), 0,
 						 *key_hdl,
 						 pin_key, sizeof(pin_key),
 						 &hdl);
@@ -332,7 +330,7 @@ struct ck_token *init_token_db(unsigned int token_id)
 		IMSG("Init SKS persistent database for token #%d", token_id);
 
 		TEE_MemFill(db_main, 0, sizeof(*db_main));
-		TEE_MemFill(db_main->label, '*', sizeof(32)); // TODO: LABEL_32BYTE_SIZE
+		TEE_MemFill(db_main->label, '*', sizeof(db_main->label));
 
 		/*
 		 * Not supported:

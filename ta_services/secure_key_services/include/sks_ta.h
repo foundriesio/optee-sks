@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifndef __SKS_TA_H__
@@ -12,7 +11,7 @@
 #include <util.h>
 
 #define TA_SKS_UUID { 0xfd02c9da, 0x306c, 0x48c7, \
-                        { 0xa4, 0x9c, 0xbb, 0xd8, 0x27, 0xae, 0x86, 0xee } }
+			{ 0xa4, 0x9c, 0xbb, 0xd8, 0x27, 0xae, 0x86, 0xee } }
 
 /* SKS trusted application version information */
 #define SKS_VERSION_ID0		0
@@ -752,4 +751,4 @@ struct sks_reference {
  *		32bit size = 0
  */
 
-#endif /* __SKS_TA_H */
+#endif /*__SKS_TA_H__*/

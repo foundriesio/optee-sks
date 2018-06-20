@@ -14,7 +14,7 @@
  * Define the initial capacity of the database. It should be a low number
  * multiple of 2 since some databases a likely to only use a few handles.
  * Since the algorithm is to doubles up when growing it shouldn't cause a
- * noticable overhead on large databases.
+ * noticeable overhead on large databases.
  */
 #define HANDLE_DB_INITIAL_MAX_PTRS	4
 

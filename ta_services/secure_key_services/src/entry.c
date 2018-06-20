@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <compiler.h>
 #include <sks_ta.h>
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
@@ -89,18 +89,18 @@ static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
  * Param#0 ctrl, if defined is an in/out buffer, is used to send back to
  * the client a Cryptoki status ID that superseeds the TEE result code which
  * will be force to TEE_SUCCESS. Note that some Cryptoki error status are
- * send straight through TEE result code. See sks2tee_noerr().
+ * sent straight through TEE result code. See sks2tee_noerr().
  */
 TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 				      uint32_t ptypes,
 				      TEE_Param params[TEE_NUM_PARAMS])
 {
-	uint32_t rc;
-	TEE_Result res;
 	TEE_Param *ctrl = NULL;
 	TEE_Param *in = NULL;
 	TEE_Param *out = NULL;
 	uintptr_t teesess = (uintptr_t)tee_session;
+	TEE_Result res;
+	uint32_t rc;
 
 	if (TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INPUT ||
 	    TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INOUT)
@@ -121,8 +121,7 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 	if (TEE_PARAM_TYPE_GET(ptypes, 3) != TEE_PARAM_TYPE_NONE)
 		goto bad_types;
 
-	DMSG("SKS TA entry: %s ctrl %" PRIu32 "@%p,"
-		" in %" PRIu32 "@%p, out %" PRIu32 "@%p",
+	DMSG("%s ctrl %" PRIu32 "@%p, in %" PRIu32 "@%p, out %" PRIu32 "@%p",
 		sks2str_skscmd(cmd),
 		ctrl ? ctrl->memref.size : 0, ctrl ? ctrl->memref.buffer : 0,
 		in ? in->memref.size : 0, in ? in->memref.buffer : 0,

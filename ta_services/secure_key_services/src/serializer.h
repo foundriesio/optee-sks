@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#ifndef __SERIALIZER_H
-#define __SERIALIZER_H
+#ifndef __SERIALIZER_H__
+#define __SERIALIZER_H__
 
 #include <sks_internal_abi.h>
 #include <stdint.h>

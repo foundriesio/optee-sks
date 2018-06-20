@@ -1,11 +1,9 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
-
-#ifndef __SKS_TA_PKCS11_TOKEN_H
-#define __SKS_TA_PKCS11_TOKEN_H
+#ifndef __SKS_PKCS11_TOKEN_H__
+#define __SKS_PKCS11_TOKEN_H__
 
 #include <sys/queue.h>
 #include <tee_internal_api.h>
@@ -58,12 +56,12 @@ TAILQ_HEAD(session_list, pkcs11_session);
  * @version - currently unused...
  * @label - pkcs11 formatted token label, set by client
  * @flags - pkcs11 token flags
- * @so_pin_count - counter on security officer loggin failure
+ * @so_pin_count - counter on security officer login failure
  * @so_pin_size - byte size of the provisionned SO PIN
- * @so_pin - stores the SO PIN (TODO: store in an encrypted way)
- * @user_pin_count - counter on user loggin failure
+ * @so_pin - stores the SO PIN
+ * @user_pin_count - counter on user login failure
  * @user_pin_size - byte size of the provisionned user PIN
- * @user_pin - stores the user PIN (TODO: store in an encrypted way)
+ * @user_pin - stores the user PIN
  */
 struct token_persistent_main {
 	uint32_t version;
@@ -73,11 +71,11 @@ struct token_persistent_main {
 
 	uint32_t so_pin_count;
 	uint32_t so_pin_size;
-	uint8_t so_pin[SKS_TOKEN_PIN_SIZE];	/* TODO: encrypted */
+	uint8_t so_pin[SKS_TOKEN_PIN_SIZE];
 
 	uint32_t user_pin_count;
 	uint32_t user_pin_size;
-	uint8_t user_pin[SKS_TOKEN_PIN_SIZE]; /* TODO: encrypted */
+	uint8_t user_pin[SKS_TOKEN_PIN_SIZE];
 };
 
 /*
@@ -94,8 +92,14 @@ struct token_persistent_objs {
 /*
  * Runtime state of the token, complies with pkcs11
  *
- * @login_state - pkcs11 login
- * @session_state - pkcs11 read/write state
+ * @login_state - Pkcs11 login is public, user, SO or custom
+ * @db_hld - TEE handle on the persistent database object or TEE_HANDLE_NULL
+ * @pin_hld - TEE handles on PIN ciphering keys
+ * @db_main - Volatile copy of the persistent main database
+ * @session_count - Counter for opened Pkcs11 sessions
+ * @rw_session_count - Count for opened Pkcs11 read/write sessions
+ * @session_state - Login state of the token
+ * @session_list - Head of the list of the sessions owned by the token
  */
 struct ck_token {
 	uint32_t session_counter;
@@ -115,7 +119,7 @@ struct ck_token {
 
 /*
  * A session can enter a processing state (encrypt, decrypt, disgest, ...
- * ony from  the inited state. A sesion must return the the inited
+ * only from the inited state. A sesion must return the the inited
  * state (from a processing finalization request) before entering another
  * processing state.
  */
@@ -162,7 +166,7 @@ struct pkcs11_find_objects {
  * @state - R/W SO, R/W user, RO user, R/W public, RO public. See PKCS11.
  * @processing - ongoing active processing function
  * @tee_op_handle - handle on active crypto operation or TEE_HANDLE_NULL
- * @proc_id - SKS ID of the active processing (TODO: args used at final)
+ * @proc_id - SKS ID of the active processing
  * @proc_params - parameters saved in memory for the active processing
  * @find_ctx - point to active search context (null if no active search)
  */
@@ -181,9 +185,30 @@ struct pkcs11_session {
 	struct pkcs11_find_objects *find_ctx;
 };
 
-/* pkcs11 token Apis */
+/* Initialize static token instance(s) from default/persistent database */
 int pkcs11_init(void);
 void pkcs11_deinit(void);
+
+/* Return token instance from token identifier */
+struct ck_token *get_token(unsigned int token_id);
+
+/* Return token identified from token instance address */
+unsigned int get_token_id(struct ck_token *token);
+
+/* Initialize target token database */
+struct ck_token *init_token_db(unsigned int token_id);
+
+/* Persistent database update */
+int update_persistent_db(struct ck_token *token, size_t offset, size_t size);
+void close_persistent_db(struct ck_token *token);
+
+/* Token persistent objects */
+uint32_t create_object_uuid(struct ck_token *token, struct sks_object *obj);
+void destroy_object_uuid(struct ck_token *token, struct sks_object *obj);
+uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid);
+uint32_t register_persistent_object(struct ck_token *token, TEE_UUID *uuid);
+uint32_t get_persistent_objects_list(struct ck_token *token,
+				     TEE_UUID *array, size_t *size);
 
 /*
  * Pkcs11 session support
@@ -218,31 +243,21 @@ struct ck_token *pkcs11_session2token(struct pkcs11_session *session)
 	return session->token;
 }
 
-/* Token instances */
-struct ck_token *get_token(unsigned int token_id);
-unsigned int get_token_id(struct ck_token *token);
-struct ck_token *init_token_db(unsigned int token_id);
-
-int update_persistent_db(struct ck_token *token, size_t offset, size_t size);
-void close_persistent_db(struct ck_token *token);
-
-/* Token persistent objects */
-uint32_t create_object_uuid(struct ck_token *token, struct sks_object *obj);
-void destroy_object_uuid(struct ck_token *token, struct sks_object *obj);
-uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid);
-uint32_t register_persistent_object(struct ck_token *token, TEE_UUID *uuid);
-uint32_t get_persistent_objects_list(struct ck_token *token,
-				     TEE_UUID *array, size_t *size);
-
-/* Handler for most PKCS#11 API functions */
+/*
+ * Entry point for the TA commands
+ */
 uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
 
-uint32_t entry_ck_token_initialize(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out);
 
-uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
-uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out);
+
+uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out);
 
 uint32_t entry_ck_token_ro_session(uintptr_t teesess, TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out);
@@ -253,4 +268,4 @@ uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 uint32_t entry_ck_token_close_all(uintptr_t teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out);
 
-#endif /*__SKS_TA_PKCS11_TOKEN_H*/
+#endif /*__SKS_PKCS11_TOKEN_H__*/

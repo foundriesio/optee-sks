@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifndef __SKS_HELPERS_H
@@ -262,7 +261,7 @@ TEE_Result sks2tee_noerr(uint32_t rv);
 TEE_Result sks2tee_error(uint32_t rv);
 uint32_t tee2sks_error(TEE_Result res);
 
-#if CFG_TEE_TA_LOG_LEVEL > 0
+/* Id-to-string conversions when CFG_TEE_TA_LOG_LEVEL > 0 */
 const char *sks2str_attr(uint32_t id);
 const char *sks2str_class(uint32_t id);
 const char *sks2str_type(uint32_t id, uint32_t class);
@@ -274,6 +273,5 @@ const char *sks2str_slot_flag(uint32_t id);
 const char *sks2str_token_flag(uint32_t id);
 const char *sks2str_rc(uint32_t id);
 const char *sks2str_skscmd(uint32_t id);
-#endif
 
 #endif /*__CK_HELPERS_H*/

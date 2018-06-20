@@ -1,16 +1,14 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#ifndef __SKS_OBJECT_H
-#define __SKS_OBJECT_H
+#ifndef __SKS_OBJECT_H__
+#define __SKS_OBJECT_H__
 
 #include <sks_internal_abi.h>
 #include <sys/queue.h>
 #include <tee_internal_api.h>
-
 
 struct pkcs11_session;
 
@@ -69,4 +67,4 @@ uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
 
 void release_session_find_obj_context(struct pkcs11_session *session);
 
-#endif /*__SKS_OBJECT_H*/
+#endif /*__SKS_OBJECT_H__*/

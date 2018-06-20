@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#ifndef __SKS_TA_PROCESSING_H
-#define __SKS_TA_PROCESSING_H
+#ifndef __SKS_PROCESSING_H__
+#define __SKS_PROCESSING_H__
 
 #include <tee_internal_api.h>
 
@@ -64,4 +63,4 @@ void tee_release_gcm_operation(struct pkcs11_session *session);
 uint32_t tee_init_gcm_operation(struct pkcs11_session *session,
 				    void *proc_params, size_t params_size);
 
-#endif /*__SKS_TA_PROCESSING_H*/
+#endif /*__SKS_PROCESSING_H__*/

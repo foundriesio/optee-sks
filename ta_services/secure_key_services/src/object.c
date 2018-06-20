@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2017-2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <inttypes.h>
@@ -121,7 +120,8 @@ out:
  * Destroy an object
  *
  * @session - session requesting object destruction
- * @hld - object handle returned to hte client
+ * @obj - object to destroy
+ * @session_only - Destroy only the session resources
  */
 uint32_t destroy_object(struct pkcs11_session *session,
 			  struct sks_object *obj,
@@ -195,11 +195,6 @@ static struct sks_object *create_object_instance(void *session,
 	return obj;
 }
 
-/*
- * Create an object
- * - Allocate and fill a 'struct sks_object' instance
- * - Output a sks object handle
- */
 uint32_t create_object(void *session, struct sks_attrs_head *head,
 		       uint32_t *out_handle)
 {
