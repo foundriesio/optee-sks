@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /*
- * Copyright (c) 2017, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
+ * Copyright (c) 2017-2018, Linaro Limited
  */
 
+#include <assert.h>
 #include <pkcs11.h>
 #include <stdlib.h>
 
@@ -12,26 +12,7 @@
 #include "pkcs11_processing.h"
 #include "pkcs11_token.h"
 
-static int inited;
-
-#define SANITY_LIB_INIT	\
-	do { \
-		if (!inited) \
-			return CKR_CRYPTOKI_NOT_INITIALIZED; \
-	} while (0)
-
-#define SANITY_NONNULL_PTR(ptr) \
-	do { \
-		if (!ptr) \
-			return CKR_ARGUMENTS_BAD; \
-	} while (0)
-
-#define SANITY_SESSION_FLAGS(flags) \
-	do { \
-		if (flags & ~(CKF_RW_SESSION | \
-			      CKF_SERIAL_SESSION)) \
-			return CKR_ARGUMENTS_BAD; \
-	} while (0)
+static int lib_inited;
 
 #define REGISTER_CK_FUNCTION(_function)		._function = _function
 #define DO_NOT_REGISTER_CK_FUNCTION(_function)	._function = NULL
@@ -123,41 +104,42 @@ CK_RV C_Initialize(CK_VOID_PTR init_args)
 	/* Argument currently unused */
 	(void)args;
 
-	if (inited)
+	if (lib_inited)
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 
-	/*
-	 * TODO
-	 */
-
-	inited = 1;
+	lib_inited = 1;
 	return CKR_OK;
 }
 
 CK_RV C_Finalize(CK_VOID_PTR res)
 {
 	(void)res;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	sks_invoke_terminate();
-	inited = 0;
+
+	lib_inited = 0;
 
 	return CKR_OK;
 }
 
 CK_RV C_GetInfo(CK_INFO_PTR info)
 {
-	(void)info;
-	SANITY_LIB_INIT;
-	SANITY_NONNULL_PTR(info);
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
+
+	if (!info)
+		return CKR_ARGUMENTS_BAD;
 
 	return sks_ck_get_info(info);
 }
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
-	/* Note: no SANITY_LIB_INIT needed here */
-	SANITY_NONNULL_PTR(ppFunctionList);
+	if (!ppFunctionList)
+		return CKR_ARGUMENTS_BAD;
 
 	/* Discard the const attribute when exporting the list address */
 	*ppFunctionList = (void *)&libsks_function_list;
@@ -171,7 +153,8 @@ CK_RV C_GetSlotList(CK_BBOOL token_present,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_slot_get_list(token_present, slots, count);
 
@@ -185,7 +168,7 @@ CK_RV C_GetSlotList(CK_BBOOL token_present,
 	case CKR_OK:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -196,7 +179,8 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_slot_get_info(slot, info);
 
@@ -211,7 +195,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slot,
 	case CKR_SLOT_ID_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -224,7 +208,8 @@ CK_RV C_InitToken(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_init_token(slot, pin, pin_len, label);
 
@@ -248,7 +233,7 @@ CK_RV C_InitToken(CK_SLOT_ID slot,
 	case CKR_TOKEN_WRITE_PROTECTED:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -259,7 +244,8 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_token_get_info(slot, info);
 
@@ -278,7 +264,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slot,
 	case CKR_ARGUMENTS_BAD:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -290,7 +276,8 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_token_mechanism_ids(slot, mechanisms, count);
 
@@ -310,7 +297,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slot,
 	case CKR_ARGUMENTS_BAD:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -322,7 +309,8 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_token_mechanism_info(slot, type, info);
 
@@ -342,7 +330,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slot,
 	case CKR_ARGUMENTS_BAD:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -356,8 +344,11 @@ CK_RV C_OpenSession(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
-	SANITY_SESSION_FLAGS(flags);
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
+
+	if (flags & ~(CKF_RW_SESSION | CKF_SERIAL_SESSION))
+		return CKR_ARGUMENTS_BAD;
 
 	/* Specific mandated flag */
 	if (!(flags & CKF_SERIAL_SESSION))
@@ -384,7 +375,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slot,
 	case CKR_ARGUMENTS_BAD:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -394,7 +385,8 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE session)
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_close_session(session);
 
@@ -411,7 +403,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE session)
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -421,7 +413,8 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slot)
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sks_ck_close_all_sessions(slot);
 
@@ -438,7 +431,7 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slot)
 	case CKR_TOKEN_NOT_PRESENT:
 		break;
 	default:
-		ASSERT(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -447,8 +440,11 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slot)
 CK_RV C_GetSessionInfo(CK_SESSION_HANDLE session,
 		       CK_SESSION_INFO_PTR info)
 {
-	SANITY_LIB_INIT;
-	SANITY_NONNULL_PTR(info);
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
+
+	if (!info)
+		return CKR_ARGUMENTS_BAD;
 
 	return sks_ck_get_session_info(session, info);
 }
@@ -460,7 +456,9 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)pin;
 	(void)pin_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -476,7 +474,9 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE session,
 	(void)old_len;
 	(void)new;
 	(void)new_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -491,7 +491,9 @@ CK_RV C_Login(CK_SESSION_HANDLE session,
 	(void)user_type;
 	(void)pin;
 	(void)pin_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -499,7 +501,9 @@ CK_RV C_Login(CK_SESSION_HANDLE session,
 CK_RV C_Logout(CK_SESSION_HANDLE session)
 {
 	(void)session;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -511,7 +515,9 @@ CK_RV C_GetOperationState(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)state;
 	(void)state_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -527,7 +533,9 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE session,
 	(void)state_len;
 	(void)ciph_key;
 	(void)auth_key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -539,7 +547,8 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_create_object(session, attribs, count, phObject);
 
@@ -568,7 +577,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -585,7 +594,9 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE session,
 	(void)attribs;
 	(void)count;
 	(void)new_obj;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -595,7 +606,8 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_destroy_object(session, obj);
 
@@ -617,7 +629,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session,
 	case CKR_TOKEN_WRITE_PROTECTED:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -630,7 +642,9 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)obj;
 	(void)out_size;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -644,7 +658,9 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session,
 	(void)obj;
 	(void)attribs;
 	(void)count;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -658,7 +674,9 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE session,
 	(void)obj;
 	(void)attribs;
 	(void)count;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -669,7 +687,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_find_objects_init(session, attribs, count);
 
@@ -691,7 +710,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -705,7 +724,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_find_objects(session, obj, max_count, count);
 
@@ -724,7 +744,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -734,7 +754,8 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session)
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_find_objects_final(session);
 
@@ -752,7 +773,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session)
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -764,7 +785,8 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_encdecrypt_init(session, mechanism, key, CK_FALSE);
 
@@ -791,7 +813,7 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -807,7 +829,8 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE session,
 	CK_ULONG len;
 	CK_ULONG len2;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	len = *out_len;
 
@@ -834,7 +857,8 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_encdecrypt_update(session, in, in_len, out, out_len, CK_FALSE);
 
@@ -856,7 +880,7 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -868,7 +892,8 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_encdecrypt_final(session, out, out_len, CK_FALSE);
 
@@ -890,7 +915,7 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -902,7 +927,8 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_encdecrypt_init(session, mechanism, key, CK_TRUE);
 
@@ -930,7 +956,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -946,7 +972,8 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE session,
 	CK_ULONG len;
 	CK_ULONG len2;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	len = *out_len;
 
@@ -973,7 +1000,8 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_encdecrypt_update(session, in, in_len, out, out_len, CK_TRUE);
 
@@ -997,7 +1025,7 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -1009,7 +1037,8 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_encdecrypt_final(session, out, out_len, CK_TRUE);
 
@@ -1033,7 +1062,7 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -1045,7 +1074,9 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE session,
 {
 	(void)session;
 	(void)mechanism;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1061,7 +1092,9 @@ CK_RV C_Digest(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1073,7 +1106,9 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)in;
 	(void)in_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1083,7 +1118,9 @@ CK_RV C_DigestKey(CK_SESSION_HANDLE session,
 {
 	(void)session;
 	(void)key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1095,7 +1132,9 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)digest;
 	(void)len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1106,7 +1145,8 @@ CK_RV C_SignInit(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_init(session, mechanism, key, CK_TRUE);
 
@@ -1121,7 +1161,8 @@ CK_RV C_Sign(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_update(session, in, in_len, CK_TRUE);
 	if (rv)
@@ -1139,7 +1180,8 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_update(session, in, in_len, CK_TRUE);
 
@@ -1152,7 +1194,8 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_final(session, out, out_len, CK_TRUE);
 
@@ -1166,7 +1209,9 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)mechanism;
 	(void)key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1182,7 +1227,9 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1207,7 +1254,8 @@ CK_RV C_Verify(CK_SESSION_HANDLE session,
 	CK_RV rv;
 	CK_ULONG out_len = sign_len;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_update(session, in, in_len, CK_FALSE);
 	if (rv)
@@ -1225,7 +1273,8 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_update(session, in, in_len, CK_FALSE);
 
@@ -1239,7 +1288,8 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE session,
 	CK_RV rv;
 	CK_ULONG out_len = sign_len;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_final(session, sign, &out_len, CK_FALSE);
 
@@ -1253,7 +1303,9 @@ CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)mechanism;
 	(void)key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1269,7 +1321,9 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1285,7 +1339,9 @@ CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1301,7 +1357,9 @@ CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1318,7 +1376,9 @@ CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1334,7 +1394,9 @@ CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE session,
 	(void)in_len;
 	(void)out;
 	(void)out_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1347,7 +1409,8 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE session,
 {
 	CK_RV rv;
 
-	SANITY_LIB_INIT;
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_generate_key(session, mechanism, attribs, count, handle);
 
@@ -1379,7 +1442,7 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		ASSERT(rv);
+		assert(rv);
 	}
 
 	return rv;
@@ -1402,7 +1465,9 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session,
 	(void)priv_count;
 	(void)pub_key;
 	(void)priv_key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1420,7 +1485,9 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE session,
 	(void)key;
 	(void)wrapped_key;
 	(void)wrapped_key_len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1442,7 +1509,9 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE session,
 	(void)attribs;
 	(void)count;
 	(void)new_key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1460,7 +1529,9 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE session,
 	(void)attribs;
 	(void)count;
 	(void)new_key;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1472,7 +1543,9 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)seed;
 	(void)len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1484,7 +1557,9 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE session,
 	(void)session;
 	(void)out;
 	(void)len;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1492,7 +1567,9 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE session,
 CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE session)
 {
 	(void)session;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1500,7 +1577,9 @@ CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE session)
 CK_RV C_CancelFunction(CK_SESSION_HANDLE session)
 {
 	(void)session;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1513,7 +1592,9 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
 	(void)flags;
 	(void)slot;
 	(void)rsv;
-	SANITY_LIB_INIT;
+
+	if (!lib_inited)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
