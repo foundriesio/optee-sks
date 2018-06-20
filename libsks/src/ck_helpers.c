@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ck_helpers.h"
+#include "local_utils.h"
 
 /*
  * SKS TA returns Cryptoki like information structure.
@@ -27,13 +28,38 @@
 			return CKR_GENERAL_ERROR; \
 	} while (0)
 
+static CK_RV sks2ck_slot_flags(CK_SLOT_INFO_PTR ck_info,
+				struct sks_slot_info *sks_info)
+{
+	CK_FLAGS ck_flag;
+	uint32_t sks_mask;
+
+	ck_info->flags = 0;
+	for (sks_mask = 1; sks_mask; sks_mask <<= 1) {
+
+		/* Skip sks token flags without a CK equilavent */
+		if (sks2ck_slot_flag(&ck_flag, sks_mask))
+			continue;
+
+		if (sks_info->flags & sks_mask)
+			ck_info->flags |= ck_flag;
+	}
+
+	return CKR_OK;
+}
 
 CK_RV sks2ck_slot_info(CK_SLOT_INFO_PTR ck_info,
 			struct sks_slot_info *sks_info)
 {
+	CK_RV rv;
+
 	MEMCPY_FIELD(ck_info, sks_info, slotDescription);
 	MEMCPY_FIELD(ck_info, sks_info, manufacturerID);
-	ck_info->flags = sks_info->flags;
+
+	rv = sks2ck_slot_flags(ck_info, sks_info);
+	if (rv)
+		return rv;
+
 	MEMCPY_VERSION(ck_info, sks_info, hardwareVersion);
 	MEMCPY_VERSION(ck_info, sks_info, firmwareVersion);
 
@@ -91,116 +117,296 @@ CK_RV sks2ck_token_info(CK_TOKEN_INFO_PTR ck_info,
 	return CKR_OK;
 }
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case ck_id: return sks_id;
+/*
+ * Helpers for CK/SKS conversions: tables of identifiers
+ */
+struct ck2sks {
+	CK_ULONG ck;
+	uint32_t sks;
+};
 
-uint32_t ck2sks_token_flag(CK_FLAGS ck)
+#define CK_SKS_ID(ck_id, sks_id)	{ .ck = ck_id, .sks = sks_id }
+
+#define SKS2CK(out, in, conv)		sks2ck(out, in, conv, ARRAY_SIZE(conv))
+#define CK2SKS(out, in, conv)		ck2sks(out, in, conv, ARRAY_SIZE(conv))
+
+static int sks2ck(CK_ULONG *out, uint32_t id, const struct ck2sks *conv, size_t count)
 {
-	switch (ck) {
-	CK_SKS_TOKEN_FLAG_MASKS
-	default:
-		return SKS_UNDEFINED_ID;
-	}
-}
+	size_t n;
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: *ck = ck_id; break;
-
-CK_RV sks2ck_token_flag(CK_FLAGS *ck, uint32_t sks)
-{
-	switch (sks) {
-	CK_SKS_TOKEN_FLAG_MASKS
-	default:
-		return CKR_GENERAL_ERROR;
-	}
-
-	return CKR_OK;
-}
-
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case ck_id: return sks_id;
-
-uint32_t ck2sks_attribute_id(CK_ULONG ck)
-{
-	switch (ck) {
-	CK_SKS_ATTRIBS_ID
-	default:
-		return SKS_UNDEFINED_ID;
-	}
-}
-
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: *ck = ck_id; break;
-
-CK_RV sks2ck_attribute_id(CK_ULONG *ck, uint32_t sks)
-{
-	switch (sks) {
-	CK_SKS_ATTRIBS_ID
-	default:
-		return CKR_GENERAL_ERROR;
+	for (n = 0; n < count; n++) {
+		if (id == conv[n].sks) {
+			*out = conv[n].ck;
+			return 0;
+		}
 	}
 
-	return CKR_OK;
+	return -1;
 }
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case ck_id: return sks_id;
-
-uint32_t ck2sks_mechanism_type(CK_MECHANISM_TYPE ck)
+static int ck2sks(uint32_t *out, CK_ULONG id, const struct ck2sks *conv, size_t count)
 {
-	switch (ck) {
-	CK_SKS_PROCESSING_IDS
-	default:
-		return SKS_UNDEFINED_ID;
-	}
-}
+	size_t n;
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: *ck = ck_id; break;
-
-CK_RV sks2ck_mechanism_type(CK_MECHANISM_TYPE *ck, uint32_t sks)
-{
-	switch (sks) {
-	CK_SKS_PROCESSING_IDS
-	default:
-		return CKR_MECHANISM_INVALID;
+	for (n = 0; n < count; n++) {
+		if (id == conv[n].ck) {
+			*out = conv[n].sks;
+			return 0;
+		}
 	}
 
-	return CKR_OK;
+	return -1;
 }
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: return ck_id;
+/*
+ * Identifiers and bit flags convertion tables
+ */
+static const struct ck2sks error_code[] = {
+	CK_SKS_ID(CKR_OK,			SKS_CKR_OK),
+	CK_SKS_ID(CKR_GENERAL_ERROR,		SKS_CKR_GENERAL_ERROR),
+	CK_SKS_ID(CKR_DEVICE_MEMORY,		SKS_CKR_DEVICE_MEMORY),
+	CK_SKS_ID(CKR_ARGUMENTS_BAD,		SKS_CKR_ARGUMENT_BAD),
+	CK_SKS_ID(CKR_BUFFER_TOO_SMALL,		SKS_CKR_BUFFER_TOO_SMALL),
+	CK_SKS_ID(CKR_FUNCTION_FAILED,		SKS_CKR_FUNCTION_FAILED),
+	CK_SKS_ID(CKR_ATTRIBUTE_TYPE_INVALID,	SKS_CKR_ATTRIBUTE_TYPE_INVALID),
+	CK_SKS_ID(CKR_ATTRIBUTE_VALUE_INVALID,	SKS_CKR_ATTRIBUTE_VALUE_INVALID),
+	CK_SKS_ID(CKR_OBJECT_HANDLE_INVALID,	SKS_CKR_OBJECT_HANDLE_INVALID),
+	CK_SKS_ID(CKR_KEY_HANDLE_INVALID,	SKS_CKR_KEY_HANDLE_INVALID),
+	CK_SKS_ID(CKR_MECHANISM_INVALID,	SKS_CKR_MECHANISM_INVALID),
+	CK_SKS_ID(CKR_SLOT_ID_INVALID,		SKS_CKR_SLOT_ID_INVALID),
+	CK_SKS_ID(CKR_SESSION_HANDLE_INVALID,	SKS_CKR_SESSION_HANDLE_INVALID),
+	CK_SKS_ID(CKR_PIN_INCORRECT,		SKS_CKR_PIN_INCORRECT),
+	CK_SKS_ID(CKR_PIN_LOCKED,		SKS_CKR_PIN_LOCKED),
+	CK_SKS_ID(CKR_PIN_EXPIRED,		SKS_CKR_PIN_EXPIRED),
+	CK_SKS_ID(CKR_PIN_INVALID,		SKS_CKR_PIN_INVALID),
+	CK_SKS_ID(CKR_OPERATION_ACTIVE,		SKS_CKR_OPERATION_ACTIVE),
+	CK_SKS_ID(CKR_KEY_FUNCTION_NOT_PERMITTED, SKS_CKR_KEY_FUNCTION_NOT_PERMITTED),
+	CK_SKS_ID(CKR_OPERATION_NOT_INITIALIZED, SKS_CKR_OPERATION_NOT_INITIALIZED),
+	CK_SKS_ID(CKR_SESSION_READ_ONLY,	SKS_CKR_SESSION_READ_ONLY),
+	CK_SKS_ID(CKR_MECHANISM_PARAM_INVALID,	SKS_CKR_MECHANISM_PARAM_INVALID),
+	CK_SKS_ID(CK_VENDOR_INVALID_ID,		SKS_UNDEFINED_ID),
+};
+
+static const struct ck2sks slot_flag[] = {
+	CK_SKS_ID(CKF_TOKEN_PRESENT,		SKS_CKFS_TOKEN_PRESENT),
+	CK_SKS_ID(CKF_REMOVABLE_DEVICE,		SKS_CKFS_REMOVABLE_DEVICE),
+	CK_SKS_ID(CKF_HW_SLOT,			SKS_CKFS_HW_SLOT),
+};
+
+static const struct ck2sks token_flag[] = {
+	CK_SKS_ID(CKF_RNG,				SKS_CKFT_RNG),
+	CK_SKS_ID(CKF_WRITE_PROTECTED,			SKS_CKFT_WRITE_PROTECTED),
+	CK_SKS_ID(CKF_LOGIN_REQUIRED,			SKS_CKFT_LOGIN_REQUIRED),
+	CK_SKS_ID(CKF_USER_PIN_INITIALIZED,		SKS_CKFT_USER_PIN_INITIALIZED),
+	CK_SKS_ID(CKF_RESTORE_KEY_NOT_NEEDED,		SKS_CKFT_RESTORE_KEY_NOT_NEEDED),
+	CK_SKS_ID(CKF_CLOCK_ON_TOKEN,			SKS_CKFT_CLOCK_ON_TOKEN),
+	CK_SKS_ID(CKF_PROTECTED_AUTHENTICATION_PATH,	SKS_CKFT_PROTECTED_AUTHENTICATION_PATH),
+	CK_SKS_ID(CKF_DUAL_CRYPTO_OPERATIONS,		SKS_CKFT_DUAL_CRYPTO_OPERATIONS),
+	CK_SKS_ID(CKF_TOKEN_INITIALIZED,		SKS_CKFT_TOKEN_INITIALIZED),
+	CK_SKS_ID(CKF_USER_PIN_COUNT_LOW,		SKS_CKFT_USER_PIN_COUNT_LOW),
+	CK_SKS_ID(CKF_USER_PIN_FINAL_TRY,		SKS_CKFT_USER_PIN_FINAL_TRY),
+	CK_SKS_ID(CKF_USER_PIN_LOCKED,			SKS_CKFT_USER_PIN_LOCKED),
+	CK_SKS_ID(CKF_USER_PIN_TO_BE_CHANGED,		SKS_CKFT_USER_PIN_TO_BE_CHANGED),
+	CK_SKS_ID(CKF_SO_PIN_COUNT_LOW,			SKS_CKFT_SO_PIN_COUNT_LOW),
+	CK_SKS_ID(CKF_SO_PIN_FINAL_TRY,			SKS_CKFT_SO_PIN_FINAL_TRY),
+	CK_SKS_ID(CKF_SO_PIN_LOCKED,			SKS_CKFT_SO_PIN_LOCKED),
+	CK_SKS_ID(CKF_SO_PIN_TO_BE_CHANGED,		SKS_CKFT_SO_PIN_TO_BE_CHANGED),
+	CK_SKS_ID(CKF_ERROR_STATE,			SKS_CKFT_ERROR_STATE),
+};
+
+static const struct ck2sks attribute_id[] = {
+	CK_SKS_ID(CKA_CLASS,			SKS_CKA_CLASS),
+	CK_SKS_ID(CKA_KEY_TYPE,			SKS_CKA_KEY_TYPE),
+	CK_SKS_ID(CKA_VALUE,			SKS_CKA_VALUE),
+	CK_SKS_ID(CKA_VALUE_LEN,		SKS_CKA_VALUE_LEN),
+	CK_SKS_ID(CKA_WRAP_TEMPLATE,		SKS_CKA_WRAP_TEMPLATE),
+	CK_SKS_ID(CKA_UNWRAP_TEMPLATE,		SKS_CKA_UNWRAP_TEMPLATE),
+	CK_SKS_ID(CKA_DERIVE_TEMPLATE,		SKS_CKA_DERIVE_TEMPLATE),
+	CK_SKS_ID(CKA_START_DATE,		SKS_CKA_START_DATE),
+	CK_SKS_ID(CKA_END_DATE,			SKS_CKA_END_DATE),
+	CK_SKS_ID(CKA_OBJECT_ID,		SKS_CKA_OBJECT_ID),
+	CK_SKS_ID(CKA_APPLICATION,		SKS_CKA_APPLICATION),
+	CK_SKS_ID(CKA_MECHANISM_TYPE,		SKS_CKA_MECHANISM_TYPE),
+	CK_SKS_ID(CKA_ID,			SKS_CKA_ID),
+	CK_SKS_ID(CKA_ALLOWED_MECHANISMS,	SKS_CKA_ALLOWED_MECHANISMS),
+	/* Below are boolean attributes */\
+	CK_SKS_ID(CKA_TOKEN,			SKS_CKA_TOKEN),
+	CK_SKS_ID(CKA_PRIVATE,			SKS_CKA_PRIVATE),
+	CK_SKS_ID(CKA_TRUSTED,			SKS_CKA_TRUSTED),
+	CK_SKS_ID(CKA_SENSITIVE,		SKS_CKA_SENSITIVE),
+	CK_SKS_ID(CKA_ENCRYPT,			SKS_CKA_ENCRYPT),
+	CK_SKS_ID(CKA_DECRYPT,			SKS_CKA_DECRYPT),
+	CK_SKS_ID(CKA_WRAP,			SKS_CKA_WRAP),
+	CK_SKS_ID(CKA_UNWRAP,			SKS_CKA_UNWRAP),
+	CK_SKS_ID(CKA_SIGN,			SKS_CKA_SIGN),
+	CK_SKS_ID(CKA_SIGN_RECOVER,		SKS_CKA_SIGN_RECOVER),
+	CK_SKS_ID(CKA_VERIFY,			SKS_CKA_VERIFY),
+	CK_SKS_ID(CKA_VERIFY_RECOVER,		SKS_CKA_VERIFY_RECOVER),
+	CK_SKS_ID(CKA_DERIVE,			SKS_CKA_DERIVE),
+	CK_SKS_ID(CKA_EXTRACTABLE,		SKS_CKA_EXTRACTABLE),
+	CK_SKS_ID(CKA_LOCAL,			SKS_CKA_LOCAL),
+	CK_SKS_ID(CKA_NEVER_EXTRACTABLE,	SKS_CKA_NEVER_EXTRACTABLE),
+	CK_SKS_ID(CKA_ALWAYS_SENSITIVE,		SKS_CKA_ALWAYS_SENSITIVE),
+	CK_SKS_ID(CKA_MODIFIABLE,		SKS_CKA_MODIFIABLE),
+	CK_SKS_ID(CKA_COPYABLE,			SKS_CKA_COPYABLE),
+	CK_SKS_ID(CKA_DESTROYABLE,		SKS_CKA_DESTROYABLE),
+	CK_SKS_ID(CKA_ALWAYS_AUTHENTICATE,	SKS_CKA_ALWAYS_AUTHENTICATE),
+	CK_SKS_ID(CKA_WRAP_WITH_TRUSTED,	SKS_CKA_WRAP_WITH_TRUSTED),
+	/* Specifc SKS attribute IDs */
+	CK_SKS_ID(CK_VENDOR_INVALID_ID,		SKS_UNDEFINED_ID),
+};
+
+static const struct ck2sks mechanism_type[] = {
+	CK_SKS_ID(CKM_AES_ECB,		SKS_CKM_AES_ECB),
+	CK_SKS_ID(CKM_AES_CBC,		SKS_CKM_AES_CBC),
+	CK_SKS_ID(CKM_AES_CBC_PAD,	SKS_CKM_AES_CBC_PAD),
+	CK_SKS_ID(CKM_AES_CTR,		SKS_CKM_AES_CTR),
+	CK_SKS_ID(CKM_AES_GCM,		SKS_CKM_AES_GCM),
+	CK_SKS_ID(CKM_AES_CCM,		SKS_CKM_AES_CCM),
+	CK_SKS_ID(CKM_AES_CTS,		SKS_CKM_AES_CTS),
+	CK_SKS_ID(CKM_AES_GMAC,		SKS_CKM_AES_GMAC),
+	CK_SKS_ID(CKM_AES_CMAC,		SKS_CKM_AES_CMAC),
+	CK_SKS_ID(CKM_AES_CMAC_GENERAL,		SKS_CKM_AES_CMAC_GENERAL),
+	CK_SKS_ID(CKM_AES_ECB_ENCRYPT_DATA,	SKS_CKM_AES_ECB_ENCRYPT_DATA),
+	CK_SKS_ID(CKM_AES_CBC_ENCRYPT_DATA,	SKS_CKM_AES_CBC_ENCRYPT_DATA),
+	CK_SKS_ID(CKM_AES_KEY_GEN,		SKS_CKM_AES_KEY_GEN),
+	CK_SKS_ID(CKM_AES_XCBC_MAC,	SKS_CKM_AES_XCBC_MAC),
+
+	CK_SKS_ID(CKM_GENERIC_SECRET_KEY_GEN,	SKS_CKM_GENERIC_SECRET_KEY_GEN),
+
+	CK_SKS_ID(CKM_MD5_HMAC,		SKS_CKM_MD5_HMAC),
+	CK_SKS_ID(CKM_SHA_1_HMAC,	SKS_CKM_SHA_1_HMAC),
+	CK_SKS_ID(CKM_SHA224_HMAC,	SKS_CKM_SHA224_HMAC),
+	CK_SKS_ID(CKM_SHA256_HMAC,	SKS_CKM_SHA256_HMAC),
+	CK_SKS_ID(CKM_SHA384_HMAC,	SKS_CKM_SHA384_HMAC),
+	CK_SKS_ID(CKM_SHA512_HMAC,	SKS_CKM_SHA512_HMAC),
+
+	CK_SKS_ID(CK_VENDOR_INVALID_ID,	SKS_UNDEFINED_ID),
+};
+
+static const struct ck2sks mechanism_flag[] = {
+	CK_SKS_ID(CKF_HW,			SKS_CKFM_HW),
+	CK_SKS_ID(CKF_ENCRYPT,			SKS_CKFM_ENCRYPT),
+	CK_SKS_ID(CKF_DECRYPT,			SKS_CKFM_DECRYPT),
+	CK_SKS_ID(CKF_DIGEST,			SKS_CKFM_DIGEST),
+	CK_SKS_ID(CKF_SIGN,			SKS_CKFM_SIGN),
+	CK_SKS_ID(CKF_SIGN_RECOVER,		SKS_CKFM_SIGN_RECOVER),
+	CK_SKS_ID(CKF_VERIFY,			SKS_CKFM_VERIFY),
+	CK_SKS_ID(CKF_VERIFY_RECOVER,		SKS_CKFM_VERIFY_RECOVER),
+	CK_SKS_ID(CKF_GENERATE,			SKS_CKFM_GENERATE),
+	CK_SKS_ID(CKF_GENERATE_KEY_PAIR,	SKS_CKFM_GENERATE_PAIR),
+	CK_SKS_ID(CKF_WRAP,			SKS_CKFM_WRAP),
+	CK_SKS_ID(CKF_UNWRAP,			SKS_CKFM_UNWRAP),
+	CK_SKS_ID(CKF_DERIVE,			SKS_CKFM_DERIVE),
+};
+
+static const struct ck2sks class_id[] = {
+	CK_SKS_ID(CKO_SECRET_KEY,		SKS_CKO_SECRET_KEY),
+	CK_SKS_ID(CKO_PUBLIC_KEY,		SKS_CKO_PUBLIC_KEY),
+	CK_SKS_ID(CKO_PRIVATE_KEY,		SKS_CKO_PRIVATE_KEY),
+	CK_SKS_ID(CKO_OTP_KEY,			SKS_CKO_OTP_KEY),
+	CK_SKS_ID(CKO_CERTIFICATE,		SKS_CKO_CERTIFICATE),
+	CK_SKS_ID(CKO_DATA,			SKS_CKO_DATA),
+	CK_SKS_ID(CKO_DOMAIN_PARAMETERS,	SKS_CKO_DOMAIN_PARAMETERS),
+	CK_SKS_ID(CKO_HW_FEATURE,		SKS_CKO_HW_FEATURE),
+	CK_SKS_ID(CKO_MECHANISM,		SKS_CKO_MECHANISM),
+	CK_SKS_ID(CK_VENDOR_INVALID_ID,		SKS_UNDEFINED_ID),
+};
+
+static const struct ck2sks key_type_id[] = {
+	CK_SKS_ID(CKK_AES,			SKS_CKK_AES),
+	CK_SKS_ID(CKK_GENERIC_SECRET,		SKS_CKK_GENERIC_SECRET),
+	CK_SKS_ID(CKK_MD5_HMAC,			SKS_CKK_MD5_HMAC),
+	CK_SKS_ID(CKK_SHA_1_HMAC,		SKS_CKK_SHA_1_HMAC),
+	CK_SKS_ID(CKK_SHA224_HMAC,		SKS_CKK_SHA224_HMAC),
+	CK_SKS_ID(CKK_SHA256_HMAC,		SKS_CKK_SHA256_HMAC),
+	CK_SKS_ID(CKK_SHA384_HMAC,		SKS_CKK_SHA384_HMAC),
+	CK_SKS_ID(CKK_SHA512_HMAC,		SKS_CKK_SHA512_HMAC),
+	CK_SKS_ID(CK_VENDOR_INVALID_ID,		SKS_UNDEFINED_ID),
+};
 
 CK_RV sks2ck_rv(uint32_t sks)
 {
-	switch (sks) {
-	CK_SKS_ERROR_CODES
-	default:
+	CK_ULONG rv;
+
+	if (SKS2CK(&rv, sks, error_code))
 		return CKR_GENERAL_ERROR;
-	}
+
+	return (CK_RV)rv;
+}
+
+CK_RV sks2ck_slot_flag(CK_FLAGS *ck, uint32_t sks)
+{
+	CK_ULONG *flag = (CK_ULONG *)ck;
+
+	if (SKS2CK(flag, sks, slot_flag))
+		return CKR_GENERAL_ERROR;
 
 	return CKR_OK;
 }
 
-#define CK_TEEC_ERROR_CODES \
-	CK_TEEC_ID(CKR_OK,			TEEC_SUCCESS) \
-	CK_TEEC_ID(CKR_DEVICE_MEMORY,		TEEC_ERROR_OUT_OF_MEMORY) \
-	CK_TEEC_ID(CKR_ARGUMENTS_BAD,		TEEC_ERROR_BAD_PARAMETERS) \
-	CK_TEEC_ID(CKR_BUFFER_TOO_SMALL,	TEEC_ERROR_SHORT_BUFFER)
+CK_RV sks2ck_token_flag(CK_FLAGS *ck, uint32_t sks)
+{
+	CK_ULONG *flag = (CK_ULONG *)ck;
 
-#undef CK_TEEC_ID
-#define CK_TEEC_ID(ck_id, teec_id)	case teec_id: return ck_id;
+	if (SKS2CK(flag, sks, token_flag))
+		return CKR_GENERAL_ERROR;
+
+	return CKR_OK;
+}
+
+uint32_t ck2sks_attribute_id(CK_ULONG ck)
+{
+	uint32_t id;
+
+	if (CK2SKS(&id, ck, attribute_id))
+		return SKS_UNDEFINED_ID;
+
+	return id;
+}
+
+CK_RV sks2ck_attribute_id(CK_ULONG *ck, uint32_t sks)
+{
+	if (SKS2CK(ck, sks, attribute_id))
+		return CKR_GENERAL_ERROR;
+
+	return CKR_OK;
+}
+
+uint32_t ck2sks_mechanism_type(CK_MECHANISM_TYPE ck)
+{
+	uint32_t id;
+
+	if (CK2SKS(&id, ck, mechanism_type))
+		return SKS_UNDEFINED_ID;
+
+	return id;
+}
+
+CK_RV sks2ck_mechanism_type(CK_MECHANISM_TYPE *ck, uint32_t sks)
+{
+	CK_ULONG *id = (CK_ULONG *)ck;
+
+	if (SKS2CK(id, sks, mechanism_type))
+		return CKR_MECHANISM_INVALID;
+
+	return CKR_OK;
+}
 
 CK_RV teec2ck_rv(TEEC_Result res)
 {
 	switch (res) {
-	CK_TEEC_ERROR_CODES
+	case TEEC_SUCCESS:
+		return CKR_OK;
+	case TEEC_ERROR_OUT_OF_MEMORY:
+		return CKR_DEVICE_MEMORY;
+	case TEEC_ERROR_BAD_PARAMETERS:
+		return CKR_ARGUMENTS_BAD;
+	case TEEC_ERROR_SHORT_BUFFER:
+		return CKR_BUFFER_TOO_SMALL;
 	default:
-		break;
+		return CKR_FUNCTION_FAILED;
 	}
-
-	return CKR_FUNCTION_FAILED;
 }
 
 /* Convert a array of mechanism type from sks into CK_MECHANIMS_TYPE */
@@ -222,69 +428,49 @@ CK_RV sks2ck_mechanism_type_list(CK_MECHANISM_TYPE *dst,
 }
 
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: *ck = ck_id; break;
-
 CK_RV sks2ck_mechanism_flag(CK_FLAGS *ck, uint32_t sks)
 {
-	switch (sks) {
-	CK_SKS_MECHANISM_FLAG_IDS
-	default:
+	CK_ULONG *id = (CK_ULONG *)ck;
+
+	if (SKS2CK(id, sks, mechanism_flag))
 		return CKR_GENERAL_ERROR;
-	}
 
 	return CKR_OK;
 }
 
-
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case ck_id: return sks_id;
 
 uint32_t ck2sks_class(CK_ULONG ck)
 {
-	switch (ck) {
-	CK_SKS_OBJECT_CLASS_IDS
-	default:
-		return SKS_UNDEFINED_ID;
-	}
-}
+	uint32_t id;
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: *ck = ck_id; break;
+	if (CK2SKS(&id, ck, class_id))
+		return SKS_UNDEFINED_ID;
+
+	return id;
+}
 
 CK_RV sks2ck_class(CK_ULONG *ck, uint32_t sks)
 {
-	switch (sks) {
-	CK_SKS_OBJECT_CLASS_IDS
-	default:
+	if (SKS2CK(ck, sks, class_id))
 		return CKR_GENERAL_ERROR;
-	}
 
 	return CKR_OK;
 }
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case ck_id: return sks_id;
-
 uint32_t ck2sks_key_type(CK_ULONG ck)
 {
-	switch (ck) {
-	CK_SKS_KEY_TYPE_IDS
-	default:
-		return SKS_UNDEFINED_ID;
-	}
-}
+	uint32_t id;
 
-#undef CK_SKS_ID
-#define CK_SKS_ID(ck_id, sks_id)	case sks_id: *ck = ck_id; break;
+	if (CK2SKS(&id, ck, key_type_id))
+		return SKS_UNDEFINED_ID;
+
+	return id;
+}
 
 CK_RV sks2ck_key_type(CK_ULONG *ck, uint32_t sks)
 {
-	switch (sks) {
-	CK_SKS_KEY_TYPE_IDS
-	default:
+	if (SKS2CK(ck, sks, key_type_id))
 		return CKR_GENERAL_ERROR;
-	}
 
 	return CKR_OK;
 }
@@ -322,17 +508,17 @@ CK_RV sks2ck_mechanism_info(CK_MECHANISM_INFO *info, void *src)
 /*
  * Helper functions to analyse CK fields
  */
-size_t ck_attr_is_class(uint32_t attribute_id)
+size_t ck_attr_is_class(uint32_t id)
 {
-	if (attribute_id == CKA_CLASS)
+	if (id == CKA_CLASS)
 		return sizeof(CK_ULONG);
 	else
 		return 0;
 }
 
-size_t ck_attr_is_type(uint32_t attribute_id)
+size_t ck_attr_is_type(uint32_t id)
 {
-	switch (attribute_id) {
+	switch (id) {
 	case CKA_CERTIFICATE_TYPE:
 	case CKA_KEY_TYPE:
 	case CKA_HW_FEATURE_TYPE:
