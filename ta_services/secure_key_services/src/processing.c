@@ -79,7 +79,7 @@ uint32_t entry_import_object(uintptr_t teesess,
 	if (rv)
 		return rv;
 
-	template_size = sizeof(*template) + template->blobs_size;
+	template_size = sizeof(*template) + template->attrs_size;
 
 	/* Check session/token state against object import */
 	session = sks_handle2session(session_handle);
@@ -823,7 +823,7 @@ uint32_t entry_generate_object(uintptr_t teesess,
 	if (rv)
 		goto bail;
 
-	template_size = sizeof(*template) + template->blobs_size;
+	template_size = sizeof(*template) + template->attrs_size;
 
 	/*
 	 * Check arguments

@@ -98,7 +98,7 @@ bool attributes_match_reference(struct sks_attrs_head *ref,
  */
 static inline size_t attributes_size(struct sks_attrs_head *head)
 {
-	return sizeof(struct sks_attrs_head) + head->blobs_size;
+	return sizeof(struct sks_attrs_head) + head->attrs_size;
 }
 
 #ifdef SKS_SHEAD_WITH_TYPE

@@ -498,7 +498,7 @@ uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 	}
 
 	rv = sanitize_client_object(&req_attrs, template,
-				    sizeof(*template) + template->blobs_size);
+				    sizeof(*template) + template->attrs_size);
 	if (rv)
 		goto bail;
 

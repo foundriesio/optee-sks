@@ -327,14 +327,14 @@ struct sks_ck_session_info {
 /*
  * sks_object_head - Header of object whose data are serialized in memory
  *
- * @blobs_size - byte size of the serialized data
- * @blobs_count - number of items in the blob
- * @blobs - then starts the blob binary data
+ * @attrs_size - byte size of the serialized data, aka size of attrs[].
+ * @attrs_count - number of items in the serialized object
+ * @attrs - then starts the blob binary data
  */
 struct sks_object_head {
-	uint32_t blobs_size;
-	uint32_t blobs_count;
-	uint8_t blobs[];
+	uint32_t attrs_size;
+	uint32_t attrs_count;
+	uint8_t attrs[];
 };
 
 struct sks_reference {

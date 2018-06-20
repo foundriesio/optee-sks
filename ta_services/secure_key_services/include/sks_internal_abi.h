@@ -36,17 +36,17 @@ struct sks_ref {
 /*
  * Header of a serialised memory object inside SKS TA.
  *
- * @blobs_size; byte size of the serialized data
- * @blobs_count; number of items in the blob
+ * @attrs_size; byte size of the serialized data
+ * @attrs_count; number of items in the blob
  * @class - object class id (from CK litterature): key, certif, etc...
  * @type - object type id, per class, i.e aes or des3 in the key class.
  * @boolpropl - 32bit bitmask storing boolean properties #0 to #31.
  * @boolproph - 32bit bitmask storing boolean properties #32 to #64.
- * @blobs - then starts the blob binary data
+ * @attrs - then starts the blob binary data
  */
 struct sks_attrs_head {
-	uint32_t blobs_size;
-	uint32_t blobs_count;
+	uint32_t attrs_size;
+	uint32_t attrs_count;
 #ifdef SKS_SHEAD_WITH_TYPE
 	uint32_t class;
 	uint32_t type;
@@ -55,7 +55,7 @@ struct sks_attrs_head {
 	uint32_t boolpropl;
 	uint32_t boolproph;
 #endif
-	uint8_t blobs[];
+	uint8_t attrs[];
 };
 
 #endif /*__SKS_INTERNAL_ABI_H*/

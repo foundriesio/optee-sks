@@ -78,7 +78,7 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 	type_found = SKS_UNDEFINED_ID;
 
 	cur = (char *)src + sizeof(struct sks_object_head);
-	end = cur + head.blobs_size;
+	end = cur + head.attrs_size;
 
 	for (; cur < end; cur += len) {
 		/* Structure aligned copy of client reference in the object */
@@ -220,7 +220,7 @@ static uint32_t sanitize_boolprops(struct sks_attrs_head **dst, void *src)
 	TEE_MemMove(&head, src, sizeof(struct sks_object_head));
 
 	cur = (char *)src + sizeof(struct sks_object_head);
-	end = cur + head.blobs_size;
+	end = cur + head.attrs_size;
 
 	for (; cur < end; cur += len) {
 		/* Structure aligned copy of the cli_ref in the object */
@@ -253,7 +253,7 @@ static uint32_t sanitize_indirect_attr(struct sks_attrs_head **dst,
 		return SKS_ERROR;
 
 	/*
-	 * Serialized subblobs: current applicable only the key templates which
+	 * Serialized attributes: current applicable only the key templates which
 	 * are tables of attributes.
 	 */
 	switch (cli_ref->id) {
@@ -277,7 +277,7 @@ static uint32_t sanitize_indirect_attr(struct sks_attrs_head **dst,
 		return rc;
 
 	return add_attribute(dst, cli_ref->id, obj2,
-			     sizeof(struct sks_attrs_head) + obj2->blobs_size);
+			     sizeof(struct sks_attrs_head) + obj2->attrs_size);
 }
 
 uint32_t sanitize_client_object(struct sks_attrs_head **dst,
@@ -294,7 +294,7 @@ uint32_t sanitize_client_object(struct sks_attrs_head **dst,
 
 	TEE_MemMove(&head, src, sizeof(struct sks_object_head));
 
-	if (size < (sizeof(struct sks_object_head) + head.blobs_size))
+	if (size < (sizeof(struct sks_object_head) + head.attrs_size))
 		return SKS_BAD_PARAM;
 
 	init_attributes_head(dst);
@@ -308,7 +308,7 @@ uint32_t sanitize_client_object(struct sks_attrs_head **dst,
 		goto bail;
 
 	cur = (char *)src + sizeof(struct sks_object_head);
-	end = cur + head.blobs_size;
+	end = cur + head.attrs_size;
 
 	for (; cur < end; cur += next) {
 		struct sks_reference cli_ref;
@@ -427,12 +427,12 @@ uint32_t trace_attributes_from_api_head(const char *prefix, void *ref)
 	// TODO: nice ui to trace the attribute info
 	IMSG_RAW("%s,--- (serial object) Attributes list --------\n", pre);
 	IMSG_RAW("%s| %" PRIx32 " item(s) - %" PRIu32 " bytes\n",
-		pre, head.blobs_count, head.blobs_size);
+		pre, head.attrs_count, head.attrs_size);
 
 	offset = sizeof(head);
 	pre[prefix ? strlen(prefix) : 0] = '|';
 	rc = __trace_attributes(pre, (char *)ref + offset,
-			      (char *)ref + offset + head.blobs_size);
+			      (char *)ref + offset + head.attrs_size);
 	if (rc)
 		goto bail;
 

@@ -142,7 +142,7 @@ uint32_t serialargs_alloc_and_get_sks_attributes(struct serialargs *args,
 
 	TEE_MemMove(&attr, args->next, attr_size);
 
-	attr_size += attr.blobs_size;
+	attr_size += attr.attrs_size;
 	if (args->next + attr_size > args->start + args->size) {
 		EMSG("arg too short: full %zd, remain %zd, expect %zd",
 		     args->size, args->size - (args->next - args->start),

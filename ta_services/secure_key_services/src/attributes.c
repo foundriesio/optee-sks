@@ -25,8 +25,8 @@ uint32_t init_attributes_head(struct sks_attrs_head **head)
 	if (!*head)
 		return SKS_MEMORY;
 
-	(*head)->blobs_size = 0;
-	(*head)->blobs_count = 0;
+	(*head)->attrs_size = 0;
+	(*head)->attrs_count = 0;
 #ifdef SKS_SHEAD_WITH_TYPE
 	(*head)->class = SKS_UNDEFINED_ID;
 	(*head)->type = SKS_UNDEFINED_ID;
@@ -57,7 +57,7 @@ static bool attribute_is_in_head(uint32_t attribute __maybe_unused)
 uint32_t add_attribute(struct sks_attrs_head **head,
 			uint32_t attribute, void *data, size_t size)
 {
-	size_t buf_len = sizeof(struct sks_attrs_head) + (*head)->blobs_size;
+	size_t buf_len = sizeof(struct sks_attrs_head) + (*head)->attrs_size;
 	uint32_t rv;
 	uint32_t data32;
 	char **bstart = (void *)head;
@@ -109,8 +109,8 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 
 	/* Alloced buffer is always 64byte align, safe for us */
 	head = (void *)bstart;
-	(*head)->blobs_size += 2 * sizeof(uint32_t) + size;
-	(*head)->blobs_count++;
+	(*head)->attrs_size += 2 * sizeof(uint32_t) + size;
+	(*head)->attrs_count++;
 
 	return rv;
 }
@@ -130,7 +130,7 @@ uint32_t remove_attribute(struct sks_attrs_head **head, uint32_t attribute)
 
 	/* Let's find the target attribute */
 	cur = (char *)h + sizeof(struct sks_attrs_head);
-	end = cur + h->blobs_size;
+	end = cur + h->attrs_size;
 	for (; cur < end; cur += next_off) {
 		struct sks_ref sks_ref;
 
@@ -142,8 +142,8 @@ uint32_t remove_attribute(struct sks_attrs_head **head, uint32_t attribute)
 
 		TEE_MemMove(cur, cur + next_off, end - (cur + next_off));
 
-		h->blobs_count--;
-		h->blobs_size -= next_off;
+		h->attrs_count--;
+		h->attrs_size -= next_off;
 		end -= next_off;
 		next_off = 0;
 		return SKS_OK;
@@ -169,9 +169,8 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
 	}
 
 	/* Let's find the target attribute */
-	//cur = (char *)h->blobs;
 	cur = (char *)h + sizeof(struct sks_attrs_head);
-	end = cur + h->blobs_size;
+	end = cur + h->attrs_size;
 	for (; cur < end; cur += next_off) {
 		struct sks_ref sks_ref;
 
@@ -189,8 +188,8 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
 
 		TEE_MemMove(cur, cur + next_off, end - (cur + next_off));
 
-		h->blobs_count--;
-		h->blobs_size -= next_off;
+		h->attrs_count--;
+		h->attrs_size -= next_off;
 		end -= next_off;
 		next_off = 0;
 	}
@@ -214,7 +213,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 			void **attr, size_t *attr_size, size_t *count)
 {
 	char *cur = (char *)head + sizeof(struct sks_attrs_head);
-	char *end = cur + head->blobs_size;
+	char *end = cur + head->attrs_size;
 	size_t next_off;
 	size_t max_found = *count;
 	size_t found = 0;
@@ -355,16 +354,16 @@ found:
 bool attributes_match_reference(struct sks_attrs_head *candidate,
 				struct sks_attrs_head *ref)
 {
-	size_t count = ref->blobs_count;
-	unsigned char *ref_attr = ref->blobs;
+	size_t count = ref->attrs_count;
+	unsigned char *ref_attr = ref->attrs;
 	uint32_t rc;
 
-	if (!ref->blobs_count ||
+	if (!ref->attrs_count ||
 	    get_attribute(ref, SKS_CLASS, NULL, NULL)) {
 		return false;
 	}
 
-	for (count = 0; count < ref->blobs_count; count++) {
+	for (count = 0; count < ref->attrs_count; count++) {
 		struct sks_ref sks_ref;
 		void *found;
 		size_t size;
@@ -493,7 +492,7 @@ uint32_t trace_attributes(const char *prefix, void *ref)
 	// TODO: nice ui to trace the attribute info
 	IMSG_RAW("%s,--- (serial object) Attributes list --------\n", pre);
 	IMSG_RAW("%s| %" PRIu32 " item(s) - %" PRIu32 " bytes\n",
-		pre, head.blobs_count, head.blobs_size);
+		pre, head.attrs_count, head.attrs_size);
 #ifdef SKS_SHEAD_WITH_TYPE
 	IMSG_RAW("%s| class (0x%" PRIx32 ") %s type (0x%" PRIx32 ") %s\n",
 		 pre, head.class, sks2str_class(head.class),
@@ -511,7 +510,7 @@ uint32_t trace_attributes(const char *prefix, void *ref)
 
 	pre[prefix ? strlen(prefix) : 0] = '|';
 	rc = __trace_attributes(pre, (char *)ref + sizeof(head),
-			        (char *)ref + sizeof(head) + head.blobs_size);
+			        (char *)ref + sizeof(head) + head.attrs_size);
 	if (rc)
 		goto bail;
 
