@@ -458,7 +458,7 @@ uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_and_get_sks_attributes(&ctrlargs, &template);
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
 	if (rv)
 		return rv;
 

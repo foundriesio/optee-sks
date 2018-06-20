@@ -74,7 +74,7 @@ uint32_t entry_import_object(uintptr_t teesess,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_and_get_sks_attributes(&ctrlargs, &template);
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
 	if (rv)
 		return rv;
 
@@ -442,7 +442,7 @@ uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_and_get_sks_reference(&ctrlargs, &proc_params);
+	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
 	if (rv)
 		return rv;
 
@@ -809,11 +809,11 @@ uint32_t entry_generate_object(uintptr_t teesess,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_and_get_sks_reference(&ctrlargs, &proc_params);
+	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_and_get_sks_attributes(&ctrlargs, &template);
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
 	if (rv)
 		goto bail;
 
@@ -935,7 +935,7 @@ uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_and_get_sks_reference(&ctrlargs, &proc_params);
+	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
 	if (rv)
 		return rv;
 

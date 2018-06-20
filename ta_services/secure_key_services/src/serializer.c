@@ -89,8 +89,8 @@ uint32_t serialargs_get_ptr(struct serialargs *args, void **out, size_t size)
 	return SKS_OK;
 }
 
-uint32_t serialargs_alloc_and_get_sks_reference(struct serialargs *args,
-						struct sks_attribute_head **out)
+uint32_t serialargs_alloc_get_one_attribute(struct serialargs *args __unused,
+					    struct sks_attribute_head **out __unused)
 {
 	struct sks_attribute_head head;
 	size_t out_size = sizeof(head);
@@ -125,8 +125,8 @@ uint32_t serialargs_alloc_and_get_sks_reference(struct serialargs *args,
 	return SKS_OK;
 }
 
-uint32_t serialargs_alloc_and_get_sks_attributes(struct serialargs *args,
-						 struct sks_object_head **out)
+uint32_t serialargs_alloc_get_attributes(struct serialargs *args __unused,
+					 struct sks_object_head **out __unused)
 {
 	struct sks_object_head attr;
 	struct sks_object_head *pattr;

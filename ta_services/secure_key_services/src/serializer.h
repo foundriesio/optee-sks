@@ -26,11 +26,11 @@ uint32_t serialargs_get(struct serialargs *args, void *out, size_t sz);
 
 uint32_t serialargs_get_ptr(struct serialargs *args, void **out, size_t size);
 
-uint32_t serialargs_alloc_and_get_sks_reference(struct serialargs *args,
-						struct sks_attribute_head **out);
+uint32_t serialargs_alloc_get_one_attribute(struct serialargs *args,
+					    struct sks_attribute_head **out);
 
-uint32_t serialargs_alloc_and_get_sks_attributes(struct serialargs *args,
-						 struct sks_object_head **out);
+uint32_t serialargs_alloc_get_attributes(struct serialargs *args,
+					 struct sks_object_head **out);
 
 uint32_t serialargs_alloc_and_get(struct serialargs *args,
 				   void **out, size_t size);
