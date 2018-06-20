@@ -245,16 +245,16 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
-	if (token->db_main->flags & SKS_TOKEN_SO_PIN_LOCKED) {
+	if (token->db_main->flags & SKS_CKFT_SO_PIN_LOCKED) {
 		IMSG("Token SO PIN is locked");
-		return SKS_PIN_LOCKED;
+		return SKS_CKR_PIN_LOCKED;
 	}
 
 	if (!TAILQ_EMPTY(&token->session_list)) {
 		IMSG("SO cannot log in, pending session(s)");
-		return SKS_CK_SESSION_PENDING;
+		return SKS_CKR_SESSION_EXISTS;
 	}
 
 	cpin = TEE_Malloc(SKS_TOKEN_PIN_SIZE, TEE_MALLOC_FILL_ZERO);
@@ -285,13 +285,13 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 		pin_rc = 1;
 
 	if (pin_rc) {
-		token->db_main->flags |= SKS_TOKEN_SO_PIN_FAILURE;
+		token->db_main->flags |= SKS_CKFT_SO_PIN_COUNT_LOW;
 		token->db_main->so_pin_count++;
 
 		if (token->db_main->so_pin_count == 6)
-			token->db_main->flags |= SKS_TOKEN_SO_PIN_LAST;
+			token->db_main->flags |= SKS_CKFT_SO_PIN_FINAL_TRY;
 		if (token->db_main->so_pin_count == 7)
-			token->db_main->flags |= SKS_TOKEN_SO_PIN_LOCKED;
+			token->db_main->flags |= SKS_CKFT_SO_PIN_LOCKED;
 
 		update_persistent_db(token,
 				     offsetof(struct token_persistent_main,
@@ -303,16 +303,16 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 				     sizeof(token->db_main->so_pin_count));
 
 		TEE_Free(cpin);
-		return SKS_PIN_INCORRECT;
+		return SKS_CKR_PIN_INCORRECT;
 	}
 
-	token->db_main->flags &= ~(SKS_TOKEN_SO_PIN_FAILURE |
-				   SKS_TOKEN_SO_PIN_LAST);
+	token->db_main->flags &= ~(SKS_CKFT_SO_PIN_COUNT_LOW |
+				   SKS_CKFT_SO_PIN_FINAL_TRY);
 	token->db_main->so_pin_count = 0;
 
 inited:
 	TEE_MemMove(token->db_main->label, label, SKS_TOKEN_LABEL_SIZE);
-	token->db_main->flags |= SKS_TOKEN_INITED;
+	token->db_main->flags |= SKS_CKFT_TOKEN_INITIALIZED;
 
 	update_persistent_db(token,
 			     offsetof(struct token_persistent_main, label),
@@ -367,13 +367,13 @@ uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	const char manuf[] = SKS_CRYPTOKI_SLOT_MANUFACTURER;
 	const char hwver[2] = SKS_CRYPTOKI_SLOT_HW_VERSION;
 	const char fwver[2] = SKS_CRYPTOKI_SLOT_FW_VERSION;
-	struct sks_ck_slot_info info;
+	struct sks_slot_info info;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(struct sks_ck_slot_info)) {
-		out->memref.size = sizeof(struct sks_ck_slot_info);
+	if (out->memref.size < sizeof(struct sks_slot_info)) {
+		out->memref.size = sizeof(struct sks_slot_info);
 		return SKS_SHORT_BUFFER;
 	}
 
@@ -385,21 +385,21 @@ uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
 	TEE_MemFill(&info, 0, sizeof(info));
 
 	PADDED_STRING_COPY(info.slotDescription, desc);
 	PADDED_STRING_COPY(info.manufacturerID, manuf);
 
-	info.flags |= SKS_TOKEN_PRESENT;
-	info.flags |= SKS_TOKEN_REMOVABLE;
-	info.flags &= ~SKS_TOKEN_HW;
+	info.flags |= SKS_CKFS_TOKEN_PRESENT;
+	info.flags |= SKS_CKFS_REMOVABLE_DEVICE;
+	info.flags &= ~SKS_CKFS_HW_SLOT;
 
 	TEE_MemMove(&info.hardwareVersion, &hwver, sizeof(hwver));
 	TEE_MemMove(&info.firmwareVersion, &fwver, sizeof(fwver));
 
-	out->memref.size = sizeof(struct sks_ck_slot_info);
+	out->memref.size = sizeof(struct sks_slot_info);
 	TEE_MemMove(out->memref.buffer, &info, out->memref.size);
 
 	return SKS_OK;
@@ -416,13 +416,13 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	const char model[] = SKS_CRYPTOKI_TOKEN_MODEL;
 	const char hwver[] = SKS_CRYPTOKI_TOKEN_HW_VERSION;
 	const char fwver[] = SKS_CRYPTOKI_TOKEN_FW_VERSION;
-	struct sks_ck_token_info info;
+	struct sks_token_info info;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(struct sks_ck_token_info)) {
-		out->memref.size = sizeof(struct sks_ck_token_info);
+	if (out->memref.size < sizeof(struct sks_token_info)) {
+		out->memref.size = sizeof(struct sks_token_info);
 		return SKS_SHORT_BUFFER;
 	}
 
@@ -434,7 +434,7 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
 	TEE_MemFill(&info, 0, sizeof(info));
 
@@ -479,13 +479,13 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 	uint32_t token_id;
 	struct ck_token *token;
 	const uint32_t mecha_list[] = {
-		SKS_PROC_AES_ECB_NOPAD,
-		SKS_PROC_AES_CBC_NOPAD,
-		SKS_PROC_AES_CBC_PAD,
-		SKS_PROC_AES_CTS,
-		SKS_PROC_AES_CTR,
-		SKS_PROC_AES_GCM,
-		SKS_PROC_AES_CCM,
+		SKS_CKM_AES_ECB,
+		SKS_CKM_AES_CBC,
+		SKS_CKM_AES_CBC_PAD,
+		SKS_CKM_AES_CTS,
+		SKS_CKM_AES_CTR,
+		SKS_CKM_AES_GCM,
+		SKS_CKM_AES_CCM,
 	};
 
 	if (!ctrl || in || !out)
@@ -504,7 +504,7 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
 	/* TODO: can a token support a restricted mechanism list */
 	out->memref.size = sizeof(mecha_list);
@@ -521,7 +521,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	uint32_t token_id;
 	uint32_t type;
 	struct ck_token *token;
-	struct sks_ck_mecha_info info;
+	struct sks_mechanism_info info;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -543,24 +543,24 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
 	TEE_MemFill(&info, 0, sizeof(info));
 
 	/* TODO: full list of supported algorithm/mechanism */
 	switch (type) {
-	case SKS_PROC_AES_GCM:
-	case SKS_PROC_AES_CCM:
-		info.flags |= SKS_PROC_SIGN | SKS_PROC_VERIFY;
-	case SKS_PROC_AES_ECB_NOPAD:
-	case SKS_PROC_AES_CBC_NOPAD:
-	case SKS_PROC_AES_CBC_PAD:
-	case SKS_PROC_AES_CTS:
-	case SKS_PROC_AES_CTR:
-		info.flags |= SKS_PROC_ENCRYPT | SKS_PROC_DECRYPT |
-			     SKS_PROC_WRAP | SKS_PROC_UNWRAP | SKS_PROC_DERIVE;
-		info.min_key_size =  128;
-		info.max_key_size =  256;
+	case SKS_CKM_AES_GCM:
+	case SKS_CKM_AES_CCM:
+		info.flags |= SKS_CKFM_SIGN | SKS_CKFM_VERIFY;
+	case SKS_CKM_AES_ECB:
+	case SKS_CKM_AES_CBC:
+	case SKS_CKM_AES_CBC_PAD:
+	case SKS_CKM_AES_CTS:
+	case SKS_CKM_AES_CTR:
+		info.flags |= SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
+			     SKS_CKFM_WRAP | SKS_CKFM_UNWRAP | SKS_CKFM_DERIVE;
+		info.min_key_size = 128;
+		info.max_key_size = 256;
 		break;
 
 	default:
@@ -594,12 +594,12 @@ static uint32_t ck_token_session(uintptr_t teesess, TEE_Param *ctrl,
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
 	if (readonly &&
 	    token->login_state == PKCS11_TOKEN_STATE_SECURITY_OFFICER &&
 	    token->session_state == PKCS11_TOKEN_STATE_SESSION_READ_WRITE)
-		return SKS_CK_SO_IS_LOGGED_READ_WRITE;
+		return SKS_CKR_SESSION_READ_WRITE_SO_EXISTS;
 
 	session = TEE_Malloc(sizeof(*session), 0);
 	if (!session)
@@ -672,10 +672,10 @@ static void close_ck_session(struct pkcs11_session *session)
 		}
 
 		if (last)
-		    session->token->session_state =
+			session->token->session_state =
 					PKCS11_TOKEN_STATE_SESSION_NONE;
 		else if (last_ro)
-		    session->token->session_state =
+			session->token->session_state =
 					PKCS11_TOKEN_STATE_SESSION_READ_WRITE;
 	}
 
@@ -706,7 +706,7 @@ uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 
 	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
-		return SKS_INVALID_SESSION;
+		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	close_ck_session(session);
 
@@ -732,7 +732,7 @@ uint32_t entry_ck_token_close_all(uintptr_t teesess __unused, TEE_Param *ctrl,
 
 	token = get_token(token_id);
 	if (!token)
-		return SKS_INVALID_SLOT;
+		return SKS_CKR_SLOT_ID_INVALID;
 
 	while (!TAILQ_EMPTY(&token->session_list))
 		close_ck_session(TAILQ_FIRST(&token->session_list));

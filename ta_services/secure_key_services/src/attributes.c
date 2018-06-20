@@ -42,7 +42,7 @@ uint32_t init_attributes_head(struct sks_attrs_head **head)
 static bool attribute_is_in_head(uint32_t attribute __maybe_unused)
 {
 #ifdef SKS_SHEAD_WITH_TYPE
-	if (attribute == SKS_CLASS || sks_attr_is_type(attribute))
+	if (attribute == SKS_CKA_CLASS || sks_attr_is_type(attribute))
 		return true;
 #endif
 
@@ -64,10 +64,10 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 	int shift __maybe_unused;
 
 #ifdef SKS_SHEAD_WITH_TYPE
-	if (attribute == SKS_CLASS || sks_attr_is_type(attribute)) {
+	if (attribute == SKS_CKA_CLASS || sks_attr_is_type(attribute)) {
 		assert(size == sizeof(uint32_t));
 
-		TEE_MemMove(attribute == SKS_CLASS ?
+		TEE_MemMove(attribute == SKS_CKA_CLASS ?
 				&(*head)->class : &(*head)->type,
 				data, sizeof(uint32_t));
 
@@ -82,7 +82,7 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 		uint32_t val = *(uint8_t *)data ? mask : 0;
 
 		if (size != sizeof(uint8_t))
-			return SKS_INVALID_ATTRIBUTES;
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
 
 		if (shift < 32)
 			(*head)->boolpropl = ((*head)->boolpropl & ~mask) | val;
@@ -260,7 +260,7 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 	size_t count = 1;
 
 #ifdef SKS_SHEAD_WITH_TYPE
-	if (attribute == SKS_CLASS) {
+	if (attribute == SKS_CKA_CLASS) {
 		if (attr_size)
 			*attr_size = sizeof(uint32_t);
 		if (attr_ptr)
@@ -268,7 +268,7 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 
 		return SKS_OK;
 	}
-	if (attribute == SKS_TYPE) {
+	if (attribute == SKS_CKA_KEY_TYPE) {
 		if (attr_size)
 			*attr_size = sizeof(uint32_t);
 		if (attr_ptr)
@@ -303,13 +303,13 @@ uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 	int shift __maybe_unused;
 
 #ifdef SKS_SHEAD_WITH_TYPE
-	if (attribute == SKS_CLASS) {
+	if (attribute == SKS_CKA_CLASS) {
 		size = sizeof(uint32_t);
 		attr_ptr = &head->class;
 		goto found;
 	}
 
-	if (attribute == SKS_TYPE) {
+	if (attribute == SKS_CKA_KEY_TYPE) {
 		size = sizeof(uint32_t);
 		attr_ptr = &head->type;
 		goto found;
@@ -359,7 +359,7 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 	uint32_t rc;
 
 	if (!ref->attrs_count ||
-	    get_attribute(ref, SKS_CLASS, NULL, NULL)) {
+	    get_attribute(ref, SKS_CKA_CLASS, NULL, NULL)) {
 		return false;
 	}
 
@@ -454,9 +454,9 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 		}
 
 		switch (sks_ref.id) {
-		case SKS_WRAP_ATTRIBS:
-		case SKS_UNWRAP_ATTRIBS:
-		case SKS_DERIVE_ATTRIBS:
+		case SKS_CKA_WRAP_TEMPLATE:
+		case SKS_CKA_UNWRAP_TEMPLATE:
+		case SKS_CKA_DERIVE_TEMPLATE:
 			trace_attributes(prefix2,
 					 (void *)(cur + sizeof(sks_ref)));
 			break;

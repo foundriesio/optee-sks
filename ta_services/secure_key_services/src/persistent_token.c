@@ -338,12 +338,12 @@ struct ck_token *init_token_db(unsigned int token_id)
 		 * TODO: check these:
 		 *   SKS_TOKEN_HAS_CLOCK => related to TEE time secure level
 		 */
-		db_main->flags = SKS_TOKEN_SO_PIN_TO_CHANGE | \
-				 SKS_TOKEN_USR_PIN_TO_CHANGE | \
-				 SKS_TOKEN_HAS_RNG | \
-				 SKS_TOKEN_IS_READ_ONLY | \
-				 SKS_TOKEN_REQUIRE_LOGIN | \
-				 SKS_TOKEN_CAN_DUAL_PROC;
+		db_main->flags = SKS_CKFT_SO_PIN_TO_BE_CHANGED |
+				 SKS_CKFT_USER_PIN_TO_BE_CHANGED |
+				 SKS_CKFT_RNG |
+				 SKS_CKFT_WRITE_PROTECTED |
+				 SKS_CKFT_LOGIN_REQUIRED |
+				 SKS_CKFT_DUAL_CRYPTO_OPERATIONS;
 
 		/* 2 files: persistent state + persistent object references */
 		res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,

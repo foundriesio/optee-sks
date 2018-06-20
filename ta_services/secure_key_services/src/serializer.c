@@ -90,9 +90,9 @@ uint32_t serialargs_get_ptr(struct serialargs *args, void **out, size_t size)
 }
 
 uint32_t serialargs_alloc_and_get_sks_reference(struct serialargs *args,
-						struct sks_reference **out)
+						struct sks_attribute_head **out)
 {
-	struct sks_reference head;
+	struct sks_attribute_head head;
 	size_t out_size = sizeof(head);
 	void *pref;
 

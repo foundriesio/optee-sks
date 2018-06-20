@@ -143,7 +143,7 @@ uint32_t destroy_object(struct pkcs11_session *session,
 	/* Non persistent object are reachable from their session */
 	if (obj->attribs_hdl == TEE_HANDLE_NULL &&
 	    obj->session_owner != session)
-		return SKS_INVALID_OBJECT;
+		return SKS_CKR_OBJECT_HANDLE_INVALID;
 
 	/* Remove from session list only if was published */
 	if (obj->link.le_next || obj->link.le_prev)
@@ -156,7 +156,7 @@ uint32_t destroy_object(struct pkcs11_session *session,
 	}
 
 	/* Destroy target object (persistent or not) */
-	if (get_bool(obj->attributes, SKS_PERSISTENT)) {
+	if (get_bool(obj->attributes, SKS_CKA_TOKEN)) {
 		assert(obj->uuid);
 		if (unregister_persistent_object(get_object_token(obj),
 						  obj->uuid))
@@ -215,7 +215,7 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 	if (!obj)
 		return SKS_MEMORY;
 
-	if (get_bool(obj->attributes, SKS_PERSISTENT)) {
+	if (get_bool(obj->attributes, SKS_CKA_TOKEN)) {
 		/*
 		 * Get an ID for the persistent object
 		 * Create the file
@@ -254,7 +254,7 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 
 bail:
 	if (rv) {
-		if (get_bool(obj->attributes, SKS_PERSISTENT))
+		if (get_bool(obj->attributes, SKS_CKA_TOKEN))
 			cleanup_persistent_object(obj);
 		else
 			cleanup_volatile_obj_ref(obj);
@@ -288,7 +288,7 @@ uint32_t entry_destroy_object(uintptr_t teesess, TEE_Param *ctrl,
 
 	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
-		return SKS_INVALID_SESSION;
+		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	object = sks_handle2object(object_handle, session);
 	if (!object || object->session_owner != session)
@@ -464,7 +464,7 @@ uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 
 	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess) {
-		rv = SKS_INVALID_SESSION;
+		rv = SKS_CKR_SESSION_HANDLE_INVALID;
 		goto bail;
 	}
 
@@ -475,7 +475,7 @@ uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 	 */
 	if (check_pkcs_session_processing_state(session,
 						PKCS11_SESSION_READY)) {
-		rv = SKS_PROCESSING_ACTIVE;
+		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
 
@@ -638,7 +638,7 @@ uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
 
 	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
-		return SKS_INVALID_SESSION;
+		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	ctx = session->find_ctx;
 
@@ -646,7 +646,7 @@ uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
 	 * TODO: should we check again if these handles are valid?
 	 */
 	if (!ctx)
-		return SKS_PROCESSING_INACTIVE;
+		return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	for (count = 0, idx = ctx->next; idx < ctx->count; idx++, count++) {
 		struct sks_object *obj;
@@ -702,10 +702,10 @@ uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
 
 	session = sks_handle2session(session_handle);
 	if (!session || session->tee_session != teesess)
-		return SKS_INVALID_SESSION;
+		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	if (!session->find_ctx)
-		return SKS_PROCESSING_INACTIVE;
+		return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	release_session_find_obj_context(session);
 
