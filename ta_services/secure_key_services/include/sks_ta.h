@@ -6,7 +6,6 @@
 #ifndef __SKS_TA_H__
 #define __SKS_TA_H__
 
-#include <sks_ta_compat.h>
 #include <sys/types.h>
 #include <stdint.h>
 #include <util.h>
