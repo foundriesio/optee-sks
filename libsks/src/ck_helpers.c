@@ -29,7 +29,7 @@
 
 
 CK_RV sks2ck_slot_info(CK_SLOT_INFO_PTR ck_info,
-			struct sks_ck_slot_info *sks_info)
+			struct sks_slot_info *sks_info)
 {
 	MEMCPY_FIELD(ck_info, sks_info, slotDescription);
 	MEMCPY_FIELD(ck_info, sks_info, manufacturerID);
@@ -41,7 +41,7 @@ CK_RV sks2ck_slot_info(CK_SLOT_INFO_PTR ck_info,
 }
 
 static CK_RV sks2ck_token_flags(CK_TOKEN_INFO_PTR ck_info,
-				struct sks_ck_token_info *sks_info)
+				struct sks_token_info *sks_info)
 {
 	CK_FLAGS ck_flag;
 	uint32_t sks_mask;
@@ -61,7 +61,7 @@ static CK_RV sks2ck_token_flags(CK_TOKEN_INFO_PTR ck_info,
 }
 
 CK_RV sks2ck_token_info(CK_TOKEN_INFO_PTR ck_info,
-			struct sks_ck_token_info *sks_info)
+			struct sks_token_info *sks_info)
 {
 	CK_RV rv;
 
@@ -294,7 +294,7 @@ CK_RV sks2ck_key_type(CK_ULONG *ck, uint32_t sks)
 /* Convert structure CK_MECHANIMS_INFO from sks to ck (3 ulong fields) */
 CK_RV sks2ck_mechanism_info(CK_MECHANISM_INFO *info, void *src)
 {
-	struct sks_ck_mecha_info sks;
+	struct sks_mechanism_info sks;
 	CK_FLAGS ck_flag;
 	uint32_t mask;
 	CK_RV rv;
@@ -345,12 +345,12 @@ size_t ck_attr_is_type(uint32_t attribute_id)
 int sks_object_has_boolprop(uint32_t class)
 {
 	switch (class) {
-	case SKS_OBJ_RAW_DATA:
-	case SKS_OBJ_CERTIFICATE:
-	case SKS_OBJ_PUB_KEY:
-	case SKS_OBJ_PRIV_KEY:
-	case SKS_OBJ_SYM_KEY:
-	case SKS_OBJ_CK_DOMAIN_PARAMS:
+	case SKS_CKO_DATA:
+	case SKS_CKO_CERTIFICATE:
+	case SKS_CKO_PUBLIC_KEY:
+	case SKS_CKO_PRIVATE_KEY:
+	case SKS_CKO_SECRET_KEY:
+	case SKS_CKO_DOMAIN_PARAMETERS:
 		return 1;
 	default:
 		return 0;
@@ -359,12 +359,12 @@ int sks_object_has_boolprop(uint32_t class)
 int sks_class_has_type(uint32_t class)
 {
 	switch (class) {
-	case SKS_OBJ_CERTIFICATE:
-	case SKS_OBJ_PUB_KEY:
-	case SKS_OBJ_PRIV_KEY:
-	case SKS_OBJ_SYM_KEY:
-	case SKS_OBJ_CK_MECHANISM:
-	case SKS_OBJ_CK_HW_FEATURES:
+	case SKS_CKO_CERTIFICATE:
+	case SKS_CKO_PUBLIC_KEY:
+	case SKS_CKO_PRIVATE_KEY:
+	case SKS_CKO_SECRET_KEY:
+	case SKS_CKO_MECHANISM:
+	case SKS_CKO_HW_FEATURE:
 		return 1;
 	default:
 		return 0;
@@ -383,7 +383,7 @@ uint32_t ck2sks_type_in_class(CK_ULONG ck, CK_ULONG class)
 		return ck2sks_key_type(ck);
 	case CKO_MECHANISM:
 		return ck2sks_mechanism_type(ck);
-	case CKO_CERTIFICATE: // TODO
+	case CKO_CERTIFICATE:
 	default:
 		return SKS_UNDEFINED_ID;
 	}
@@ -392,16 +392,16 @@ uint32_t ck2sks_type_in_class(CK_ULONG ck, CK_ULONG class)
 CK_RV sks2ck_type_in_class(CK_ULONG *ck, uint32_t sks, CK_ULONG class)
 {
 	switch (class) {
-	case SKS_OBJ_RAW_DATA:
+	case SKS_CKO_DATA:
 		return CKR_NO_EVENT;
-	case SKS_OBJ_SYM_KEY:
-	case SKS_OBJ_PUB_KEY:
-	case SKS_OBJ_PRIV_KEY:
-	case SKS_OBJ_OTP_KEY:
+	case SKS_CKO_SECRET_KEY:
+	case SKS_CKO_PUBLIC_KEY:
+	case SKS_CKO_PRIVATE_KEY:
+	case SKS_CKO_OTP_KEY:
 		return sks2ck_key_type(ck, sks);
-	case SKS_OBJ_CK_MECHANISM:
+	case SKS_CKO_MECHANISM:
 		return sks2ck_mechanism_type(ck, sks);
-	case SKS_OBJ_CERTIFICATE: // TODO
+	case SKS_CKO_CERTIFICATE:
 	default:
 		return CKR_GENERAL_ERROR;
 	}

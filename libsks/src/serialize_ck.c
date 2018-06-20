@@ -674,7 +674,7 @@ CK_RV serialize_ck_mecha_params(struct serializer *obj,
 
 	memset(obj, 0, sizeof(*obj));
 
-	obj->object = SKS_OBJ_CK_MECHANISM;
+	obj->object = SKS_CKO_MECHANISM;
 
 	memcpy(&mecha, mechanism, sizeof(mecha));
 	obj->type = ck2sks_mechanism_type(mecha.mechanism);
@@ -742,7 +742,7 @@ static CK_RV trace_attributes(char *prefix, void *src, void *end)
 	*(prefix2 + prefix_len + 1 + 4) = '\0';
 
 	for (; cur < (char *)end; cur += next) {
-		struct sks_reference ref;
+		struct sks_attribute_head ref;
 
 		memcpy(&ref, cur, sizeof(ref));
 		next = sizeof(ref) + ref.size;
@@ -755,8 +755,8 @@ static CK_RV trace_attributes(char *prefix, void *src, void *end)
 			*((char *)cur + sizeof(ref) + 3));
 
 		switch (ref.id) {
-		case SKS_WRAP_ATTRIBS:
-		case SKS_UNWRAP_ATTRIBS:
+		case SKS_CKA_WRAP_TEMPLATE:
+		case SKS_CKA_UNWRAP_TEMPLATE:
 			serial_trace_attributes_from_head(prefix2,
 							  cur + sizeof(ref));
 			break;

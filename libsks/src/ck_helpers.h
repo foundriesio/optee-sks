@@ -178,15 +178,15 @@
 	CK_SKS_ID(CK_VENDOR_INVALID_ID,		SKS_UNDEFINED_ID)
 
 /*
- * Convert structure struct sks_ck_token_info retreived from TA into a
+ * Convert structure struct sks_token_info retreived from TA into a
  * cryptoki API compliant CK_TOKEN_INFO structure.
  *
- * struct sks_ck_token_info is defined in the SKS TA API.
+ * struct sks_token_info is defined in the SKS TA API.
  */
 CK_RV sks2ck_token_info(CK_TOKEN_INFO_PTR ck_info,
-			struct sks_ck_token_info *sks_info);
+			struct sks_token_info *sks_info);
 CK_RV sks2ck_slot_info(CK_SLOT_INFO_PTR ck_info,
-			struct sks_ck_slot_info *sks_info);
+			struct sks_slot_info *sks_info);
 
 /*
  * Convert IDs between SKS and Cryptoki.

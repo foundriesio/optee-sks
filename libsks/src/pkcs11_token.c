@@ -68,6 +68,7 @@ CK_RV sks_ck_slot_get_list(CK_BBOOL present,
 		*count = size / sizeof(uint32_t);
 		if (!slots)
 			return CKR_OK;
+
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -99,7 +100,7 @@ int sks_ck_slot_get_info(CK_SLOT_ID slot, CK_SLOT_INFO_PTR info)
 {
 	uint32_t ctrl[1] = { slot };
 	CK_SLOT_INFO *ck_info = info;
-	struct sks_ck_slot_info sks_info;
+	struct sks_slot_info sks_info;
 	size_t out_size = sizeof(sks_info);
 
 	if (ck_invoke_ta(NULL, SKS_CMD_CK_SLOT_INFO,
@@ -143,7 +144,7 @@ CK_RV sks_ck_token_get_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 	if (rv)
 		goto bail;
 
-	if (shm->size < sizeof(struct sks_ck_token_info)) {
+	if (shm->size < sizeof(struct sks_token_info)) {
 		LOG_ERROR("unexpected bad token info size\n");
 		rv = CKR_DEVICE_ERROR;
 		goto bail;
@@ -240,7 +241,7 @@ CK_RV sks_ck_token_mechanism_info(CK_SLOT_ID slot,
 {
 	CK_RV rv;
 	uint32_t ctrl[2];
-	struct sks_ck_mecha_info outbuf;
+	struct sks_mechanism_info outbuf;
 	size_t outsize = sizeof(outbuf);
 
 	ctrl[0] = (uint32_t)slot;
