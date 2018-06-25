@@ -47,7 +47,7 @@ CK_RV serialize_ck_ulong(struct serializer *obj, CK_ULONG data);
 /* Return the size of the serial blob head or 0 on error */
 size_t sizeof_serial_head(void *ref);
 
-/* Return the size of a serial object (head + blobs size) */
+/* Return the size of a serial object (head + attributes size) */
 size_t get_serial_size(void *ref);
 
 /* Return the class of the object or the invalid ID if not found */

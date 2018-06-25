@@ -790,12 +790,12 @@ CK_RV serial_trace_attributes_from_head(char *prefix, void *ref)
 
 	LOG_INFO("%s,--- (serial object) Attributes list --------\n", pre);
 	LOG_INFO("%s| %" PRIu32 " item(s) - %" PRIu32 " bytes\n", pre,
-		 head.blobs_count, head.blobs_size);
+		 head.attrs_count, head.attrs_size);
 
 	pre[prefix ? strlen(prefix) + 1 : 0] = '|';
 
 	rv = trace_attributes(pre, (char *)ref + sizeof(head),
-			      (char *)ref + sizeof(head) + head.blobs_size);
+			      (char *)ref + sizeof(head) + head.attrs_size);
 	if (rv)
 		goto bail;
 

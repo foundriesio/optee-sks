@@ -41,17 +41,9 @@ fsdf fsd fsdf sdf
 	head.boolproph = *((uint32_t *)obj->boolprop + 1);
 #endif
 #endif
-	head.blobs_size = obj->size - sizeof(head);
-	head.blobs_count = obj->item_count;
+	head.attrs_size = obj->size - sizeof(head);
+	head.attrs_count = obj->item_count;
 	memcpy(obj->buffer, &head, sizeof(head));
-
-if(0)	{
-		unsigned int n;
-		printf("finalize %x %x:  ", (unsigned)head.blobs_size, (unsigned)head.blobs_count);
-		for (n = 0; n < obj->size; n++)
-			printf("%02x ", obj->buffer[n]);
-		printf("\n");
-	}
 }
 
 void release_serial_object(struct serializer *obj)
