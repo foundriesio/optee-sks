@@ -362,7 +362,7 @@ struct sks_attribute_head {
  *
  * [in]		memref[0] = [
  *			32bit session handle,
- *			(struct sks_attribute_head)mechanism + mechanism params
+ *			(struct sks_attribute_head)mechanism + mecha parameters
  *		]
  * [out]	memref[0] = 32bit fine grain retrun code
  *
@@ -406,7 +406,7 @@ struct sks_attribute_head {
  *
  * [in]		memref[0] = [
  *			32bit session handle,
- *			(struct sks_attribute_head)mechanism + mechanism params,
+ *			(struct sks_attribute_head)mechanism + mecha parameters,
  *			(struct sks_object_head)attribs + attributes data
  *		]
  * [in]		memref[1] = input data to be processed
@@ -424,7 +424,7 @@ struct sks_attribute_head {
  * [in]		memref[0] = [
  *			32bit session handle,
  *			32bit key handle,
- *			(struct sks_attribute_head)mechanism + mechanism params,
+ *			(struct sks_attribute_head)mechanism + mecha parameters,
  *		]
  * [out]	memref[0] = 32bit fine grain retrun code
  *
@@ -541,7 +541,7 @@ struct sks_attribute_head {
  *
  * [in]		memref[0] = [
  *			32bit session handle,
- *			(struct sks_attribute_head)mechanism + mechanism params,
+ *			(struct sks_attribute_head)mechanism + mecha parameters,
  *			32bit key handle,
  *			(struct sks_object_head)attribs + attributes data
  *		]
