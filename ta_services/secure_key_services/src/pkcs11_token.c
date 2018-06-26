@@ -104,6 +104,8 @@ static int pkcs11_token_init(unsigned int id)
 
 	/* Initialize the token runtime state */
 	token->state = PKCS11_TOKEN_READ_WRITE;
+	token->session_count = 0;
+	token->rw_session_count = 0;
 
 	return 0;
 }
@@ -494,9 +496,9 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 	/* TODO */
 	info.ulMaxSessionCount = ~0;
-	info.ulSessionCount = ~0;
+	info.ulSessionCount = token->session_count;
 	info.ulMaxRwSessionCount = ~0;
-	info.ulRwSessionCount = ~0;
+	info.ulRwSessionCount = token->rw_session_count;
 	/* TODO */
 	info.ulMaxPinLen = 128;
 	info.ulMinPinLen = 10;
@@ -736,6 +738,10 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 
 	TAILQ_INSERT_HEAD(&client->session_list, session, link);
 
+	session->token->session_count++;
+	if (!readonly)
+		session->token->rw_session_count++;
+
 	*(uint32_t *)out->memref.buffer = session->handle;
 	out->memref.size = sizeof(uint32_t);
 
@@ -774,6 +780,10 @@ static void close_ck_session(struct pkcs11_session *session)
 	handle_db_destroy(&session->object_handle_db);
 
 	// If no more session, next opened one will simply be Public loggin
+
+	session->token->session_count--;
+	if (pkcs11_session_is_read_write(session))
+		session->token->rw_session_count--;
 
 	TEE_Free(session);
 }

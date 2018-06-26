@@ -105,8 +105,8 @@ struct token_persistent_objs {
  */
 struct ck_token {
 	enum pkcs11_token_state state;
-	uint32_t session_counter;
-	uint32_t rw_session_counter;
+	uint32_t session_count;
+	uint32_t rw_session_count;
 
 	struct object_list object_list;
 
