@@ -582,7 +582,8 @@ struct sks_attribute_head {
 #define SKS_CKR_OPERATION_ACTIVE		0x0000001a
 #define SKS_CKR_KEY_FUNCTION_NOT_PERMITTED	0x0000001b
 #define SKS_CKR_OPERATION_NOT_INITIALIZED	0x0000001c
-/* Statuc without strict equivalence in cryptoki */
+#define SKS_CKR_TOKEN_WRITE_PROTECTED		0x0000001d
+/* Status without strict equivalence in Cryptoki API */
 #define SKS_NOT_FOUND				0x00001000
 #define SKS_NOT_IMPLEMENTED			0x00001001
 
