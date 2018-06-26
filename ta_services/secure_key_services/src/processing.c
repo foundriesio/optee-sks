@@ -46,7 +46,7 @@ static void release_active_processing(struct pkcs11_session *session)
 		TEE_Panic(0);
 }
 
-uint32_t entry_import_object(uintptr_t teesess,
+uint32_t entry_import_object(uintptr_t tee_session,
 			     TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -81,8 +81,8 @@ uint32_t entry_import_object(uintptr_t teesess,
 	template_size = sizeof(*template) + template->attrs_size;
 
 	/* Check session/token state against object import */
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess) {
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session) {
 		rv = SKS_CKR_SESSION_HANDLE_INVALID;
 		goto bail;
 	}
@@ -417,7 +417,7 @@ static uint32_t load_key(struct sks_object *obj)
  * in = none
  * out = none
  */
-uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_cipher_init(uintptr_t tee_session, TEE_Param *ctrl,
 			   TEE_Param *in, TEE_Param *out, int decrypt)
 {
 	uint32_t rv;
@@ -449,8 +449,8 @@ uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 	/*
 	 * Check PKCS session (arguments and session state)
 	 */
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess) {
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session) {
 		rv = SKS_CKR_SESSION_HANDLE_INVALID;
 		goto bail;
 	}
@@ -595,7 +595,7 @@ bail:
  * in = data buffer
  * out = data buffer
  */
-uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_cipher_update(uintptr_t tee_session, TEE_Param *ctrl,
 			     TEE_Param *in, TEE_Param *out, int decrypt)
 {
 	uint32_t rv;
@@ -615,8 +615,8 @@ uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	if (check_processing_state(session, decrypt ?
@@ -672,7 +672,7 @@ uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
  * in = none
  * out = data buffer
  */
-uint32_t entry_cipher_final(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_cipher_final(uintptr_t tee_session, TEE_Param *ctrl,
 			    TEE_Param *in, TEE_Param *out, int decrypt)
 {
 	uint32_t rv;
@@ -693,8 +693,8 @@ uint32_t entry_cipher_final(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	if (check_processing_state(session, decrypt ?
@@ -783,7 +783,7 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 	return rv;
 }
 
-uint32_t entry_generate_object(uintptr_t teesess,
+uint32_t entry_generate_object(uintptr_t tee_session,
 			       TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -822,8 +822,8 @@ uint32_t entry_generate_object(uintptr_t teesess,
 	 * Check arguments
 	 */
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess) {
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session) {
 		rv = SKS_CKR_SESSION_HANDLE_INVALID;
 		goto bail;
 	}
@@ -908,7 +908,7 @@ bail:
  * in = none
  * out = none
  */
-uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, int sign)
 {
 	uint32_t rv;
@@ -941,8 +941,8 @@ uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
 	 * Check arguments
 	 */
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess) {
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session) {
 		rv = SKS_CKR_SESSION_HANDLE_INVALID;
 		goto bail;
 	}
@@ -1058,7 +1058,7 @@ bail:
  * in = input data
  * out = none
  */
-uint32_t entry_signverify_update(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_signverify_update(uintptr_t tee_session, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out, int sign)
 {
 	struct serialargs ctrlargs;
@@ -1076,8 +1076,8 @@ uint32_t entry_signverify_update(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
@@ -1122,7 +1122,7 @@ bail:
  * in = none
  * out = data buffer
  */
-uint32_t entry_signverify_final(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_signverify_final(uintptr_t tee_session, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, int sign)
 {
 	TEE_Result res;
@@ -1141,8 +1141,8 @@ uint32_t entry_signverify_final(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :

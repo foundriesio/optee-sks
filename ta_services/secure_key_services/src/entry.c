@@ -19,7 +19,6 @@ struct tee_session {
 	int foo;
 };
 
-static struct handle_db sks_session_db = HANDLE_DB_INITIALIZER;
 
 TEE_Result TA_CreateEntryPoint(void)
 {
@@ -36,26 +35,21 @@ void TA_DestroyEntryPoint(void)
 
 TEE_Result TA_OpenSessionEntryPoint(uint32_t __unused param_types,
 				    TEE_Param __unused params[4],
-				    void **session)
+				    void **tee_session)
 {
-	struct tee_session *sess = TEE_Malloc(sizeof(*sess), 0);
-	uintptr_t sess_hld;
+	uintptr_t client = register_client();
 
-	if (!sess)
+	if (!client)
 		return TEE_ERROR_OUT_OF_MEMORY;
 
-	sess_hld = handle_get(&sks_session_db, sess);
-	*session = (void *)sess_hld;
+	*tee_session = (void *)client;
 
 	return TEE_SUCCESS;
 }
 
-void TA_CloseSessionEntryPoint(void *session)
+void TA_CloseSessionEntryPoint(void *tee_session)
 {
-	uintptr_t sess_hld = (uintptr_t)session;
-
-	ck_token_close_tee_session(sess_hld);
-	TEE_Free(handle_put(&sks_session_db, sess_hld));
+	unregister_client((uintptr_t)tee_session);
 }
 
 static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)

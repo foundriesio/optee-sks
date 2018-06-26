@@ -45,6 +45,7 @@ enum pkcs11_token_session_state {
 	PKCS11_TOKEN_STATE_SESSION_READ_ONLY,
 };
 
+TAILQ_HEAD(client_list, pkcs11_client);
 TAILQ_HEAD(session_list, pkcs11_session);
 
 #define SKS_MAX_USERS			2
@@ -108,8 +109,6 @@ struct ck_token {
 	enum pkcs11_token_login_state login_state;
 	enum pkcs11_token_session_state	session_state;
 
-	struct session_list session_list;
-	struct handle_db session_handle_db;
 
 	TEE_ObjectHandle db_hdl;	/* Opened handle to persistent database */
 	TEE_ObjectHandle pin_hdl[SKS_MAX_USERS];	/* Opened handle to PIN keys */
@@ -156,15 +155,30 @@ struct pkcs11_find_objects {
 };
 
 /*
+ * Structure tracking client applications
+ *
+ * TODO: rename pkcs11_client into sks_client
+ *
+ * @link - chained list of registered client applications
+ * @sessions - list of the PKCS11 sessions opened by the client application
+ */
+struct pkcs11_client {
+	TAILQ_ENTRY(pkcs11_client) link;
+	struct session_list session_list;
+	struct handle_db session_handle_db;
+};
+
+/*
  * Structure tracking the PKCS#11 sessions
  *
- * @link - session litsing
+ * @link - list of the session belowing to a client
  * @token - token/slot this session belongs to
  * @tee_session - TEE session use to create the PLCS session
  * @handle - identifier of the session
  * @readwrite - true if the session is read/write, false if read-only
  * @state - R/W SO, R/W user, RO user, R/W public, RO public. See PKCS11.
  * @processing - ongoing active processing function
+ * @client - client the session belongs to
  * @tee_op_handle - handle on active crypto operation or TEE_HANDLE_NULL
  * @proc_id - SKS ID of the active processing
  * @proc_params - parameters saved in memory for the active processing
@@ -179,6 +193,7 @@ struct pkcs11_session {
 	bool readwrite;
 	uint32_t state;
 	enum pkcs11_proc_state processing;
+	struct pkcs11_client *client;
 	TEE_OperationHandle tee_op_handle;
 	uint32_t proc_id;
 	void *proc_params;
@@ -213,8 +228,13 @@ uint32_t get_persistent_objects_list(struct ck_token *token,
 /*
  * Pkcs11 session support
  */
+struct pkcs11_client *tee_session2client(uintptr_t tee_session);
+uintptr_t register_client(void);
+void unregister_client(uintptr_t tee_session);
+
 void ck_token_close_tee_session(uintptr_t tee_session);
-struct pkcs11_session *sks_handle2session(uint32_t client_handle);
+struct pkcs11_session *sks_handle2session(uint32_t handle,
+					  uintptr_t tee_session);
 
 int set_processing_state(struct pkcs11_session *session,
 			 enum pkcs11_proc_state state);

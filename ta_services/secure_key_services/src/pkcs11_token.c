@@ -22,7 +22,9 @@
 /* Static allocation of tokens runtime instances (reset to 0 at load) */
 struct ck_token ck_token[TOKEN_COUNT];
 
-static struct handle_db session_handle_db = HANDLE_DB_INITIALIZER;
+static struct client_list pkcs11_client_list;
+
+static void close_ck_session(struct pkcs11_session *session);
 
 /* Static allocation of tokens runtime instances */
 struct ck_token *get_token(unsigned int token_id)
@@ -40,6 +42,54 @@ unsigned int get_token_id(struct ck_token *token)
 	return token - ck_token;
 }
 
+/* Client */
+struct pkcs11_client *tee_session2client(uintptr_t tee_session)
+{
+	struct pkcs11_client *client;
+
+	TAILQ_FOREACH(client, &pkcs11_client_list, link) {
+		if (client == (void *)tee_session)
+			return client;
+	}
+
+	return NULL;
+}
+
+uintptr_t register_client(void)
+{
+	struct pkcs11_client *client;
+
+	client = TEE_Malloc(sizeof(*client), TEE_MALLOC_FILL_ZERO);
+	if (!client)
+		return 0;
+
+	TAILQ_INSERT_HEAD(&pkcs11_client_list, client, link);
+	TAILQ_INIT(&client->session_list);
+	handle_db_init(&client->session_handle_db);
+
+	return (uintptr_t)(void *)client;
+}
+
+void unregister_client(uintptr_t tee_session)
+{
+	struct pkcs11_client *client = tee_session2client(tee_session);
+	struct pkcs11_session *session;
+	struct pkcs11_session *next;
+
+	if (!client) {
+		EMSG("Unexpected invalid TEE session handle");
+		return;
+	}
+
+	TAILQ_FOREACH_SAFE(session, &client->session_list, link, next) {
+		close_ck_session(session);
+	}
+
+	TAILQ_REMOVE(&pkcs11_client_list, client, link);
+	handle_db_destroy(&client->session_handle_db);
+	TEE_Free(client);
+}
+
 static int pkcs11_token_init(unsigned int id)
 {
 	struct ck_token *token = init_token_db(id);
@@ -53,9 +103,6 @@ static int pkcs11_token_init(unsigned int id)
 	/* Initialize the token runtime state */
 	token->login_state = PKCS11_TOKEN_STATE_PUBLIC_SESSIONS;
 	token->session_state = PKCS11_TOKEN_STATE_SESSION_NONE;
-	TAILQ_INIT(&token->session_list);
-	TEE_MemFill(&token->session_handle_db, 0,
-		    sizeof(token->session_handle_db));
 
 	return 0;
 }
@@ -67,6 +114,8 @@ int pkcs11_init(void)
 	for (id = 0; id < TOKEN_COUNT; id++)
 		if (pkcs11_token_init(id))
 			return 1;
+
+	TAILQ_INIT(&pkcs11_client_list);
 
 	return 0;
 }
@@ -103,9 +152,12 @@ bool pkcs11_session_is_read_write(struct pkcs11_session *session)
 	return true;
 }
 
-struct pkcs11_session *sks_handle2session(uint32_t handle)
+struct pkcs11_session *sks_handle2session(uint32_t handle,
+					  uintptr_t tee_session)
 {
-	return handle_lookup(&session_handle_db, (int)handle);
+	struct pkcs11_client *client = tee_session2client(tee_session);
+
+	return handle_lookup(&client->session_handle_db, (int)handle);
 }
 
 /*
@@ -222,6 +274,7 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	struct ck_token *token;
 	uint8_t *cpin = NULL;
 	int pin_rc;
+	struct pkcs11_client *client;
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -256,9 +309,10 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 		return SKS_CKR_PIN_LOCKED;
 	}
 
-	if (!TAILQ_EMPTY(&token->session_list)) {
-		IMSG("SO cannot log in, pending session(s)");
-		return SKS_CKR_SESSION_EXISTS;
+	TAILQ_FOREACH(client, &pkcs11_client_list, link) {
+		if (!TAILQ_EMPTY(&client->session_list)) {
+			return SKS_CKR_SESSION_EXISTS;
+		}
 	}
 
 	cpin = TEE_Malloc(SKS_TOKEN_PIN_SIZE, TEE_MALLOC_FILL_ZERO);
@@ -578,14 +632,15 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-static uint32_t ck_token_session(uintptr_t teesess, TEE_Param *ctrl,
-				 TEE_Param *in, TEE_Param *out, bool readonly)
+static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
+				TEE_Param *in, TEE_Param *out, bool readonly)
 {
 	uint32_t rv;
 	struct serialargs ctrlargs;
 	uint32_t token_id;
 	struct ck_token *token;
 	struct pkcs11_session *session;
+	struct pkcs11_client *client;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -604,24 +659,33 @@ static uint32_t ck_token_session(uintptr_t teesess, TEE_Param *ctrl,
 	    token->login_state == PKCS11_TOKEN_STATE_SECURITY_OFFICER &&
 	    token->session_state == PKCS11_TOKEN_STATE_SESSION_READ_WRITE)
 		return SKS_CKR_SESSION_READ_WRITE_SO_EXISTS;
+	client = tee_session2client(tee_session);
+	if (!client) {
+		EMSG("Unexpected invlaid TEE session handle");
+		return SKS_FAILED;
+	}
+
 
 	session = TEE_Malloc(sizeof(*session), 0);
 	if (!session)
 		return SKS_MEMORY;
 
-	session->handle = handle_get(&session_handle_db, session);
-	session->tee_session = teesess;
+	session->handle = handle_get(&client->session_handle_db, session);
+	session->tee_session = tee_session;
 	session->processing = PKCS11_SESSION_READY;
 	session->tee_op_handle = TEE_HANDLE_NULL;
 	session->readwrite = !readonly;
 	session->token = token;
 	session->proc_id = SKS_UNDEFINED_ID;
+
+	session->client = client;
+
 	LIST_INIT(&session->object_list);
 
 	if (readonly)
 		token->session_state = PKCS11_TOKEN_STATE_SESSION_READ_ONLY;
 
-	TAILQ_INSERT_HEAD(&token->session_list, session, link);
+	TAILQ_INSERT_HEAD(&client->session_list, session, link);
 
 	*(uint32_t *)out->memref.buffer = session->handle;
 	out->memref.size = sizeof(uint32_t);
@@ -645,10 +709,6 @@ uint32_t entry_ck_token_rw_session(uintptr_t teesess, TEE_Param *ctrl,
 
 static void close_ck_session(struct pkcs11_session *session)
 {
-	struct ck_token *token = session->token;
-
-	(void)handle_put(&session_handle_db, session->handle);
-
 	if (session->tee_op_handle != TEE_HANDLE_NULL)
 		TEE_FreeOperation(session->tee_op_handle);
 
@@ -658,7 +718,8 @@ static void close_ck_session(struct pkcs11_session *session)
 
 	release_session_find_obj_context(session);
 
-	TAILQ_REMOVE(&token->session_list, session, link);
+	TAILQ_REMOVE(&session->client->session_list, session, link);
+	handle_put(&session->client->session_handle_db, session->handle);
 
 	/* Closing last read-only session switches token to read/write state */
 	if (!session->readwrite) {
@@ -691,7 +752,7 @@ static void close_ck_session(struct pkcs11_session *session)
 }
 
 /* ctrl=[session-handle], in=unused, out=unused */
-uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_ck_token_close_session(uintptr_t tee_session, TEE_Param *ctrl,
 				      TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -708,8 +769,8 @@ uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	close_ck_session(session);
@@ -717,13 +778,16 @@ uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 	return SKS_OK;
 }
 
-uint32_t entry_ck_token_close_all(uintptr_t teesess __unused, TEE_Param *ctrl,
+uint32_t entry_ck_token_close_all(uintptr_t tee_session, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
 	struct serialargs ctrlargs;
 	uint32_t token_id;
 	struct ck_token *token;
+	struct pkcs11_session *session;
+	struct pkcs11_session *next;
+	struct pkcs11_client *client = tee_session2client(tee_session);
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -738,31 +802,11 @@ uint32_t entry_ck_token_close_all(uintptr_t teesess __unused, TEE_Param *ctrl,
 	if (!token)
 		return SKS_CKR_SLOT_ID_INVALID;
 
-	while (!TAILQ_EMPTY(&token->session_list))
-		close_ck_session(TAILQ_FIRST(&token->session_list));
+	TAILQ_FOREACH_SAFE(session, &client->session_list, link, next) {
+		if (session->token == token)
+			close_ck_session(session);
+	}
 
 	return SKS_OK;
 }
 
-/*
- * Parse all tokens and all sessions. Close all sessions that are relying
- * on the target TEE session ID which is being closed by caller.
- */
-void ck_token_close_tee_session(uintptr_t tee_session)
-{
-	struct ck_token *token;
-	struct pkcs11_session *session;
-	struct pkcs11_session *next;
-	int n;
-
-	for (n = 0; n < TOKEN_COUNT; n++) {
-		token = get_token(n);
-		if (!token)
-			continue;
-
-		TAILQ_FOREACH_SAFE(session, &token->session_list, link, next) {
-			if (session->tee_session == tee_session)
-				close_ck_session(session);
-		}
-	}
-}

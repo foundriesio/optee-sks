@@ -263,7 +263,7 @@ bail:
 	return rv;
 }
 
-uint32_t entry_destroy_object(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_destroy_object(uintptr_t tee_session, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out)
 {
 	struct serialargs ctrlargs;
@@ -286,8 +286,8 @@ uint32_t entry_destroy_object(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	object = sks_handle2object(object_handle, session);
@@ -435,7 +435,7 @@ static void release_find_obj_context(struct pkcs11_find_objects *find_ctx)
 /*
  * Entry for command SKS_CMD_FIND_OBJECTS_INIT
  */
-uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 				 TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -462,8 +462,8 @@ uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess) {
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session) {
 		rv = SKS_CKR_SESSION_HANDLE_INVALID;
 		goto bail;
 	}
@@ -610,7 +610,7 @@ bail:
 /*
  * Entry for command SKS_CMD_FIND_OBJECTS
  */
-uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects(uintptr_t tee_session, TEE_Param *ctrl,
 			    TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -635,8 +635,8 @@ uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	ctx = session->find_ctx;
@@ -682,7 +682,7 @@ void release_session_find_obj_context(struct pkcs11_session *session)
 /*
  * Entry for command SKS_CMD_FIND_OBJECTS_FINAL
  */
-uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_find_objects_final(uintptr_t tee_session, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -699,8 +699,8 @@ uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle);
-	if (!session || session->tee_session != teesess)
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	if (!session->find_ctx)
