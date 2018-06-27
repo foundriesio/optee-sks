@@ -56,7 +56,7 @@ uint32_t serialargs_alloc_and_get(struct serialargs *args,
 		return SKS_BAD_PARAM;
 	}
 
-	ptr = TEE_Malloc(size, 0);
+	ptr = TEE_Malloc(size, TEE_MALLOC_FILL_ZERO);
 	if (!ptr)
 		return SKS_MEMORY;
 

@@ -120,7 +120,8 @@ uint32_t create_object_uuid(struct ck_token *token __unused,
 {
 	assert(!obj->uuid);
 
-	obj->uuid = TEE_Malloc(sizeof(TEE_UUID), 0);
+	obj->uuid = TEE_Malloc(sizeof(TEE_UUID),
+				TEE_USER_MEM_HINT_NO_FILL_ZERO);
 	if (!obj->uuid)
 		return SKS_MEMORY;
 
@@ -290,8 +291,8 @@ struct ck_token *init_token_db(unsigned int token_id)
 
 	LIST_INIT(&token->object_list);
 
-	db_main = TEE_Malloc(sizeof(*db_main), 0);
-	db_objs = TEE_Malloc(sizeof(*db_objs), 0);
+	db_main = TEE_Malloc(sizeof(*db_main), TEE_MALLOC_FILL_ZERO);
+	db_objs = TEE_Malloc(sizeof(*db_objs), TEE_MALLOC_FILL_ZERO);
 	if (!db_main || !db_objs)
 		goto error;
 

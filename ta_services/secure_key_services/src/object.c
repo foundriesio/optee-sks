@@ -58,8 +58,9 @@ static void cleanup_volatile_obj_ref(struct sks_object *obj)
 	if (obj->key_handle != TEE_HANDLE_NULL)
 		TEE_FreeTransientObject(obj->key_handle);
 
-	if (obj->attribs_hdl != TEE_HANDLE_NULL)
+	if (obj->attribs_hdl != TEE_HANDLE_NULL) {
 		TEE_CloseObject(obj->attribs_hdl);
+	}
 
 	TEE_Free(obj->attributes);
 	TEE_Free(obj->uuid);

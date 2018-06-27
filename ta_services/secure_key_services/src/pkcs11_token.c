@@ -307,6 +307,10 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	}
 
 	cpin = TEE_Malloc(SKS_TOKEN_PIN_SIZE, TEE_MALLOC_FILL_ZERO);
+	if (!cpin) {
+		return SKS_MEMORY;
+	}
+
 	TEE_MemMove(cpin, pin, pin_size);
 	cipher_pin(token->pin_hdl[0], cpin, SKS_TOKEN_PIN_SIZE);
 
@@ -329,8 +333,7 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	pin_rc = 0;
 	if (token->db_main->so_pin_size != pin_size)
 		pin_rc = 1;
-	if (buf_compare_ct(token->db_main->so_pin, cpin,
-			   SKS_TOKEN_PIN_SIZE))
+	if (buf_compare_ct(token->db_main->so_pin, cpin, SKS_TOKEN_PIN_SIZE))
 		pin_rc = 1;
 
 	if (pin_rc) {
@@ -346,6 +349,7 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 				     offsetof(struct token_persistent_main,
 					      flags),
 				     sizeof(token->db_main->flags));
+
 		update_persistent_db(token,
 				     offsetof(struct token_persistent_main,
 					      so_pin_count),
@@ -717,7 +721,6 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 		}
 	}
 
-
 	session = TEE_Malloc(sizeof(*session), 0);
 	if (!session)
 		return SKS_MEMORY;
@@ -749,17 +752,17 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t entry_ck_token_ro_session(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_ck_token_ro_session(uintptr_t tee_session, TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
-	return ck_token_session(teesess, ctrl, in, out, true);
+	return open_ck_session(tee_session, ctrl, in, out, true);
 }
 
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
-uint32_t entry_ck_token_rw_session(uintptr_t teesess, TEE_Param *ctrl,
+uint32_t entry_ck_token_rw_session(uintptr_t tee_session, TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
-	return ck_token_session(teesess, ctrl, in, out, false);
+	return open_ck_session(tee_session, ctrl, in, out, false);
 }
 
 static void close_ck_session(struct pkcs11_session *session)
