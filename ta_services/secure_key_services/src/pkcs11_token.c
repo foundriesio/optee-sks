@@ -112,20 +112,24 @@ struct pkcs11_session *sks_handle2session(uint32_t handle)
  * PKCS#11 expects an session must finalize (or cancel) an operation
  * before starting a new one.
  *
- * enum pkcs11_session_processing provides the valid operation states for a
+ * enum pkcs11_proc_state provides the valid operation states for a
  * PKCS#11 session.
  *
- * set_pkcs_session_processing_state() changes the session operation state.
+ * set_processing_state() changes the session operation state.
  *
- * check_pkcs_session_processing_state() checks the session is in the expected
+ * check_processing_state() checks the session is in the expected
  * operation state.
  */
-int set_pkcs_session_processing_state(struct pkcs11_session *pkcs_session,
-				      enum pkcs11_session_processing state)
+int set_processing_state(struct pkcs11_session *pkcs_session,
+			 enum pkcs11_proc_state state)
 {
 	if (!pkcs_session)
 		return 1;
 
+	/*
+	 * Caller can move to any state from the ready state.
+	 * Caller can always return to the ready state.
+	 */
 	if (pkcs_session->processing == PKCS11_SESSION_READY ||
 	    state == PKCS11_SESSION_READY) {
 		pkcs_session->processing = state;
@@ -170,8 +174,8 @@ int set_pkcs_session_processing_state(struct pkcs11_session *pkcs_session,
 	return 1;
 }
 
-int check_pkcs_session_processing_state(struct pkcs11_session *pkcs_session,
-					enum pkcs11_session_processing state)
+int check_processing_state(struct pkcs11_session *pkcs_session,
+			   enum pkcs11_proc_state state)
 {
 	if (!pkcs_session)
 		return 1;

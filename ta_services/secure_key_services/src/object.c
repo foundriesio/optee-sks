@@ -473,8 +473,7 @@ uint32_t entry_find_objects_init(uintptr_t teesess, TEE_Param *ctrl,
 	 * FIXME: not clear if C_FindObjects can be called while a processing
 	 * is active. It seems not... but to be confirmed!
 	 */
-	if (check_pkcs_session_processing_state(session,
-						PKCS11_SESSION_READY)) {
+	if (check_processing_state(session, PKCS11_SESSION_READY)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}

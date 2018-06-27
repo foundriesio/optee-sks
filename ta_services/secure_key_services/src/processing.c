@@ -42,7 +42,7 @@ static void release_active_processing(struct pkcs11_session *session)
 		session->tee_op_handle = TEE_HANDLE_NULL;
 	}
 
-	if (set_pkcs_session_processing_state(session, PKCS11_SESSION_READY))
+	if (set_processing_state(session, PKCS11_SESSION_READY))
 		TEE_Panic(0);
 }
 
@@ -87,8 +87,7 @@ uint32_t entry_import_object(uintptr_t teesess,
 		goto bail;
 	}
 
-	if (check_pkcs_session_processing_state(session,
-						PKCS11_SESSION_READY)) {
+	if (check_processing_state(session, PKCS11_SESSION_READY)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
@@ -389,7 +388,8 @@ static uint32_t load_key(struct sks_object *obj)
 		return rv;
 	}
 
-	if (get_attribute_ptr(obj->attributes, SKS_CKA_VALUE, &value, &value_size))
+	if (get_attribute_ptr(obj->attributes, SKS_CKA_VALUE,
+			      &value, &value_size))
 		TEE_Panic(0);
 
 	res = TEE_AllocateTransientObject(tee_obj_type, value_size * 8,
@@ -455,15 +455,14 @@ uint32_t entry_cipher_init(uintptr_t teesess, TEE_Param *ctrl,
 		goto bail;
 	}
 
-	if (check_pkcs_session_processing_state(session,
-						PKCS11_SESSION_READY)) {
+	if (check_processing_state(session, PKCS11_SESSION_READY)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
 
-	if (set_pkcs_session_processing_state(session, decrypt ?
-					      PKCS11_SESSION_DECRYPTING :
-					      PKCS11_SESSION_ENCRYPTING)) {
+	if (set_processing_state(session, decrypt ?
+				 PKCS11_SESSION_DECRYPTING :
+				 PKCS11_SESSION_ENCRYPTING)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
@@ -620,9 +619,9 @@ uint32_t entry_cipher_update(uintptr_t teesess, TEE_Param *ctrl,
 	if (!session || session->tee_session != teesess)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (check_pkcs_session_processing_state(session, decrypt ?
-						PKCS11_SESSION_DECRYPTING :
-						PKCS11_SESSION_ENCRYPTING))
+	if (check_processing_state(session, decrypt ?
+					    PKCS11_SESSION_DECRYPTING :
+					    PKCS11_SESSION_ENCRYPTING))
 		return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	switch (session->proc_id) {
@@ -698,9 +697,9 @@ uint32_t entry_cipher_final(uintptr_t teesess, TEE_Param *ctrl,
 	if (!session || session->tee_session != teesess)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (check_pkcs_session_processing_state(session, decrypt ?
-						PKCS11_SESSION_DECRYPTING :
-						PKCS11_SESSION_ENCRYPTING))
+	if (check_processing_state(session, decrypt ?
+					    PKCS11_SESSION_DECRYPTING :
+					    PKCS11_SESSION_ENCRYPTING))
 		return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	switch (session->proc_id) {
@@ -829,8 +828,7 @@ uint32_t entry_generate_object(uintptr_t teesess,
 		goto bail;
 	}
 
-	if (check_pkcs_session_processing_state(session,
-						PKCS11_SESSION_READY)) {
+	if (check_processing_state(session, PKCS11_SESSION_READY)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
@@ -949,15 +947,13 @@ uint32_t entry_signverify_init(uintptr_t teesess, TEE_Param *ctrl,
 		goto bail;
 	}
 
-	if (check_pkcs_session_processing_state(session,
-						PKCS11_SESSION_READY)) {
+	if (check_processing_state(session, PKCS11_SESSION_READY)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
 
-	if (set_pkcs_session_processing_state(session, sign ?
-					      PKCS11_SESSION_SIGNING :
-					      PKCS11_SESSION_VERIFYING)) {
+	if (set_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
+						 PKCS11_SESSION_VERIFYING)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}
@@ -1084,9 +1080,8 @@ uint32_t entry_signverify_update(uintptr_t teesess, TEE_Param *ctrl,
 	if (!session || session->tee_session != teesess)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (check_pkcs_session_processing_state(session, sign ?
-						PKCS11_SESSION_SIGNING :
-						PKCS11_SESSION_VERIFYING))
+	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
+						 PKCS11_SESSION_VERIFYING))
 		return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	if (!in || out) {
@@ -1150,9 +1145,8 @@ uint32_t entry_signverify_final(uintptr_t teesess, TEE_Param *ctrl,
 	if (!session || session->tee_session != teesess)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (check_pkcs_session_processing_state(session, sign ?
-						PKCS11_SESSION_SIGNING :
-						PKCS11_SESSION_VERIFYING))
+	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
+						 PKCS11_SESSION_VERIFYING))
 		return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	if (in || !out) {

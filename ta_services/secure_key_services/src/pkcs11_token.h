@@ -123,8 +123,8 @@ struct ck_token {
  * state (from a processing finalization request) before entering another
  * processing state.
  */
-enum pkcs11_session_processing {
-	PKCS11_SESSION_READY = 0,		/* session default state */
+enum pkcs11_proc_state {
+	PKCS11_SESSION_READY = 0,		/* No active processing/operation */
 	PKCS11_SESSION_ENCRYPTING,
 	PKCS11_SESSION_DECRYPTING,
 	PKCS11_SESSION_DIGESTING,
@@ -178,7 +178,7 @@ struct pkcs11_session {
 	uint32_t handle;
 	bool readwrite;
 	uint32_t state;
-	enum pkcs11_session_processing processing;
+	enum pkcs11_proc_state processing;
 	TEE_OperationHandle tee_op_handle;
 	uint32_t proc_id;
 	void *proc_params;
@@ -216,11 +216,12 @@ uint32_t get_persistent_objects_list(struct ck_token *token,
 void ck_token_close_tee_session(uintptr_t tee_session);
 struct pkcs11_session *sks_handle2session(uint32_t client_handle);
 
-int set_pkcs_session_processing_state(struct pkcs11_session *session,
-				      enum pkcs11_session_processing state);
+int set_processing_state(struct pkcs11_session *session,
+			 enum pkcs11_proc_state state);
 
-int check_pkcs_session_processing_state(struct pkcs11_session *session,
-					enum pkcs11_session_processing state);
+/* Return 0 if session state matches , else return 1 */
+int check_processing_state(struct pkcs11_session *session,
+			   enum pkcs11_proc_state state);
 
 bool pkcs11_session_is_read_write(struct pkcs11_session *session);
 
