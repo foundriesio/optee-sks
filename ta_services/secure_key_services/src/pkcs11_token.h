@@ -31,18 +31,19 @@
 			    MIN(strlen((char *)(_src)), sizeof(_dst))); \
 	} while (0)
 
-enum pkcs11_token_login_state {
-	PKCS11_TOKEN_STATE_INVALID = 0,		/* token default state */
-	PKCS11_TOKEN_STATE_PUBLIC_SESSIONS,
-	PKCS11_TOKEN_STATE_SECURITY_OFFICER,
-	PKCS11_TOKEN_STATE_USER_SESSIONS,
-	PKCS11_TOKEN_STATE_CONTEXT_SPECIFIC,
+enum pkcs11_token_state {
+	PKCS11_TOKEN_RESET = 0,
+	PKCS11_TOKEN_READ_WRITE,
+	PKCS11_TOKEN_READ_ONLY,
 };
 
-enum pkcs11_token_session_state {
-	PKCS11_TOKEN_STATE_SESSION_NONE = 0,	/* token default state */
-	PKCS11_TOKEN_STATE_SESSION_READ_WRITE,
-	PKCS11_TOKEN_STATE_SESSION_READ_ONLY,
+enum pkcs11_session_state {
+	PKCS11_SESSION_RESET = 0,
+	PKCS11_SESSION_PUBLIC_READ_WRITE,
+	PKCS11_SESSION_PUBLIC_READ_ONLY,
+	PKCS11_SESSION_USER_READ_WRITE,
+	PKCS11_SESSION_USER_READ_ONLY,
+	PKCS11_SESSION_SO_READ_WRITE,
 };
 
 TAILQ_HEAD(client_list, pkcs11_client);
@@ -103,11 +104,10 @@ struct token_persistent_objs {
  * @session_list - Head of the list of the sessions owned by the token
  */
 struct ck_token {
+	enum pkcs11_token_state state;
 	uint32_t session_counter;
 	uint32_t rw_session_counter;
 
-	enum pkcs11_token_login_state login_state;
-	enum pkcs11_token_session_state	session_state;
 
 
 	TEE_ObjectHandle db_hdl;	/* Opened handle to persistent database */
@@ -190,8 +190,7 @@ struct pkcs11_session {
 	struct ck_token *token;
 	uintptr_t tee_session;
 	uint32_t handle;
-	bool readwrite;
-	uint32_t state;
+	enum pkcs11_session_state state;
 	enum pkcs11_proc_state processing;
 	struct pkcs11_client *client;
 	TEE_OperationHandle tee_op_handle;
@@ -254,8 +253,7 @@ struct object_list *pkcs11_get_session_objects(struct pkcs11_session *session)
 static inline
 bool pkcs11_session_is_security_officer(struct pkcs11_session *session)
 {
-	return session->token->login_state ==
-		PKCS11_TOKEN_STATE_SECURITY_OFFICER;
+	return session->state == PKCS11_SESSION_SO_READ_WRITE;
 }
 
 static inline

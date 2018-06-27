@@ -486,9 +486,10 @@ uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
 
-	switch (session->token->login_state) {
-	case PKCS11_TOKEN_STATE_SECURITY_OFFICER:
-	case PKCS11_TOKEN_STATE_USER_SESSIONS:
+	switch (session->state) {
+	case PKCS11_SESSION_SO_READ_WRITE:
+	case PKCS11_SESSION_USER_READ_WRITE:
+	case PKCS11_SESSION_USER_READ_ONLY:
 		return SKS_OK;
 	default:
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;

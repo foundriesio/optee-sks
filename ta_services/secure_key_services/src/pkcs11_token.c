@@ -97,12 +97,13 @@ static int pkcs11_token_init(unsigned int id)
 	if (!token)
 		return 1;
 
-	if (token->login_state != PKCS11_TOKEN_STATE_INVALID)
+	if (token->state != PKCS11_TOKEN_RESET) {
+		/* Token is already in a valid state */
 		return 0;
+	}
 
 	/* Initialize the token runtime state */
-	token->login_state = PKCS11_TOKEN_STATE_PUBLIC_SESSIONS;
-	token->session_state = PKCS11_TOKEN_STATE_SESSION_NONE;
+	token->state = PKCS11_TOKEN_READ_WRITE;
 
 	return 0;
 }
@@ -130,26 +131,14 @@ void pkcs11_deinit(void)
 
 bool pkcs11_session_is_read_write(struct pkcs11_session *session)
 {
-	if (!session->readwrite)
-		return false;
-
-	if (session->token->session_state ==
-	    PKCS11_TOKEN_STATE_SESSION_READ_ONLY)
-		return false;
-
-	switch (session->token->login_state) {
-	case PKCS11_TOKEN_STATE_INVALID:
-	case PKCS11_TOKEN_STATE_SECURITY_OFFICER:
-		return false;
-	case PKCS11_TOKEN_STATE_PUBLIC_SESSIONS:
-	case PKCS11_TOKEN_STATE_USER_SESSIONS:
-	case PKCS11_TOKEN_STATE_CONTEXT_SPECIFIC:
-		break;
+	switch (session->state) {
+	case PKCS11_SESSION_PUBLIC_READ_WRITE:
+	case PKCS11_SESSION_USER_READ_WRITE:
+	case PKCS11_SESSION_SO_READ_WRITE:
+		return true;
 	default:
-		TEE_Panic(0);
+		return false;
 	}
-
-	return true;
 }
 
 struct pkcs11_session *sks_handle2session(uint32_t handle,
@@ -631,6 +620,59 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	return SKS_OK;
 }
 
+static void set_session_state(struct pkcs11_client *client,
+			      struct pkcs11_session *session, bool readonly)
+{
+	struct pkcs11_session *sess;
+	enum pkcs11_session_state state = PKCS11_SESSION_RESET;
+
+	/*
+	 * No need to check all client session, only the first session on
+	 * target token gives client loggin configuration.
+	 */
+	TAILQ_FOREACH(sess, &client->session_list, link) {
+		if (sess == session)
+			MSG("session found in list!!!");
+		if (sess->token != session->token)
+			continue;
+
+		switch (sess->state) {
+		case PKCS11_SESSION_PUBLIC_READ_WRITE:
+		case PKCS11_SESSION_PUBLIC_READ_ONLY:
+			state = PKCS11_SESSION_PUBLIC_READ_WRITE;
+			break;
+		case PKCS11_SESSION_USER_READ_WRITE:
+		case PKCS11_SESSION_USER_READ_ONLY:
+			state = PKCS11_SESSION_USER_READ_WRITE;
+			break;
+		case PKCS11_SESSION_SO_READ_WRITE:
+			state = PKCS11_SESSION_SO_READ_WRITE;
+			break;
+		default:
+			TEE_Panic(0);
+		}
+		break;
+	 }
+
+	switch (state) {
+	case PKCS11_SESSION_USER_READ_WRITE:
+		session->state = readonly ? PKCS11_SESSION_PUBLIC_READ_ONLY :
+					  PKCS11_SESSION_PUBLIC_READ_WRITE;
+		break;
+	case PKCS11_SESSION_SO_READ_WRITE:
+		/* SO cannot open read-only sessions */
+		if (readonly)
+			TEE_Panic(0);
+
+		session->state = PKCS11_SESSION_PUBLIC_READ_ONLY;
+		break;
+	default:
+		session->state = readonly ? PKCS11_SESSION_PUBLIC_READ_ONLY :
+					  PKCS11_SESSION_PUBLIC_READ_WRITE;
+		break;
+	}
+}
+
 /* ctrl=[slot-id], in=unused, out=[session-handle] */
 static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, bool readonly)
@@ -655,14 +697,22 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 	if (!token)
 		return SKS_CKR_SLOT_ID_INVALID;
 
-	if (readonly &&
-	    token->login_state == PKCS11_TOKEN_STATE_SECURITY_OFFICER &&
-	    token->session_state == PKCS11_TOKEN_STATE_SESSION_READ_WRITE)
-		return SKS_CKR_SESSION_READ_WRITE_SO_EXISTS;
+	if (!readonly && token->state == PKCS11_TOKEN_READ_ONLY) {
+		return SKS_CKR_TOKEN_WRITE_PROTECTED;
+	}
+
 	client = tee_session2client(tee_session);
 	if (!client) {
 		EMSG("Unexpected invlaid TEE session handle");
 		return SKS_FAILED;
+	}
+
+	if (readonly) {
+		TAILQ_FOREACH(session, &client->session_list, link) {
+			if (session->state == PKCS11_SESSION_SO_READ_WRITE) {
+				return SKS_CKR_SESSION_READ_WRITE_SO_EXISTS;
+			}
+		}
 	}
 
 
@@ -674,7 +724,6 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 	session->tee_session = tee_session;
 	session->processing = PKCS11_SESSION_READY;
 	session->tee_op_handle = TEE_HANDLE_NULL;
-	session->readwrite = !readonly;
 	session->token = token;
 	session->proc_id = SKS_UNDEFINED_ID;
 
@@ -682,8 +731,7 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 
 	LIST_INIT(&session->object_list);
 
-	if (readonly)
-		token->session_state = PKCS11_TOKEN_STATE_SESSION_READ_ONLY;
+	set_session_state(client, session, readonly);
 
 	TAILQ_INSERT_HEAD(&client->session_list, session, link);
 
@@ -721,32 +769,7 @@ static void close_ck_session(struct pkcs11_session *session)
 	TAILQ_REMOVE(&session->client->session_list, session, link);
 	handle_put(&session->client->session_handle_db, session->handle);
 
-	/* Closing last read-only session switches token to read/write state */
-	if (!session->readwrite) {
-		struct pkcs11_session *sess;
-		bool last_ro = true;
-		bool last = true;
-
-		TAILQ_FOREACH(sess, &session->token->session_list, link) {
-			last = false;
-
-			if (sess->readwrite)
-				continue;
-
-			last_ro = false;
-		}
-
-		if (last)
-			session->token->session_state =
-					PKCS11_TOKEN_STATE_SESSION_NONE;
-		else if (last_ro)
-			session->token->session_state =
-					PKCS11_TOKEN_STATE_SESSION_READ_WRITE;
-	}
-
-	if (TAILQ_EMPTY(&session->token->session_list))
-		session->token->login_state =
-					PKCS11_TOKEN_STATE_PUBLIC_SESSIONS;
+	// If no more session, next opened one will simply be Public loggin
 
 	TEE_Free(session);
 }
