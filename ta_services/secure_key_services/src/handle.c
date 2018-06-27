@@ -18,6 +18,11 @@
  */
 #define HANDLE_DB_INITIAL_MAX_PTRS	4
 
+void handle_db_init(struct handle_db *db)
+{
+	TEE_MemFill(db, 0, sizeof(*db));
+}
+
 void handle_db_destroy(struct handle_db *db)
 {
 	if (db) {
@@ -80,4 +85,19 @@ void *handle_lookup(struct handle_db *db, uint32_t handle)
 		return NULL;
 
 	return db->ptrs[handle];
+}
+
+uint32_t handle_lookup_handle(struct handle_db *db, void *ptr)
+{
+	uint32_t n;
+
+	if (ptr) {
+		for (n = 1; n < db->max_ptrs; n++) {
+			if (db->ptrs[n] == ptr) {
+				return n;
+			}
+		}
+	}
+
+	return 0;
 }
