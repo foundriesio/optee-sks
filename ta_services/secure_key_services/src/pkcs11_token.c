@@ -730,6 +730,7 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 	session->client = client;
 
 	LIST_INIT(&session->object_list);
+	handle_db_init(&session->object_handle_db);
 
 	set_session_state(client, session, readonly);
 
@@ -760,14 +761,17 @@ static void close_ck_session(struct pkcs11_session *session)
 	if (session->tee_op_handle != TEE_HANDLE_NULL)
 		TEE_FreeOperation(session->tee_op_handle);
 
-	while (!LIST_EMPTY(&session->object_list))
+	/* Do not put (destroy) object handles: whole database is destroyed */
+	while (!LIST_EMPTY(&session->object_list)) {
 		destroy_object(session, LIST_FIRST(&session->object_list),
 				true);
+	}
 
 	release_session_find_obj_context(session);
 
 	TAILQ_REMOVE(&session->client->session_list, session, link);
 	handle_put(&session->client->session_handle_db, session->handle);
+	handle_db_destroy(&session->object_handle_db);
 
 	// If no more session, next opened one will simply be Public loggin
 

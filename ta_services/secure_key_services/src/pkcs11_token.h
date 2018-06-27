@@ -108,7 +108,7 @@ struct ck_token {
 	uint32_t session_counter;
 	uint32_t rw_session_counter;
 
-
+	struct object_list object_list;
 
 	TEE_ObjectHandle db_hdl;	/* Opened handle to persistent database */
 	TEE_ObjectHandle pin_hdl[SKS_MAX_USERS];	/* Opened handle to PIN keys */
@@ -187,6 +187,7 @@ struct pkcs11_client {
 struct pkcs11_session {
 	TAILQ_ENTRY(pkcs11_session) link;
 	struct object_list object_list;
+	struct handle_db object_handle_db;
 	struct ck_token *token;
 	uintptr_t tee_session;
 	uint32_t handle;

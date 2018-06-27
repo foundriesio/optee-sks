@@ -288,6 +288,8 @@ struct ck_token *init_token_db(unsigned int token_id)
 	for (n = 0; n < SKS_MAX_USERS; n++)
 		init_pin_keys(token, n);
 
+	LIST_INIT(&token->object_list);
+
 	db_main = TEE_Malloc(sizeof(*db_main), 0);
 	db_objs = TEE_Malloc(sizeof(*db_objs), 0);
 	if (!db_main || !db_objs)
@@ -304,6 +306,9 @@ struct ck_token *init_token_db(unsigned int token_id)
 					&db_hdl);
 	if (res == TEE_SUCCESS) {
 		uint32_t size;
+		size_t idx;
+
+		IMSG("Load SKS persistent database for token #%d", token_id);
 
 		size = sizeof(*db_main);
 		res = TEE_ReadObjectData(db_hdl, db_main, size, &size);
@@ -324,6 +329,18 @@ struct ck_token *init_token_db(unsigned int token_id)
 		res = TEE_ReadObjectData(db_hdl, db_objs, size, &size);
 		if (res || size != (db_objs->count * sizeof(TEE_UUID)))
 			TEE_Panic(0);
+
+		for (idx = 0; idx < db_objs->count; idx++) {
+			/* Create an empty object instance */
+			struct sks_object *obj;
+			TEE_UUID *uuid = &db_objs->uuids[idx];
+
+			obj = create_token_object_instance(NULL, uuid);
+			if (!obj)
+				TEE_Panic(0);
+
+			LIST_INSERT_HEAD(&token->object_list, obj, link);
+		}
 
 	} else if (res == TEE_ERROR_ITEM_NOT_FOUND) {
 

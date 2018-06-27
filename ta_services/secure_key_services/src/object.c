@@ -19,26 +19,21 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
-/*
- * A database for the objects loaded in the TA.
- * TODO: move object db to session or token.
- */
-static struct handle_db object_handle_db = HANDLE_DB_INITIALIZER;
-
 struct sks_object *sks_handle2object(uint32_t handle,
 				     struct pkcs11_session *session)
 {
-	struct sks_object *obj = handle_lookup(&object_handle_db, handle);
+	return handle_lookup(&session->object_handle_db, handle);
+}
 
-	if (obj->session_owner != session)
-		return NULL;
-
-	return obj;
+uint32_t sks_object2handle(struct sks_object * obj,
+			   struct pkcs11_session *session)
+{
+	return handle_lookup_handle(&session->object_handle_db, obj);
 }
 
 /* Currently handle pkcs11 sessions and tokens */
 
-static inline struct object_list *get_session_objects(void *session)
+static struct object_list *get_session_objects(void *session)
 {
 	/* Currently supporting only pkcs11 session */
 	struct pkcs11_session *ck_session = session;
@@ -50,14 +45,6 @@ static struct ck_token *get_session_token(void *session)
 {
 	/* Currently supporting only pkcs11 session */
 	struct pkcs11_session *ck_session = session;
-
-	return pkcs11_session2token(ck_session);
-}
-
-static struct ck_token *get_object_token(struct sks_object *obj)
-{
-	/* Currently supporting only pkcs11 session */
-	struct pkcs11_session *ck_session = obj->session_owner;
 
 	return pkcs11_session2token(ck_session);
 }
@@ -74,22 +61,15 @@ static void cleanup_volatile_obj_ref(struct sks_object *obj)
 	if (obj->attribs_hdl != TEE_HANDLE_NULL)
 		TEE_CloseObject(obj->attribs_hdl);
 
-	handle_put(&object_handle_db, obj->client_handle);
-
 	TEE_Free(obj->attributes);
 	TEE_Free(obj->uuid);
 	TEE_Free(obj);
 }
 
-static void release_object_from_handle(uint32_t handle)
-{
-	struct sks_object *obj = handle_lookup(&object_handle_db, handle);
-
-	cleanup_volatile_obj_ref(obj);
-}
 
 /* Release resources of a persistent object including volatile resources */
-static void cleanup_persistent_object(struct sks_object *obj)
+static void cleanup_persistent_object(struct sks_object *obj,
+				      struct ck_token *token)
 {
 	TEE_Result res;
 
@@ -112,7 +92,9 @@ static void cleanup_persistent_object(struct sks_object *obj)
 
 out:
 	obj->attribs_hdl = TEE_HANDLE_NULL;
-	destroy_object_uuid(get_session_token(obj->session_owner), obj);
+	destroy_object_uuid(token, obj);
+
+	LIST_REMOVE(obj, link);
 	cleanup_volatile_obj_ref(obj);
 }
 
@@ -133,24 +115,14 @@ uint32_t destroy_object(struct pkcs11_session *session,
 		MSG_RAW("[destroy] obj uuid %pUl", (void *)obj->uuid);
 #endif
 
-	/*
-	 * Objects are reachable only from their context.
-	 * We only support pkcs11 session for now: check object token id.
-	 */
-	if (get_object_token(obj) != session->token)
-		return SKS_BAD_PARAM;
-
-	/* Non persistent object are reachable from their session */
-	if (obj->attribs_hdl == TEE_HANDLE_NULL &&
-	    obj->session_owner != session)
-		return SKS_CKR_OBJECT_HANDLE_INVALID;
-
 	/* Remove from session list only if was published */
 	if (obj->link.le_next || obj->link.le_prev)
 		LIST_REMOVE(obj, link);
 
 	if (session_only) {
 		/* Destroy object due to session closure */
+		handle_put(&session->object_handle_db,
+			   sks_object2handle(obj, session));
 		cleanup_volatile_obj_ref(obj);
 		return SKS_OK;
 	}
@@ -158,49 +130,57 @@ uint32_t destroy_object(struct pkcs11_session *session,
 	/* Destroy target object (persistent or not) */
 	if (get_bool(obj->attributes, SKS_CKA_TOKEN)) {
 		assert(obj->uuid);
-		if (unregister_persistent_object(get_object_token(obj),
-						  obj->uuid))
+		if (unregister_persistent_object(session->token, obj->uuid))
 			TEE_Panic(0);
 
-		cleanup_persistent_object(obj);
+		cleanup_persistent_object(obj, session->token);
+		handle_put(&session->object_handle_db,
+			   sks_object2handle(obj, session));
 	} else {
+		handle_put(&session->object_handle_db,
+			   sks_object2handle(obj, session));
 		cleanup_volatile_obj_ref(obj);
 	}
 
 	return SKS_OK;
 }
 
-static struct sks_object *create_object_instance(void *session,
-						 struct sks_attrs_head *head)
+static struct sks_object *create_object_instance(struct sks_attrs_head *head)
 {
 	struct sks_object *obj;
-	uint32_t obj_handle;
 
 	obj = TEE_Malloc(sizeof(struct sks_object), TEE_MALLOC_FILL_ZERO);
 	if (!obj)
 		return NULL;
 
-	obj_handle = handle_get(&object_handle_db, obj);
-	if (!obj_handle) {
-		TEE_Free(obj);
-		return NULL;
-	}
-
 	obj->key_handle = TEE_HANDLE_NULL;
 	obj->attribs_hdl = TEE_HANDLE_NULL;
 	obj->attributes = head;
-	obj->client_handle = obj_handle;
-	obj->session_owner = session;
 
 	return obj;
 }
 
-uint32_t create_object(void *session, struct sks_attrs_head *head,
+struct sks_object *create_token_object_instance(struct sks_attrs_head *head,
+						TEE_UUID *uuid)
+{
+	struct sks_object *obj = create_object_instance(head);
+
+	if (!obj)
+		return NULL;
+
+	obj->uuid = uuid;
+
+	return obj;
+}
+
+uint32_t create_object(void *sess, struct sks_attrs_head *head,
 		       uint32_t *out_handle)
 {
 	uint32_t rv;
 	TEE_Result res = TEE_SUCCESS;
 	struct sks_object *obj;
+	struct pkcs11_session *session = (struct pkcs11_session *)sess;
+	uint32_t obj_handle;
 
 #ifdef DEBUG
 	trace_attributes("[create]", head);
@@ -211,9 +191,16 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 	 * are expected consistent and reliable.
 	 */
 
-	obj = create_object_instance(session, head);
+	obj = create_object_instance(head);
 	if (!obj)
 		return SKS_MEMORY;
+
+	/* Create a handle for the object in the session database */
+	obj_handle = handle_get(&session->object_handle_db, obj);
+	if (!obj_handle) {
+		rv = SKS_MEMORY;
+		goto bail;
+	}
 
 	if (get_bool(obj->attributes, SKS_CKA_TOKEN)) {
 		/*
@@ -245,17 +232,20 @@ uint32_t create_object(void *session, struct sks_attrs_head *head,
 						obj->uuid);
 		if (rv)
 			goto bail;
+		LIST_INSERT_HEAD(&session->token->object_list, obj, link);
 	} else {
 		rv = SKS_OK;
+		LIST_INSERT_HEAD(get_session_objects(session), obj, link);
 	}
 
-	LIST_INSERT_HEAD(get_session_objects(session), obj, link);
-	*out_handle = obj->client_handle;
+
+	*out_handle = obj_handle;
 
 bail:
 	if (rv) {
+		handle_put(&session->object_handle_db, obj_handle);
 		if (get_bool(obj->attributes, SKS_CKA_TOKEN))
-			cleanup_persistent_object(obj);
+			cleanup_persistent_object(obj, session->token);
 		else
 			cleanup_volatile_obj_ref(obj);
 	}
@@ -291,84 +281,42 @@ uint32_t entry_destroy_object(uintptr_t tee_session, TEE_Param *ctrl,
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
 	object = sks_handle2object(object_handle, session);
-	if (!object || object->session_owner != session)
+	if (!object)
 		return SKS_BAD_PARAM;
 
-	return destroy_object(session, object, false);
-}
-
-/* Init the list of the persistent UUIDs currently stored */
-static uint32_t init_plist(struct pkcs11_session *session,
-			   TEE_UUID **uuids, size_t *count)
-{
-	size_t size = 0;
-	TEE_UUID *ptr;
-	uint32_t rv;
-
-	rv = get_persistent_objects_list(session->token, NULL, &size);
-
-	if (rv == SKS_OK && !size) {
-		*count = 0;
-		*uuids = NULL;
-		return SKS_OK;
-	}
-
-	if (rv != SKS_SHORT_BUFFER)
-		return SKS_ERROR;
-
-	ptr = TEE_Malloc(size, 0);
-	if (!ptr)
-		return SKS_MEMORY;
-
-	rv = get_persistent_objects_list(session->token, ptr, &size);
-	if (rv) {
-		TEE_Free(ptr);
-	} else {
-		assert(!(size % sizeof(TEE_UUID)));
-		*count = size / sizeof(TEE_UUID);
-		*uuids = ptr;
+	rv = destroy_object(session, object, false);
+	if (rv == SKS_OK) {
+		handle_put(&session->object_handle_db, object_handle);
 	}
 
 	return rv;
 }
 
-/* Remove UUID from the list of the persistent UUIDs that match find request */
-static void remove_from_plist(TEE_UUID *uuid, TEE_UUID *puuids, size_t *count)
-{
-	size_t idx = *count;
-
-	if (!uuid)
-		return;
-
-	while (idx--) {
-		if (!TEE_MemCompare(uuid, puuids + idx, sizeof(TEE_UUID))) {
-			TEE_MemMove(puuids + idx, puuids + idx + 1,
-				    (*count - idx - 1) * sizeof(TEE_UUID));
-			(*count)--;
-
-			return;
-		}
-	}
-}
-
-static uint32_t token_obj_matches_reference(struct sks_attrs_head *req_attrs,
-					    TEE_UUID *uuid,
-					    TEE_ObjectHandle *tee_hdl,
-					    struct sks_attrs_head **obj_attrs)
+static uint32_t token_obj_matches_ref(struct sks_attrs_head *req_attrs,
+				      struct sks_object *obj)
 {
 	uint32_t rv;
 	TEE_Result res;
-	TEE_ObjectHandle hdl;
+	TEE_ObjectHandle hdl = obj->attribs_hdl;
 	TEE_ObjectInfo info;
 	struct sks_attrs_head *attr = NULL;
 	uint32_t read_bytes;
 
-	res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
-					uuid, sizeof(TEE_UUID),
-					TEE_DATA_FLAG_ACCESS_READ,
-					&hdl);
-	if (res)
-		return tee2sks_error(res);
+	if (obj->attributes) {
+		if (!attributes_match_reference(obj->attributes, req_attrs))
+			return SKS_NOT_FOUND;
+
+		return SKS_OK;
+	}
+
+	if (hdl == TEE_HANDLE_NULL) {
+		res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
+					       obj->uuid, sizeof(*obj->uuid),
+					       TEE_DATA_FLAG_ACCESS_READ,
+					       &hdl);
+		if (res)
+			return tee2sks_error(res);
+	}
 
 	res = TEE_GetObjectInfo1(hdl, &info);
 	if (res) {
@@ -399,20 +347,23 @@ static uint32_t token_obj_matches_reference(struct sks_attrs_head *req_attrs,
 		goto bail;
 	}
 
-	*obj_attrs = attr;
+	obj->attributes = attr;
 	attr = NULL;
-	*tee_hdl = hdl;
+	obj->attribs_hdl = hdl;
 	hdl = TEE_HANDLE_NULL;
 	rv = SKS_OK;
 
 bail:
 	TEE_Free(attr);
-	TEE_CloseObject(hdl);
+	if (obj->attribs_hdl == TEE_HANDLE_NULL && hdl != TEE_HANDLE_NULL) {
+		TEE_CloseObject(hdl);
+	}
 
 	return rv;
 }
 
-static void release_find_obj_context(struct pkcs11_find_objects *find_ctx)
+static void release_find_obj_context(struct pkcs11_session *session,
+				     struct pkcs11_find_objects *find_ctx)
 {
 	size_t idx;
 
@@ -425,7 +376,7 @@ static void release_find_obj_context(struct pkcs11_find_objects *find_ctx)
 		idx = find_ctx->temp_start;
 
 	for (;idx < find_ctx->count; idx++)
-		release_object_from_handle(find_ctx->handles[idx]);
+		handle_put(&session->object_handle_db, find_ctx->handles[idx]);
 
 	TEE_Free(find_ctx->attributes);
 	TEE_Free(find_ctx->handles);
@@ -446,8 +397,6 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	struct sks_attrs_head *req_attrs = NULL;
 	struct sks_object *obj = NULL;
 	struct pkcs11_find_objects *find_ctx = NULL;
-	TEE_UUID *uuids_tbl = NULL;
-	size_t uuids_count = 0;
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -517,14 +466,9 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	 * TODO: attrbiute class is SKS_PROCESS => search only mechanisms.
 	 * TODO: attrbiute class is SKS_HW_FEATURE => search only HW objects.
 	 */
-	rv = init_plist(session, &uuids_tbl, &uuids_count);
-	if (rv)
-		goto bail;
 
 	LIST_FOREACH(obj, &session->object_list, link) {
 		uint32_t *handles;
-
-		remove_from_plist(obj->uuid, uuids_tbl, &uuids_count);
 
 		rv = check_access_attrs_against_token(session, obj->attributes);
 		if (rv)
@@ -541,53 +485,45 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 		}
 		find_ctx->handles = handles;
 
-		*(find_ctx->handles + find_ctx->count) = obj->client_handle;
+		*(find_ctx->handles + find_ctx->count) =
+			sks_object2handle(obj, session);
 		find_ctx->count++;
 	}
 
-	/* Trailer handles are those not yet published by the session */
+	/* trailer handles are those not yet published by the session */
 	find_ctx->temp_start = find_ctx->count;
 
-	while (uuids_count--) {
-		struct sks_attrs_head *obj_attrs = NULL;
-		TEE_ObjectHandle tee_hdl = TEE_HANDLE_NULL;
+	LIST_FOREACH(obj, &session->token->object_list, link) {
+		uint32_t obj_handle;
 		uint32_t *handles;
-		TEE_UUID *uuid;
 
-		rv = token_obj_matches_reference(req_attrs,
-						 uuids_tbl + uuids_count,
-						 &tee_hdl, &obj_attrs);
+		rv = token_obj_matches_ref(req_attrs, obj);
 		if (rv == SKS_NOT_FOUND)
 			continue;
 		if (rv != SKS_OK)
 			goto bail;
 
-		uuid = TEE_Malloc(sizeof(TEE_UUID), 0);
+		/* Object may not eyt be published in the session */
+		obj_handle = sks_object2handle(obj, session);
+		if (!obj_handle) {
+			obj_handle = handle_get(&session->object_handle_db,
+						obj);
+			if (!obj_handle) {
+				rv = SKS_MEMORY;
+				goto bail;
+			}
+		}
+
 		handles = TEE_Realloc(find_ctx->handles,
 				      (find_ctx->count + 1) * sizeof(*handles));
-		if (!uuid || !handles) {
+		if (!handles) {
 			rv = SKS_MEMORY;
-			TEE_Free(uuid);
-			TEE_Free(handles);
 			goto bail;
 		}
-
-		/* Allocate a temporary handle: will free if not published */
-		obj = create_object_instance(session, obj_attrs);
-		if (!obj) {
-			rv = SKS_MEMORY;
-			TEE_Free(uuid);
-			TEE_Free(handles);
-			goto bail;
-		}
-
-		TEE_MemMove(uuid, uuids_tbl + uuids_count, sizeof(TEE_UUID));
-		obj->uuid = uuid;
-		obj->attribs_hdl = tee_hdl;
 
 		/* Store object handle for later publishing */
 		find_ctx->handles = handles;
-		*(handles + find_ctx->count) = obj->client_handle;
+		*(handles + find_ctx->count) = obj_handle;
 		find_ctx->count++;
 	}
 
@@ -599,10 +535,9 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	rv = SKS_OK;
 
 bail:
-	TEE_Free(uuids_tbl);
 	TEE_Free(req_attrs);
 	TEE_Free(template);
-	release_find_obj_context(find_ctx);
+	release_find_obj_context(session, find_ctx);
 
 	return rv;
 }
@@ -659,12 +594,12 @@ uint32_t entry_find_objects(uintptr_t tee_session, TEE_Param *ctrl,
 		if (idx < session->find_ctx->temp_start)
 			continue;
 
-		/* Newly pyublished handles: store in session list */
-		obj = handle_lookup(&object_handle_db, *(ctx->handles + idx));
+		/* Newly published handles: store in session list */
+		obj = handle_lookup(&session->object_handle_db,
+				    *(ctx->handles + idx));
 		if (!obj)
 			TEE_Panic(0);
 
-		LIST_INSERT_HEAD(get_session_objects(session), obj, link);
 	}
 
 	/* Update output buffer accoriding the number of handles provided */
@@ -675,7 +610,7 @@ uint32_t entry_find_objects(uintptr_t tee_session, TEE_Param *ctrl,
 
 void release_session_find_obj_context(struct pkcs11_session *session)
 {
-	release_find_obj_context(session->find_ctx);
+	release_find_obj_context(session, session->find_ctx);
 	session->find_ctx = NULL;
 }
 

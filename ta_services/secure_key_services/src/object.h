@@ -14,8 +14,6 @@ struct pkcs11_session;
 
 struct sks_object {
 	LIST_ENTRY(sks_object) link;
-	void *session_owner;
-	uint32_t client_handle;
 	/* pointer to the serialized object attributes */
 	void *attributes;
 	TEE_ObjectHandle key_handle;
@@ -28,6 +26,13 @@ LIST_HEAD(object_list, sks_object);
 
 struct sks_object *sks_handle2object(uint32_t client_handle,
 				     struct pkcs11_session *session);
+
+uint32_t sks_object2handle(struct sks_object *obj,
+			   struct pkcs11_session *session);
+
+struct sks_object *create_token_object_instance(struct sks_attrs_head *head,
+						TEE_UUID *uuid);
+
 
 /*
  * create_object - create an SKS object from its attributes and value
