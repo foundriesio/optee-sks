@@ -130,7 +130,8 @@ struct ck2sks {
 #define SKS2CK(out, in, conv)		sks2ck(out, in, conv, ARRAY_SIZE(conv))
 #define CK2SKS(out, in, conv)		ck2sks(out, in, conv, ARRAY_SIZE(conv))
 
-static int sks2ck(CK_ULONG *out, uint32_t id, const struct ck2sks *conv, size_t count)
+static int sks2ck(CK_ULONG *out, uint32_t id,
+		  const struct ck2sks *conv, size_t count)
 {
 	size_t n;
 
@@ -144,7 +145,8 @@ static int sks2ck(CK_ULONG *out, uint32_t id, const struct ck2sks *conv, size_t 
 	return -1;
 }
 
-static int ck2sks(uint32_t *out, CK_ULONG id, const struct ck2sks *conv, size_t count)
+static int ck2sks(uint32_t *out, CK_ULONG id,
+		  const struct ck2sks *conv, size_t count)
 {
 	size_t n;
 
@@ -180,8 +182,10 @@ static const struct ck2sks error_code[] = {
 	CK_SKS_ID(CKR_PIN_EXPIRED,		SKS_CKR_PIN_EXPIRED),
 	CK_SKS_ID(CKR_PIN_INVALID,		SKS_CKR_PIN_INVALID),
 	CK_SKS_ID(CKR_OPERATION_ACTIVE,		SKS_CKR_OPERATION_ACTIVE),
-	CK_SKS_ID(CKR_KEY_FUNCTION_NOT_PERMITTED, SKS_CKR_KEY_FUNCTION_NOT_PERMITTED),
-	CK_SKS_ID(CKR_OPERATION_NOT_INITIALIZED, SKS_CKR_OPERATION_NOT_INITIALIZED),
+	CK_SKS_ID(CKR_KEY_FUNCTION_NOT_PERMITTED,
+					SKS_CKR_KEY_FUNCTION_NOT_PERMITTED),
+	CK_SKS_ID(CKR_OPERATION_NOT_INITIALIZED,
+					SKS_CKR_OPERATION_NOT_INITIALIZED),
 	CK_SKS_ID(CKR_SESSION_READ_ONLY,	SKS_CKR_SESSION_READ_ONLY),
 	CK_SKS_ID(CKR_MECHANISM_PARAM_INVALID,	SKS_CKR_MECHANISM_PARAM_INVALID),
 	CK_SKS_ID(CK_VENDOR_INVALID_ID,		SKS_UNDEFINED_ID),
