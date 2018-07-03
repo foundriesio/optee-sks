@@ -409,7 +409,6 @@ struct sks_attribute_head {
  *			(struct sks_attribute_head)mechanism + mecha parameters,
  *			(struct sks_object_head)attribs + attributes data
  *		]
- * [in]		memref[1] = input data to be processed
  * [out]	memref[0] = 32bit fine grain retrun code
  * [out]	memref[2] = 32bit key handle
  *
