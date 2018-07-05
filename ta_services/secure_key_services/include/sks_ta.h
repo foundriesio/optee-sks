@@ -593,7 +593,7 @@ struct sks_attribute_head {
 
 /*
  * Attribute identificators
- * Valid values for struct sks_reference::id
+ * Valid values for struct sks_attribute_head::id
  *
  * SKS_ATTR_<x> corresponds to cryptoki CKA_<x>.
  * Value range [0 63] is reserved to boolean value attributes.
