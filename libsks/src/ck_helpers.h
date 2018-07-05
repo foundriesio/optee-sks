@@ -17,7 +17,8 @@
  * SKS reserves vendor ID 0xffffffff to represent an invalid ID
  * (attribute class, type, ...)
  */
-#define CK_VENDOR_INVALID_ID		0xffffffff
+#define CK_VENDOR_INVALID_ID		0xffffffffUL
+#define SKS_CK_VENDOR_INVALID_ID	0xffffffffUL
 
 /*
  * Convert structure struct sks_token_info retreived from TA into a
