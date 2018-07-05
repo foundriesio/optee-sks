@@ -124,7 +124,7 @@ static const struct string_id __maybe_unused string_rc[] = {
 	SKS_ID(SKS_CKR_OK),
 	SKS_ID(SKS_CKR_GENERAL_ERROR),
 	SKS_ID(SKS_CKR_DEVICE_MEMORY),
-	SKS_ID(SKS_CKR_ARGUMENT_BAD),
+	SKS_ID(SKS_CKR_ARGUMENTS_BAD),
 	SKS_ID(SKS_CKR_BUFFER_TOO_SMALL),
 	SKS_ID(SKS_CKR_FUNCTION_FAILED),
 	SKS_ID(SKS_CKR_SIGNATURE_INVALID),
@@ -323,7 +323,7 @@ TEE_Result sks2tee_error(uint32_t rv)
 	case SKS_CKR_OK:
 		return TEE_SUCCESS;
 
-	case SKS_CKR_ARGUMENT_BAD:
+	case SKS_CKR_ARGUMENTS_BAD:
 		return TEE_ERROR_BAD_PARAMETERS;
 
 	case SKS_CKR_DEVICE_MEMORY:
@@ -340,7 +340,7 @@ TEE_Result sks2tee_error(uint32_t rv)
 TEE_Result sks2tee_noerr(uint32_t rc)
 {
 	switch (rc) {
-	case SKS_CKR_ARGUMENT_BAD:
+	case SKS_CKR_ARGUMENTS_BAD:
 		return TEE_ERROR_BAD_PARAMETERS;
 
 	case SKS_CKR_DEVICE_MEMORY:
@@ -364,7 +364,7 @@ uint32_t tee2sks_error(TEE_Result res)
 		return SKS_CKR_OK;
 
 	case TEE_ERROR_BAD_PARAMETERS:
-		return SKS_CKR_ARGUMENT_BAD;
+		return SKS_CKR_ARGUMENTS_BAD;
 
 	case TEE_ERROR_OUT_OF_MEMORY:
 		return SKS_CKR_DEVICE_MEMORY;
