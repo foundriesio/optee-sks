@@ -796,6 +796,11 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 		return SKS_MEMORY;
 
 	session->handle = handle_get(&client->session_handle_db, session);
+	if (!session->handle) {
+		TEE_Free(session);
+		return SKS_MEMORY;
+	}
+
 	session->tee_session = tee_session;
 	session->processing = PKCS11_SESSION_READY;
 	session->tee_op_handle = TEE_HANDLE_NULL;
