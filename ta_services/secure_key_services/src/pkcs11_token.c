@@ -430,6 +430,9 @@ uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 		return SKS_SHORT_BUFFER;
 	}
 
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
+
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
 	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
@@ -478,6 +481,9 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 		out->memref.size = sizeof(struct sks_token_info);
 		return SKS_SHORT_BUFFER;
 	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
@@ -588,6 +594,9 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 		out->memref.size = sizeof(info);
 		return SKS_SHORT_BUFFER;
 	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
@@ -744,6 +753,14 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 	struct pkcs11_client *client;
 
 	if (!ctrl || in || !out)
+		return SKS_BAD_PARAM;
+
+	if (out->memref.size < sizeof(uint32_t)) {
+		out->memref.size = sizeof(uint32_t);
+		return SKS_SHORT_BUFFER;
+	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
 		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);

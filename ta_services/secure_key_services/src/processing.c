@@ -65,8 +65,13 @@ uint32_t entry_import_object(uintptr_t tee_session,
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(uint32_t))
+	if (out->memref.size < sizeof(uint32_t)) {
+		out->memref.size = sizeof(uint32_t);
 		return SKS_SHORT_BUFFER;
+	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
@@ -799,8 +804,13 @@ uint32_t entry_generate_object(uintptr_t tee_session,
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(uint32_t))
+	if (out->memref.size < sizeof(uint32_t)) {
+		out->memref.size = sizeof(uint32_t);
 		return SKS_SHORT_BUFFER;
+	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
