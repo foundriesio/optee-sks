@@ -125,7 +125,7 @@ static CK_RV serialize_indirect_attribute(struct serializer *obj,
 	 * Append the created serialized object into target object:
 	 * [attrib-id][byte-size][attributes-data]
 	 */
-	rv = serialize_32b(obj, ck2sks_attribute_id(attribute->type));
+	rv = serialize_32b(obj, ck2sks_attribute_type(attribute->type));
 	if (rv)
 		return rv;
 
@@ -162,7 +162,7 @@ static CK_RV serialize_ck_attribute(struct serializer *obj, CK_ATTRIBUTE *attr)
 	unsigned int m;
 
 	/* Expect only those from the identification table */
-	sks_id = ck2sks_attribute_id(attr->type);
+	sks_id = ck2sks_attribute_type(attr->type);
 	if (sks_id == SKS_UNDEFINED_ID)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 
@@ -176,7 +176,7 @@ static CK_RV serialize_ck_attribute(struct serializer *obj, CK_ATTRIBUTE *attr)
 
 	switch (attr->type) {
 	case CKA_CLASS:
-		sks_data32 = ck2sks_class(ck_ulong);
+		sks_data32 = ck2sks_object_class(ck_ulong);
 		sks_pdata = &sks_data32;
 		sks_size = sizeof(uint32_t);
 		break;
@@ -258,7 +258,7 @@ static CK_RV get_class(struct serializer *obj, struct ck_ref *ref)
 
 	memcpy(&ck_value, ref->ptr, sizeof(ck_value));
 
-	sks_value = ck2sks_class(ck_value);
+	sks_value = ck2sks_object_class(ck_value);
 
 	if (sks_value == SKS_UNDEFINED_ID)
 		return CKR_TEMPLATE_INCONSISTENT; // TODO: errno
@@ -372,7 +372,7 @@ static CK_RV serialize_generic_attributes(struct serializer *obj,
 			return rv;
 	}
 
-	rv = sks2ck_class(&class, obj->object);
+	rv = sks2ck_object_class(&class, obj->object);
 	if (rv)
 		return rv;
 

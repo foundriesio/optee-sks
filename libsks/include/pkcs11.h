@@ -391,7 +391,20 @@ struct CK_MECHANISM {
 typedef CK_ULONG			CK_MAC_GENERAL_PARAMS;
 typedef CK_MAC_GENERAL_PARAMS *		CK_MAC_GENERAL_PARAMS_PTR;
 
-/* AES CBC encryption parameters */
+/*
+ * AES derivation by ECB encryption parameters: uses the generic
+ * structure CK_KEY_DERIVATION_STRING_DATA.
+ */
+typedef struct CK_KEY_DERIVATION_STRING_DATA	CK_KEY_DERIVATION_STRING_DATA;
+typedef struct CK_KEY_DERIVATION_STRING_DATA *	\
+					CK_KEY_DERIVATION_STRING_DATA_PTR;
+
+struct CK_KEY_DERIVATION_STRING_DATA {
+	CK_BYTE_PTR		pData;
+	CK_ULONG		ulLen;
+};
+
+/* AES derivation by CBC encryption parameters */
 typedef struct CK_AES_CBC_ENCRYPT_DATA_PARAMS	CK_AES_CBC_ENCRYPT_DATA_PARAMS;
 typedef struct CK_AES_CBC_ENCRYPT_DATA_PARAMS *
 					CK_AES_CBC_ENCRYPT_DATA_PARAMS_PTR;

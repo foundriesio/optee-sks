@@ -20,6 +20,19 @@
 #define CK_VENDOR_INVALID_ID		0xffffffffUL
 #define SKS_CK_VENDOR_INVALID_ID	0xffffffffUL
 
+/* Helper for sks2ck_xxx() and ck2sks_xxx() helper declaration */
+#define DECLARE_CK2SKS_FUNCTIONS(_label, _ck_typeof)		\
+	uint32_t ck2sks_ ## _label(_ck_typeof ck);	\
+	CK_RV sks2ck_ ## _label(_ck_typeof *ck, uint32_t sks)
+
+DECLARE_CK2SKS_FUNCTIONS(slot_flag, CK_FLAGS);
+DECLARE_CK2SKS_FUNCTIONS(token_flag, CK_FLAGS);
+DECLARE_CK2SKS_FUNCTIONS(attribute_type, CK_ATTRIBUTE_TYPE);
+DECLARE_CK2SKS_FUNCTIONS(mechanism_type, CK_MECHANISM_TYPE);
+DECLARE_CK2SKS_FUNCTIONS(mechanism_flag, CK_FLAGS);
+DECLARE_CK2SKS_FUNCTIONS(object_class, CK_OBJECT_CLASS);
+DECLARE_CK2SKS_FUNCTIONS(key_type, CK_KEY_TYPE);
+
 /*
  * Convert structure struct sks_token_info retreived from TA into a
  * cryptoki API compliant CK_TOKEN_INFO structure.
@@ -31,31 +44,33 @@ CK_RV sks2ck_token_info(CK_TOKEN_INFO_PTR ck_info,
 CK_RV sks2ck_slot_info(CK_SLOT_INFO_PTR ck_info,
 			struct sks_slot_info *sks_info);
 
-CK_RV sks2ck_slot_flag(CK_FLAGS *ck, uint32_t sks);
-CK_RV sks2ck_token_flag(CK_FLAGS *ck, uint32_t sks);
+/* Backward compat on deprecated functions */
+static inline CK_RV sks2ck_attribute_id(CK_ATTRIBUTE_TYPE *ck, uint32_t sks)
+{
+	return sks2ck_attribute_type(ck, sks);
+}
 
-/*
- * Convert IDs between SKS and Cryptoki.
- */
-CK_RV sks2ck_mechanism_type(CK_MECHANISM_TYPE *ck, uint32_t sks);
-uint32_t ck2sks_mechanism_type(CK_MECHANISM_TYPE ck);
+static inline uint32_t ck2sks_attribute_id(CK_ATTRIBUTE_TYPE ck)
+{
+	return ck2sks_attribute_type(ck);
+}
 
-CK_RV sks2ck_attribute_id(CK_ULONG *ck, uint32_t sks);
-uint32_t ck2sks_attribute_id(CK_ULONG ck);
+static inline CK_RV sks2ck_class(CK_OBJECT_CLASS *ck, uint32_t sks)
+{
+	return sks2ck_object_class(ck, sks);
+}
+
+static inline uint32_t ck2sks_class(CK_OBJECT_CLASS ck)
+{
+	return ck2sks_object_class(ck);
+}
 
 CK_RV sks2ck_mechanism_type_list(CK_MECHANISM_TYPE *dst, void *sks,
 				 size_t count);
-CK_RV sks2ck_mechanism_flag(CK_FLAGS *ck, uint32_t sks);
 CK_RV sks2ck_mechanism_info(CK_MECHANISM_INFO *info, void *sks);
-
-uint32_t ck2sks_class(CK_ULONG ck);
-CK_RV sks2ck_class(CK_ULONG *ck, uint32_t sks);
 
 uint32_t ck2sks_type_in_class(CK_ULONG ck, CK_ULONG class);
 CK_RV sks2ck_type_in_class(CK_ULONG *ck, uint32_t sks, CK_ULONG class);
-
-uint32_t ck2sks_key_type(CK_ULONG ck);
-CK_RV sks2ck_key_type(CK_ULONG *ck, uint32_t sks);
 
 int sks_attr2boolprop_shift(CK_ULONG attr);
 
