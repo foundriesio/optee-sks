@@ -54,6 +54,7 @@ uint32_t handle_get(struct handle_db *db, void *ptr)
 		new_max_ptrs = db->max_ptrs * 2;
 	else
 		new_max_ptrs = HANDLE_DB_INITIAL_MAX_PTRS;
+
 	p = TEE_Realloc(db->ptrs, new_max_ptrs * sizeof(void *));
 	if (!p)
 		return 0;
