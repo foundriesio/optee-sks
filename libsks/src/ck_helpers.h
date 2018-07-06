@@ -32,6 +32,10 @@ DECLARE_CK2SKS_FUNCTIONS(mechanism_type, CK_MECHANISM_TYPE);
 DECLARE_CK2SKS_FUNCTIONS(mechanism_flag, CK_FLAGS);
 DECLARE_CK2SKS_FUNCTIONS(object_class, CK_OBJECT_CLASS);
 DECLARE_CK2SKS_FUNCTIONS(key_type, CK_KEY_TYPE);
+DECLARE_CK2SKS_FUNCTIONS(ec_kdf_type, CK_EC_KDF_TYPE);
+DECLARE_CK2SKS_FUNCTIONS(rsa_pkcs_mgf_type, CK_RSA_PKCS_MGF_TYPE);
+DECLARE_CK2SKS_FUNCTIONS(rsa_pkcs_oaep_source_type,
+			 CK_RSA_PKCS_OAEP_SOURCE_TYPE);
 
 /*
  * Convert structure struct sks_token_info retreived from TA into a
