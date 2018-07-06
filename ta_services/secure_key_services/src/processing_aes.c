@@ -338,7 +338,8 @@ uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
 				 ctx->pending_tag, ctx->tag_byte_len);
 
 	if (res == TEE_ERROR_SHORT_BUFFER) {
-		data_ptr = TEE_Malloc(data_size, 0);
+		data_ptr = TEE_Malloc(data_size,
+				      TEE_USER_MEM_HINT_NO_FILL_ZERO);
 		if (!data_ptr) {
 			rv = SKS_MEMORY;
 			goto bail;

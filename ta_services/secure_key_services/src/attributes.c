@@ -21,19 +21,13 @@
 
 uint32_t init_attributes_head(struct sks_attrs_head **head)
 {
-	*head = TEE_Malloc(sizeof(struct sks_attrs_head), 0);
+	*head = TEE_Malloc(sizeof(struct sks_attrs_head), TEE_MALLOC_FILL_ZERO);
 	if (!*head)
 		return SKS_MEMORY;
 
-	(*head)->attrs_size = 0;
-	(*head)->attrs_count = 0;
 #ifdef SKS_SHEAD_WITH_TYPE
 	(*head)->class = SKS_UNDEFINED_ID;
 	(*head)->type = SKS_UNDEFINED_ID;
-#endif
-#ifdef SKS_SHEAD_WITH_BOOLPROPS
-	(*head)->boolpropl = 0;
-	(*head)->boolproph = 0;
 #endif
 
 	return SKS_OK;

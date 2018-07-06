@@ -325,7 +325,7 @@ static uint32_t token_obj_matches_ref(struct sks_attrs_head *req_attrs,
 		goto bail;
 	}
 
-	attr = TEE_Malloc(info.dataSize, 0);
+	attr = TEE_Malloc(info.dataSize, TEE_MALLOC_FILL_ZERO);
 	if (!attr) {
 		rv = SKS_MEMORY;
 		goto bail;

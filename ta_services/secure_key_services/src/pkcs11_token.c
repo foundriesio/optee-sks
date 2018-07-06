@@ -791,7 +791,7 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 		}
 	}
 
-	session = TEE_Malloc(sizeof(*session), 0);
+	session = TEE_Malloc(sizeof(*session), TEE_MALLOC_FILL_ZERO);
 	if (!session)
 		return SKS_MEMORY;
 
