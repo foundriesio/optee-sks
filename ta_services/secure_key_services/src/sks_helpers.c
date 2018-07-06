@@ -11,18 +11,7 @@
 
 #include "sks_helpers.h"
 
-struct string_id {
-	uint32_t id;
-#if CFG_TEE_TA_LOG_LEVEL > 0
-	const char *string;
-#endif
-};
-
-#if CFG_TEE_TA_LOG_LEVEL > 0
-#define SKS_ID(_id)		{ .id = _id, .string = #_id }
-#else
-#define SKS_ID(_id)		{ .id = _id }
-#endif
+static const char __maybe_unused unknown[] = "<unknown-identifier>";
 
 struct attr_size {
 	uint32_t id;
@@ -33,7 +22,7 @@ struct attr_size {
 };
 
 #if CFG_TEE_TA_LOG_LEVEL > 0
-#define SKS_ID_SZ(_id, _size)	{ .id = _id, .string = #_id, .size = _size }
+#define SKS_ID_SZ(_id, _size)	{ .id = _id, .size = _size, .string = #_id }
 #else
 #define SKS_ID_SZ(_id, _size)	{ .id = _id, .size = _size }
 #endif
@@ -80,7 +69,64 @@ static const struct attr_size attr_ids[] = {
 	SKS_ID_SZ(SKS_UNDEFINED_ID, 0),
 };
 
-static const char __maybe_unused unknown[] = "<unknown-identifier>";
+struct processing_id {
+	uint32_t id;
+	bool supported;
+#if CFG_TEE_TA_LOG_LEVEL > 0
+	const char *string;
+#endif
+};
+
+#if CFG_TEE_TA_LOG_LEVEL > 0
+#define SKS_PROCESSING_ID(_id) \
+			{ .id = _id, .supported = true, .string = #_id }
+#define SKS_UNSUPPORTED_PROCESSING_ID(_id) \
+			{ .id = _id, .supported = false, .string = #_id }
+#else
+#define SKS_PROCESSING_ID(_id) \
+			{ .id = _id, .supported = true }
+#define SKS_UNSUPPORTED_PROCESSING_ID(_id, _size) \
+			{ .id = _id, .supported = false }
+
+#endif
+
+static const struct processing_id __maybe_unused processing_ids[] = {
+	SKS_PROCESSING_ID(SKS_CKM_AES_ECB),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CBC),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CBC_PAD),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CTR),
+	SKS_PROCESSING_ID(SKS_CKM_AES_GCM),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CCM),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CTS),
+	SKS_PROCESSING_ID(SKS_CKM_AES_GMAC),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CMAC),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CMAC_GENERAL),
+	SKS_PROCESSING_ID(SKS_CKM_AES_ECB_ENCRYPT_DATA),
+	SKS_PROCESSING_ID(SKS_CKM_AES_CBC_ENCRYPT_DATA),
+	SKS_PROCESSING_ID(SKS_CKM_AES_KEY_GEN),
+	SKS_PROCESSING_ID(SKS_CKM_GENERIC_SECRET_KEY_GEN),
+	SKS_PROCESSING_ID(SKS_CKM_MD5_HMAC),
+	SKS_PROCESSING_ID(SKS_CKM_SHA_1_HMAC),
+	SKS_PROCESSING_ID(SKS_CKM_SHA224_HMAC),
+	SKS_PROCESSING_ID(SKS_CKM_SHA256_HMAC),
+	SKS_PROCESSING_ID(SKS_CKM_SHA384_HMAC),
+	SKS_PROCESSING_ID(SKS_CKM_SHA512_HMAC),
+	SKS_PROCESSING_ID(SKS_CKM_AES_XCBC_MAC),
+	SKS_UNSUPPORTED_PROCESSING_ID(SKS_UNDEFINED_ID)
+};
+
+struct string_id {
+	uint32_t id;
+#if CFG_TEE_TA_LOG_LEVEL > 0
+	const char *string;
+#endif
+};
+
+#if CFG_TEE_TA_LOG_LEVEL > 0
+#define SKS_ID(_id)		{ .id = _id, .string = #_id }
+#else
+#define SKS_ID(_id)		{ .id = _id }
+#endif
 
 static const struct string_id __maybe_unused string_cmd[] = {
 	SKS_ID(SKS_CMD_PING),
@@ -202,31 +248,6 @@ static const struct string_id __maybe_unused string_key_type[] = {
 	SKS_ID(SKS_CKK_SHA256_HMAC),
 	SKS_ID(SKS_CKK_SHA384_HMAC),
 	SKS_ID(SKS_CKK_SHA512_HMAC),
-	SKS_ID(SKS_UNDEFINED_ID)
-};
-
-static const struct string_id __maybe_unused string_processing[] = {
-	SKS_ID(SKS_CKM_AES_ECB),
-	SKS_ID(SKS_CKM_AES_CBC),
-	SKS_ID(SKS_CKM_AES_CBC_PAD),
-	SKS_ID(SKS_CKM_AES_CTR),
-	SKS_ID(SKS_CKM_AES_GCM),
-	SKS_ID(SKS_CKM_AES_CCM),
-	SKS_ID(SKS_CKM_AES_CTS),
-	SKS_ID(SKS_CKM_AES_GMAC),
-	SKS_ID(SKS_CKM_AES_CMAC),
-	SKS_ID(SKS_CKM_AES_CMAC_GENERAL),
-	SKS_ID(SKS_CKM_AES_ECB_ENCRYPT_DATA),
-	SKS_ID(SKS_CKM_AES_CBC_ENCRYPT_DATA),
-	SKS_ID(SKS_CKM_AES_KEY_GEN),
-	SKS_ID(SKS_CKM_GENERIC_SECRET_KEY_GEN),
-	SKS_ID(SKS_CKM_MD5_HMAC),
-	SKS_ID(SKS_CKM_SHA_1_HMAC),
-	SKS_ID(SKS_CKM_SHA224_HMAC),
-	SKS_ID(SKS_CKM_SHA256_HMAC),
-	SKS_ID(SKS_CKM_SHA384_HMAC),
-	SKS_ID(SKS_CKM_SHA512_HMAC),
-	SKS_ID(SKS_CKM_AES_XCBC_MAC),
 	SKS_ID(SKS_UNDEFINED_ID)
 };
 
@@ -410,8 +431,8 @@ bool id_is_sks_mechanism(uint32_t id)
 {
 	size_t n;
 
-	for (n = 0; n < ARRAY_SIZE(string_processing); n++)
-		if (id == string_processing[n].id)
+	for (n = 0; n < ARRAY_SIZE(processing_ids); n++)
+		if (id == processing_ids[n].id)
 			return true;
 
 	return false;
@@ -431,6 +452,21 @@ const char *sks2str_attr(uint32_t id)
 
 		/* Skip SKS_ prefix */
 		return (char *)attr_ids[n].string + strlen("SKS_CKA_");
+	}
+
+	return unknown;
+}
+
+static const char *sks2str_mechanism(uint32_t id)
+{
+	size_t n;
+
+	for (n = 0; n < ARRAY_SIZE(processing_ids); n++) {
+		if (id != processing_ids[n].id)
+			continue;
+
+		/* Skip SKS_ prefix */
+		return (char *)processing_ids[n].string + strlen("SKS_CKM_");
 	}
 
 	return unknown;
@@ -498,7 +534,7 @@ const char *sks2str_proc(uint32_t id)
 	if (str != unknown)
 		return str;
 
-	return ID2STR(id, string_processing, "SKS_CKM_");
+	return sks2str_mechanism(id);
 }
 
 const char *sks2str_proc_flag(uint32_t id)
