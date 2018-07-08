@@ -189,8 +189,8 @@ struct sks_mechanism_info {
  *
  * [in]		memref[0] = [
  *			32bit slot ID,
- *			32bit pin length,
- *			8bit array pin[pin length],
+ *			32bit PIN length,
+ *			8bit array PIN[PIN length],
  *			8bit array label[32]
  *		]
  * [out]	memref[0] = 32bit fine grain retrun code
@@ -204,8 +204,8 @@ struct sks_mechanism_info {
  *
  * [in]		memref[0] = [
  *			32bit session handle,
- *			32bit pin length,
- *			8bit array pin[pin length]
+ *			32bit PIN length,
+ *			8bit array PIN[PIN length]
  *		]
  * [out]	memref[0] = 32bit fine grain retrun code
  *
