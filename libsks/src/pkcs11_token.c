@@ -194,6 +194,9 @@ CK_RV sks_ck_init_token(CK_SLOT_ID slot,
 			    shm, 0, NULL, 0, NULL, NULL);
 }
 
+/**
+ * sks_ck_token_mechanism_ids - implementation of C_GetMechanismList
+ */
 CK_RV sks_ck_token_mechanism_ids(CK_SLOT_ID slot,
 				 CK_MECHANISM_TYPE_PTR mechanisms,
 				 CK_ULONG_PTR count)
@@ -234,7 +237,9 @@ bail:
 	return rv;
 }
 
-/* CK_MECHANISM_INFO = 3 ulong = 3 * 32bit in SKS */
+/**
+ * sks_ck_token_mechanism_info - implementation of C_GetMechanismInfo
+ */
 CK_RV sks_ck_token_mechanism_info(CK_SLOT_ID slot,
 				  CK_MECHANISM_TYPE type,
 				  CK_MECHANISM_INFO_PTR info)
@@ -266,10 +271,8 @@ CK_RV sks_ck_token_mechanism_info(CK_SLOT_ID slot,
 	return rv;
 }
 
-/*
- * TODO: with following code, the session identifier are abstracted by the SKS
- * library. It could be better to let the TA provide the handle, so that
- * several applications can see the same session identifiers.
+/**
+ * sks_ck_open_session - implementation of C_OpenSession
  */
 CK_RV sks_ck_open_session(CK_SLOT_ID slot,
 		          CK_FLAGS flags,
@@ -311,9 +314,8 @@ CK_RV sks_ck_close_session(CK_SESSION_HANDLE session)
 			    &ctrl, sizeof(ctrl), NULL, 0, NULL, NULL);
 }
 
-/*
- * Scan all registered session handle by the lib
- * and close all session related to the target slot.
+/**
+ * sks_ck_close_all_sessions - implementation of C_CloseAllSessions
  */
 CK_RV sks_ck_close_all_sessions(CK_SLOT_ID slot)
 {
@@ -323,6 +325,9 @@ CK_RV sks_ck_close_all_sessions(CK_SLOT_ID slot)
 			    &ctrl, sizeof(ctrl), NULL, 0, NULL, NULL);
 }
 
+/**
+ * sks_ck_get_session_info - implementation of C_GetSessionInfo
+ */
 CK_RV sks_ck_get_session_info(CK_SESSION_HANDLE session,
 			      CK_SESSION_INFO_PTR info)
 {
