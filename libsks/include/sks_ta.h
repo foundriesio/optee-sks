@@ -194,8 +194,8 @@ struct sks_mechanism_info {
  *
  * [in]		memref[0] = [
  *			32bit slot ID,
- *			32bit pin length,
- *			8bit array pin[pin length],
+ *			32bit PIN length,
+ *			8bit array PIN[PIN length],
  *			8bit array label[32]
  *		]
  * [out]	memref[0] = 32bit fine grain retrun code
@@ -209,8 +209,8 @@ struct sks_mechanism_info {
  *
  * [in]		memref[0] = [
  *			32bit session handle,
- *			32bit pin length,
- *			8bit array pin[pin length]
+ *			32bit PIN length,
+ *			8bit array PIN[PIN length]
  *		]
  * [out]	memref[0] = 32bit fine grain retrun code
  *
@@ -553,6 +553,57 @@ struct sks_attribute_head {
  * [out]	memref[2] = 32bit object handle
  */
 #define SKS_CMD_DERIVE_KEY		0x00000023
+
+/*
+ * SKS_CMD_INIT_PIN - Initialize user PIN
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit PIN byte size,
+ *			byte arrays: PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_INIT_PIN		0x00000024
+
+/*
+ * SKS_CMD_SET_PIN - Change user PIN
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit old PIN byte size,
+ *			byte arrays: PIN data
+ *			32bit new PIN byte size,
+ *			byte arrays: new PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_SET_PIN			0x00000025
+
+/*
+ * SKS_CMD_LOGIN - Initialize user PIN
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit user identifier,
+ *			32bit PIN byte size,
+ *			byte arrays: PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_LOGIN			0x00000025
+
+/*
+ * SKS_CMD_LOGOUT - Log out from token
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit PIN byte size,
+ *			byte array: PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_LOGOUT			0x00000026
 
 /*
  * Command return codes
