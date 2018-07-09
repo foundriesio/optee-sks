@@ -332,3 +332,127 @@ CK_RV sks_ck_get_session_info(CK_SESSION_HANDLE session,
 	return ck_invoke_ta(NULL, SKS_CMD_CK_SESSION_INFO,
 			    &ctrl, sizeof(ctrl), NULL, 0, info, &info_size);
 }
+
+/**
+ * sks_ck_init_pin - implementation of C_InitPIN
+ */
+CK_RV sks_ck_init_pin(CK_SESSION_HANDLE session,
+		      CK_UTF8CHAR_PTR pin, CK_ULONG pin_len)
+{
+	TEEC_SharedMemory *shm;
+	uint32_t sks_session = session;
+	uint32_t sks_pin_len = pin_len;
+	size_t ctrl_size = 2 * sizeof(uint32_t) + sks_pin_len;
+	char *ctrl;
+
+	shm = sks_alloc_shm_in(NULL, ctrl_size);
+	if (!shm)
+		return CKR_HOST_MEMORY;
+
+	ctrl = shm->buffer;
+
+	memcpy(ctrl, &sks_session, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, &sks_pin_len, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, pin, sks_pin_len);
+
+	return ck_invoke_ta(NULL, SKS_CMD_INIT_PIN,
+			    shm, 0, NULL, 0, NULL, NULL);
+}
+
+/**
+ * sks_ck_set_pin - implementation of C_SetPIN
+ */
+CK_RV sks_ck_set_pin(CK_SESSION_HANDLE session,
+		     CK_UTF8CHAR_PTR old, CK_ULONG old_len,
+		     CK_UTF8CHAR_PTR new, CK_ULONG new_len)
+{
+	TEEC_SharedMemory *shm;
+	uint32_t sks_session = session;
+	uint32_t sks_old_len = old_len;
+	uint32_t sks_new_len = new_len;
+	size_t ctrl_size = 3 * sizeof(uint32_t) + sks_old_len + sks_new_len;
+	char *ctrl;
+
+	shm = sks_alloc_shm_in(NULL, ctrl_size);
+	if (!shm)
+		return CKR_HOST_MEMORY;
+
+	ctrl = shm->buffer;
+
+	memcpy(ctrl, &sks_session, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, &sks_old_len, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, old, sks_old_len);
+	ctrl += sks_old_len;
+
+	memcpy(ctrl, &sks_new_len, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, new, sks_new_len);
+
+	return ck_invoke_ta(NULL, SKS_CMD_SET_PIN,
+			    shm, 0, NULL, 0, NULL, NULL);
+}
+
+/**
+ * sks_ck_login - implementation of C_Login
+ */
+CK_RV sks_ck_login(CK_SESSION_HANDLE session, CK_USER_TYPE user_type,
+		   CK_UTF8CHAR_PTR pin, CK_ULONG pin_len)
+
+{
+	TEEC_SharedMemory *shm;
+	uint32_t sks_session = session;
+	uint32_t sks_user = ck2sks_user_type(user_type);
+	uint32_t sks_pin_len = pin_len;
+	size_t ctrl_size = 3 * sizeof(uint32_t) + sks_pin_len;
+	char *ctrl;
+
+	shm = sks_alloc_shm_in(NULL, ctrl_size);
+	if (!shm)
+		return CKR_HOST_MEMORY;
+
+	ctrl = shm->buffer;
+
+	memcpy(ctrl, &sks_session, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, &sks_user, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, &sks_pin_len, sizeof(uint32_t));
+	ctrl += sizeof(uint32_t);
+
+	memcpy(ctrl, pin, sks_pin_len);
+
+	return ck_invoke_ta(NULL, SKS_CMD_LOGIN,
+			    shm, 0, NULL, 0, NULL, NULL);
+}
+
+/**
+ * sks_ck_logout - implementation of C_Logout
+ */
+CK_RV sks_ck_logout(CK_SESSION_HANDLE session)
+{
+	TEEC_SharedMemory *shm;
+	uint32_t sks_session = session;
+	char *ctrl;
+
+	shm = sks_alloc_shm_in(NULL, sizeof(uint32_t));
+	if (!shm)
+		return CKR_HOST_MEMORY;
+
+	ctrl = shm->buffer;
+
+	memcpy(ctrl, &sks_session, sizeof(uint32_t));
+
+	return ck_invoke_ta(NULL, SKS_CMD_LOGOUT,
+			    shm, 0, NULL, 0, NULL, NULL);
+}

@@ -32,16 +32,16 @@ static const CK_FUNCTION_LIST libsks_function_list = {
 	REGISTER_CK_FUNCTION(C_GetMechanismList),
 	REGISTER_CK_FUNCTION(C_GetMechanismInfo),
 	REGISTER_CK_FUNCTION(C_InitToken),
-	DO_NOT_REGISTER_CK_FUNCTION(C_InitPIN),
-	DO_NOT_REGISTER_CK_FUNCTION(C_SetPIN),
+	REGISTER_CK_FUNCTION(C_InitPIN),
+	REGISTER_CK_FUNCTION(C_SetPIN),
 	REGISTER_CK_FUNCTION(C_OpenSession),
 	REGISTER_CK_FUNCTION(C_CloseSession),
 	REGISTER_CK_FUNCTION(C_CloseAllSessions),
 	REGISTER_CK_FUNCTION(C_GetSessionInfo),
 	DO_NOT_REGISTER_CK_FUNCTION(C_GetOperationState),
 	DO_NOT_REGISTER_CK_FUNCTION(C_SetOperationState),
-	DO_NOT_REGISTER_CK_FUNCTION(C_Login),
-	DO_NOT_REGISTER_CK_FUNCTION(C_Logout),
+	REGISTER_CK_FUNCTION(C_Login),
+	REGISTER_CK_FUNCTION(C_Logout),
 	REGISTER_CK_FUNCTION(C_CreateObject),
 	DO_NOT_REGISTER_CK_FUNCTION(C_CopyObject),
 	REGISTER_CK_FUNCTION(C_DestroyObject),
@@ -453,32 +453,78 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE session,
 		CK_UTF8CHAR_PTR pin,
 		CK_ULONG pin_len)
 {
-	(void)session;
-	(void)pin;
-	(void)pin_len;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = sks_ck_init_pin(session, pin, pin_len);
+
+	switch (rv) {
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_PIN_INVALID:
+	case CKR_PIN_LEN_RANGE:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_READ_ONLY:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_TOKEN_WRITE_PROTECTED:
+	case CKR_USER_NOT_LOGGED_IN:
+	case CKR_ARGUMENTS_BAD:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_SetPIN(CK_SESSION_HANDLE session,
 	       CK_UTF8CHAR_PTR old,
 	       CK_ULONG old_len,
-	       CK_UTF8CHAR_PTR   new,
+	       CK_UTF8CHAR_PTR new,
 	       CK_ULONG new_len)
 {
-	(void)session;
-	(void)old;
-	(void)old_len;
-	(void)new;
-	(void)new_len;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = sks_ck_set_pin(session, old, old_len, new, new_len);
+
+	switch (rv) {
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_MECHANISM_INVALID:
+	case CKR_OK:
+	case CKR_PIN_INCORRECT:
+	case CKR_PIN_INVALID:
+	case CKR_PIN_LEN_RANGE:
+	case CKR_PIN_LOCKED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_SESSION_READ_ONLY:
+	case CKR_TOKEN_WRITE_PROTECTED:
+	case CKR_ARGUMENTS_BAD:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_Login(CK_SESSION_HANDLE session,
@@ -487,25 +533,70 @@ CK_RV C_Login(CK_SESSION_HANDLE session,
 	      CK_ULONG pin_len)
 
 {
-	(void)session;
-	(void)user_type;
-	(void)pin;
-	(void)pin_len;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = sks_ck_login(session, user_type, pin, pin_len);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_PIN_INCORRECT:
+	case CKR_PIN_LOCKED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_SESSION_READ_ONLY_EXISTS:
+	case CKR_USER_ALREADY_LOGGED_IN:
+	case CKR_USER_ANOTHER_ALREADY_LOGGED_IN:
+	case CKR_USER_PIN_NOT_INITIALIZED:
+	case CKR_USER_TOO_MANY_TYPES:
+	case CKR_USER_TYPE_INVALID:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_Logout(CK_SESSION_HANDLE session)
 {
-	(void)session;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = sks_ck_logout(session);
+
+	switch (rv) {
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_USER_NOT_LOGGED_IN:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_GetOperationState(CK_SESSION_HANDLE session,
