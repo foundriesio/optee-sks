@@ -504,7 +504,11 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 		if (rv != SKS_OK)
 			goto bail;
 
-		/* Object may not eyt be published in the session */
+		rv = check_access_attrs_against_token(session, obj->attributes);
+		if (rv)
+			continue;
+
+		/* Object may not yet be published in the session */
 		obj_handle = sks_object2handle(obj, session);
 		if (!obj_handle) {
 			obj_handle = handle_get(&session->object_handle_db,
