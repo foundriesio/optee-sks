@@ -317,7 +317,10 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	struct sks_attrs_head *temp = NULL;
 	struct sks_attrs_head *attrs = NULL;
 	uint32_t rv;
-	uint8_t bbool;
+	uint8_t local;
+	uint8_t always_sensitive;
+	uint8_t never_extract;
+
 
 #ifdef DEBUG	/* Sanity: check func argument */
 	trace_attributes_from_api_head("template", template, template_size);
@@ -360,56 +363,58 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 #endif
 	switch (func) {
 	case SKS_FUNCTION_GENERATE:
-		bbool = SKS_TRUE;
+		local = SKS_TRUE;
 		break;
 	case SKS_FUNCTION_COPY:
-		bbool = get_bool(parent, SKS_CKA_LOCAL);
+		local = get_bool(parent, SKS_CKA_LOCAL);
 		break;
 	default:
-		bbool = SKS_FALSE;
+		local = SKS_FALSE;
 		break;
 	}
-	rv = add_attribute(&attrs, SKS_CKA_LOCAL, &bbool, sizeof(bbool));
+	rv = add_attribute(&attrs, SKS_CKA_LOCAL, &local, sizeof(local));
 	if (rv)
 		goto bail;
 
+	switch (get_class(attrs)) {
+	case SKS_CKO_SECRET_KEY:
+	case SKS_CKO_PRIVATE_KEY:
 
-	if (get_class(attrs) == SKS_CKO_SECRET_KEY) {
-		assert(get_attribute(attrs, SKS_CKA_ALWAYS_SENSITIVE,
-					NULL, NULL) == SKS_NOT_FOUND);
+		always_sensitive = SKS_FALSE;
+		never_extract = SKS_FALSE;
 
 		switch (func) {
 		case SKS_FUNCTION_DERIVE:
 		case SKS_FUNCTION_COPY:
-			bbool = get_bool(parent, SKS_CKA_ALWAYS_SENSITIVE) &&
+			always_sensitive =
+				get_bool(parent, SKS_CKA_ALWAYS_SENSITIVE) &&
 				get_bool(attrs, SKS_CKA_SENSITIVE);
-			break;
-		default:
-			bbool = get_bool(attrs, SKS_CKA_SENSITIVE);
-			break;
-		}
-		rv = add_attribute(&attrs, SKS_CKA_ALWAYS_SENSITIVE,
-				   &bbool, sizeof(bbool));
-		if (rv)
-			goto bail;
-
-		assert(get_attribute(attrs, SKS_CKA_NEVER_EXTRACTABLE,
-					NULL, NULL) == SKS_NOT_FOUND);
-
-		switch (func) {
-		case SKS_FUNCTION_DERIVE:
-		case SKS_FUNCTION_COPY:
-			bbool = get_bool(parent, SKS_CKA_NEVER_EXTRACTABLE) &&
+			never_extract =
+				get_bool(parent, SKS_CKA_NEVER_EXTRACTABLE) &&
 				!get_bool(attrs, SKS_CKA_EXTRACTABLE);
 			break;
+		case SKS_FUNCTION_GENERATE:
+			always_sensitive = get_bool(attrs, SKS_CKA_SENSITIVE);
+			never_extract = !get_bool(attrs, SKS_CKA_EXTRACTABLE);
+			break;
 		default:
-			bbool = !get_bool(attrs, SKS_CKA_EXTRACTABLE);
 			break;
 		}
-		rv = add_attribute(&attrs, SKS_CKA_NEVER_EXTRACTABLE,
-				   &bbool, sizeof(bbool));
+
+		rv = add_attribute(&attrs, SKS_CKA_ALWAYS_SENSITIVE,
+				   &always_sensitive, sizeof(always_sensitive));
 		if (rv)
 			goto bail;
+
+		rv = add_attribute(&attrs, SKS_CKA_NEVER_EXTRACTABLE,
+				   &never_extract, sizeof(never_extract));
+		if (rv)
+			goto bail;
+
+		break;
+
+	default:
+		break;
 	}
 
 	*out = attrs;
