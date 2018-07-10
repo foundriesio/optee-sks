@@ -65,6 +65,9 @@ static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	if (out->memref.size < 2 * sizeof(uint32_t))
 		return SKS_SHORT_BUFFER;
 
+	if ((uintptr_t)out->memref.buffer & 0x03UL)
+		return SKS_BAD_PARAM;
+
 	ver = (uint32_t *)out->memref.buffer;
 	*ver = SKS_VERSION_ID0;
 	*(ver + 1) = SKS_VERSION_ID1;
@@ -220,7 +223,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 	}
 
 	if (TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INOUT &&
-	    ctrl->memref.size >= sizeof(uint32_t)) {
+	    ctrl->memref.size >= sizeof(uint32_t) &&
+	    !((uintptr_t)ctrl->memref.buffer & 0x03UL)) {
 
 		TEE_MemMove(ctrl->memref.buffer, &rc, sizeof(uint32_t));
 		ctrl->memref.size = sizeof(uint32_t);

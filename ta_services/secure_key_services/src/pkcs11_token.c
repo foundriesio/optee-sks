@@ -420,6 +420,10 @@ uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 		return SKS_SHORT_BUFFER;
 	}
 
+	/* FIXME: we could support unaligment buffers */
+	if ((uintptr_t)out->memref.buffer & 0x03UL)
+		return SKS_BAD_PARAM;
+
 	for (id = out->memref.buffer, n = 0; n < TOKEN_COUNT; n++, id++)
 		*id = (uint32_t)n;
 
