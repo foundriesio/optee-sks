@@ -19,6 +19,41 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
+static uint32_t get_ready_session(struct pkcs11_session **sess,
+				  uint32_t session_handle,
+				  uintptr_t tee_session)
+{
+	struct pkcs11_session *session;
+
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
+		return SKS_CKR_SESSION_HANDLE_INVALID;
+
+	if (check_processing_state(session, PKCS11_SESSION_READY))
+		return SKS_CKR_OPERATION_ACTIVE;
+
+	*sess = session;
+	return SKS_OK;
+}
+
+static uint32_t get_active_session(struct pkcs11_session **sess,
+				  uint32_t session_handle,
+				  uintptr_t tee_session,
+				  uint32_t target_state)
+{
+	struct pkcs11_session *session;
+
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
+		return SKS_CKR_SESSION_HANDLE_INVALID;
+
+	if (check_processing_state(session, target_state))
+		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+
+	*sess = session;
+	return SKS_OK;
+}
+
 static void release_active_processing(struct pkcs11_session *session)
 {
 	switch (session->proc_id) {
@@ -85,17 +120,9 @@ uint32_t entry_import_object(uintptr_t tee_session,
 
 	template_size = sizeof(*template) + template->attrs_size;
 
-	/* Check session/token state against object import */
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session) {
-		rv = SKS_CKR_SESSION_HANDLE_INVALID;
+	rv = get_ready_session(&session, session_handle, tee_session);
+	if (rv)
 		goto bail;
-	}
-
-	if (check_processing_state(session, PKCS11_SESSION_READY)) {
-		rv = SKS_CKR_OPERATION_ACTIVE;
-		goto bail;
-	}
 
 	/*
 	 * Prepare a clean initial state for the requested object attributes.
@@ -454,16 +481,9 @@ uint32_t entry_cipher_init(uintptr_t tee_session, TEE_Param *ctrl,
 	/*
 	 * Check PKCS session (arguments and session state)
 	 */
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session) {
-		rv = SKS_CKR_SESSION_HANDLE_INVALID;
+	rv = get_ready_session(&session, session_handle, tee_session);
+	if (rv)
 		goto bail;
-	}
-
-	if (check_processing_state(session, PKCS11_SESSION_READY)) {
-		rv = SKS_CKR_OPERATION_ACTIVE;
-		goto bail;
-	}
 
 	if (set_processing_state(session, decrypt ?
 				 PKCS11_SESSION_DECRYPTING :
@@ -626,14 +646,11 @@ uint32_t entry_cipher_update(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session)
-		return SKS_CKR_SESSION_HANDLE_INVALID;
-
-	if (check_processing_state(session, decrypt ?
-					    PKCS11_SESSION_DECRYPTING :
-					    PKCS11_SESSION_ENCRYPTING))
-		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+	rv = get_active_session(&session, session_handle, tee_session,
+				decrypt ? PKCS11_SESSION_DECRYPTING :
+				PKCS11_SESSION_ENCRYPTING);
+	if (rv)
+		return rv;
 
 	rv = check_mechanism_against_processing(session->proc_id,
 						SKS_FUNCTION_UPDATE);
@@ -709,14 +726,11 @@ uint32_t entry_cipher_final(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session)
-		return SKS_CKR_SESSION_HANDLE_INVALID;
-
-	if (check_processing_state(session, decrypt ?
-					    PKCS11_SESSION_DECRYPTING :
-					    PKCS11_SESSION_ENCRYPTING))
-		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+	rv = get_active_session(&session, session_handle, tee_session,
+				decrypt ? PKCS11_SESSION_DECRYPTING :
+				PKCS11_SESSION_ENCRYPTING);
+	if (rv)
+		return rv;
 
 	switch (session->proc_id) {
 	case SKS_CKM_AES_CCM:
@@ -842,17 +856,9 @@ uint32_t entry_generate_object(uintptr_t tee_session,
 	/*
 	 * Check arguments
 	 */
-
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session) {
-		rv = SKS_CKR_SESSION_HANDLE_INVALID;
+	rv = get_ready_session(&session, session_handle, tee_session);
+	if (rv)
 		goto bail;
-	}
-
-	if (check_processing_state(session, PKCS11_SESSION_READY)) {
-		rv = SKS_CKR_OPERATION_ACTIVE;
-		goto bail;
-	}
 
 	rv = check_mechanism_against_processing(proc_params->id,
 						SKS_FUNCTION_GENERATE);
@@ -967,16 +973,9 @@ uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
 	 * Check arguments
 	 */
 
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session) {
-		rv = SKS_CKR_SESSION_HANDLE_INVALID;
+	rv = get_ready_session(&session, session_handle, tee_session);
+	if (rv)
 		goto bail;
-	}
-
-	if (check_processing_state(session, PKCS11_SESSION_READY)) {
-		rv = SKS_CKR_OPERATION_ACTIVE;
-		goto bail;
-	}
 
 	if (set_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
 						 PKCS11_SESSION_VERIFYING)) {
@@ -1108,13 +1107,11 @@ uint32_t entry_signverify_update(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session)
-		return SKS_CKR_SESSION_HANDLE_INVALID;
-
-	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
-						 PKCS11_SESSION_VERIFYING))
-		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+	rv = get_active_session(&session, session_handle, tee_session,
+				sign ? PKCS11_SESSION_SIGNING :
+				PKCS11_SESSION_VERIFYING);
+	if (rv)
+		goto bail;
 
 	rv = check_mechanism_against_processing(session->proc_id,
 						SKS_FUNCTION_UPDATE);
@@ -1178,13 +1175,11 @@ uint32_t entry_signverify_final(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	session = sks_handle2session(session_handle, tee_session);
-	if (!session)
-		return SKS_CKR_SESSION_HANDLE_INVALID;
-
-	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
-						 PKCS11_SESSION_VERIFYING))
-		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+	rv = get_active_session(&session, session_handle, tee_session,
+				sign ? PKCS11_SESSION_SIGNING :
+				PKCS11_SESSION_VERIFYING);
+	if (rv)
+		goto bail;
 
 	if (in || !out) {
 		rv = SKS_BAD_PARAM;
