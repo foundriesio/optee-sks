@@ -240,7 +240,8 @@ CK_RV ck_invoke_ta(struct sks_invoke *sks_ctx,
 	else
 		sks_rc = SKS_CKR_OK;
 
-	if (out_sz && (sks_rc == SKS_CKR_OK || sks_rc == SKS_CKR_BUFFER_TOO_SMALL))
+	if (out_sz && (sks_rc == SKS_CKR_OK ||
+			sks_rc == SKS_CKR_BUFFER_TOO_SMALL))
 		*out_sz = op.params[2].tmpref.size;
 
 	return sks2ck_rv(sks_rc);
