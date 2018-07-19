@@ -100,13 +100,13 @@ out:
 }
 
 /*
- * Destroy an object
+ * destroy_object - destroy an SKS object
  *
  * @session - session requesting object destruction
- * @obj - object to destroy
- * @session_only - Destroy only the session resources
+ * @object - reference to the sks object
+ * @session_object_only - true is only session object shall be destroyed
  */
-uint32_t destroy_object(struct pkcs11_session *session,
+void destroy_object(struct pkcs11_session *session,
 			  struct sks_object *obj,
 			  bool session_only)
 {
@@ -125,13 +125,16 @@ uint32_t destroy_object(struct pkcs11_session *session,
 		handle_put(&session->object_handle_db,
 			   sks_object2handle(obj, session));
 		cleanup_volatile_obj_ref(obj);
-		return SKS_OK;
+
+		return;
 	}
 
 	/* Destroy target object (persistent or not) */
 	if (get_bool(obj->attributes, SKS_CKA_TOKEN)) {
 		assert(obj->uuid);
-		if (unregister_persistent_object(session->token, obj->uuid))
+		/* Try twice otherwise panic! */
+		if (unregister_persistent_object(session->token, obj->uuid) &&
+		    unregister_persistent_object(session->token, obj->uuid))
 			TEE_Panic(0);
 
 		cleanup_persistent_object(obj, session->token);
@@ -142,8 +145,6 @@ uint32_t destroy_object(struct pkcs11_session *session,
 			   sks_object2handle(obj, session));
 		cleanup_volatile_obj_ref(obj);
 	}
-
-	return SKS_OK;
 }
 
 static struct sks_object *create_object_instance(struct sks_attrs_head *head)
@@ -285,10 +286,8 @@ uint32_t entry_destroy_object(uintptr_t tee_session, TEE_Param *ctrl,
 	if (!object)
 		return SKS_BAD_PARAM;
 
-	rv = destroy_object(session, object, false);
-	if (rv == SKS_OK) {
-		handle_put(&session->object_handle_db, object_handle);
-	}
+	destroy_object(session, object, false);
+	handle_put(&session->object_handle_db, object_handle);
 
 	return rv;
 }

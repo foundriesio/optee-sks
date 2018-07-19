@@ -51,9 +51,8 @@ uint32_t create_object(void *session, struct sks_attrs_head *attributes,
  * @object - reference to the sks object
  * @session_object_only - true is only session object shall be destroyed
  */
-uint32_t destroy_object(struct pkcs11_session *session,
-			struct sks_object *object,
-			bool session_object_only);
+void destroy_object(struct pkcs11_session *session, struct sks_object *object,
+		    bool session_object_only);
 
 /*
  * Entry function called from the SKS command parser
