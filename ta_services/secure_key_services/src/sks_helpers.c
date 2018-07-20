@@ -604,4 +604,32 @@ const char *sks2str_token_flag(uint32_t id)
 {
 	return ID2STR(id, string_token_flags, "SKS_CKFT_");
 }
+
+const char *sks2str_attr_value(uint32_t id, size_t size, void *value)
+{
+	static const char str_true[] = "TRUE";
+	static const char str_false[] = "FALSE";
+	static const char str_unkwon[] = "*";
+	uint32_t type;
+
+	if (sks_attr2boolprop_shift(id) >= 0)
+		return !!*(uint8_t *)value ? str_true : str_false;
+
+	if (size < sizeof(uint32_t))
+		return str_unkwon;
+
+	TEE_MemMove(&type, value, sizeof(uint32_t));
+
+	if (sks_attr_is_class(id))
+		return sks2str_class(type);
+
+	if (id == SKS_CKA_KEY_TYPE)
+		return sks2str_key_type(type);
+
+	if (id == SKS_CKA_MECHANISM_TYPE)
+		return sks2str_mechanism_type(type);
+
+	return str_unkwon;
+}
+
 #endif /*CFG_TEE_TA_LOG_LEVEL*/

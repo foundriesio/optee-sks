@@ -627,6 +627,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 		info.min_key_size = 128;	/* in bits */
 		info.max_key_size = 256;	/* in bits */
 		break;
+	default:
 		break;
 	}
 

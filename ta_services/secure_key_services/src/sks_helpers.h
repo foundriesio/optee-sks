@@ -56,5 +56,6 @@ const char *sks2str_slot_flag(uint32_t id);
 const char *sks2str_token_flag(uint32_t id);
 const char *sks2str_rc(uint32_t id);
 const char *sks2str_skscmd(uint32_t id);
+const char *sks2str_attr_value(uint32_t id, size_t size, void *value);
 
 #endif /*__CK_HELPERS_H*/
