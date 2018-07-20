@@ -142,4 +142,6 @@ uint32_t check_mechanism_against_processing(uint32_t mechanism_type,
 
 int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags);
 
+bool object_is_private(struct sks_attrs_head *head);
+
 #endif /*__PKCS11_ATTRIBUTE_H*/

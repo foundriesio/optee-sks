@@ -178,6 +178,7 @@ struct pkcs11_client {
  * @readwrite - true if the session is read/write, false if read-only
  * @state - R/W SO, R/W user, RO user, R/W public, RO public. See PKCS11.
  * @processing - ongoing active processing function
+ * @processing_relogged - true once client logged since last operation update
  * @client - client the session belongs to
  * @tee_op_handle - handle on active crypto operation or TEE_HANDLE_NULL
  * @proc_id - SKS ID of the active processing
@@ -193,6 +194,8 @@ struct pkcs11_session {
 	uint32_t handle;
 	enum pkcs11_session_state state;
 	enum pkcs11_proc_state processing;
+	bool processing_relogged;
+	bool processing_always_authen;
 	struct pkcs11_client *client;
 	TEE_OperationHandle tee_op_handle;
 	uint32_t proc_id;
@@ -284,5 +287,14 @@ uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 				      TEE_Param *in, TEE_Param *out);
 uint32_t entry_ck_token_close_all(uintptr_t teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out);
+
+uint32_t entry_init_pin(uintptr_t tee_session, TEE_Param *ctrl,
+			TEE_Param *in, TEE_Param *out);
+uint32_t entry_set_pin(uintptr_t tee_session, TEE_Param *ctrl,
+		       TEE_Param *in, TEE_Param *out);
+uint32_t entry_login(uintptr_t tee_session, TEE_Param *ctrl,
+		     TEE_Param *in, TEE_Param *out);
+uint32_t entry_logout(uintptr_t tee_session, TEE_Param *ctrl,
+		      TEE_Param *in, TEE_Param *out);
 
 #endif /*__SKS_PKCS11_TOKEN_H__*/

@@ -550,6 +550,64 @@ struct sks_attribute_head {
 #define SKS_CMD_DERIVE_KEY		0x00000023
 
 /*
+ * SKS_CMD_INIT_PIN - Initialize user PIN
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit PIN byte size,
+ *			byte arrays: PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_INIT_PIN		0x00000024
+
+/*
+ * SKS_CMD_SET_PIN - Change user PIN
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit old PIN byte size,
+ *			byte arrays: PIN data
+ *			32bit new PIN byte size,
+ *			byte arrays: new PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_SET_PIN			0x00000025
+
+/*
+ * SKS_CMD_LOGIN - Initialize user PIN
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit user identifier,
+ *			32bit PIN byte size,
+ *			byte arrays: PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_LOGIN			0x00000026
+
+/*
+ * Values for user identifier parameter in SKS_CMD_LOGIN
+ */
+#define SKS_CKU_SO			0x000
+#define SKS_CKU_USER			0x001
+#define SKS_CKU_CONTEXT_SPECIFIC	0x002
+
+/*
+ * SKS_CMD_LOGOUT - Log out from token
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			32bit PIN byte size,
+ *			byte array: PIN data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ */
+#define SKS_CMD_LOGOUT			0x00000027
+
+/*
  * Command return codes
  * SKS_CKR_<x> relates cryptoki CKR_<x> in meaning if not in value.
  */
@@ -582,6 +640,21 @@ struct sks_attribute_head {
 #define SKS_CKR_KEY_FUNCTION_NOT_PERMITTED	0x0000001b
 #define SKS_CKR_OPERATION_NOT_INITIALIZED	0x0000001c
 #define SKS_CKR_TOKEN_WRITE_PROTECTED		0x0000001d
+#define SKS_CKR_TOKEN_NOT_PRESENT		0x0000001e
+#define SKS_CKR_TOKEN_NOT_RECOGNIZED		0x0000001f
+#define SKS_CKR_ACTION_PROHIBITED		0x00000020
+#define SKS_CKR_ATTRIBUTE_READ_ONLY		0x00000021
+#define SKS_CKR_PIN_TOO_WEAK			0x00000022
+#define SKS_CKR_CURVE_NOT_SUPPORTED		0x00000023
+#define SKS_CKR_DOMAIN_PARAMS_INVALID		0x00000024
+#define SKS_CKR_USER_ALREADY_LOGGED_IN		0x00000025
+#define SKS_CKR_USER_ANOTHER_ALREADY_LOGGED_IN	0x00000026
+#define SKS_CKR_USER_NOT_LOGGED_IN		0x00000027
+#define SKS_CKR_USER_PIN_NOT_INITIALIZED	0x00000028
+#define SKS_CKR_USER_TOO_MANY_TYPES		0x00000029
+#define SKS_CKR_USER_TYPE_INVALID		0x0000002a
+#define SKS_CKR_SESSION_READ_ONLY_EXISTS	0x0000002b
+
 /* Status without strict equivalence in Cryptoki API */
 #define SKS_NOT_FOUND				0x00001000
 #define SKS_NOT_IMPLEMENTED			0x00001001

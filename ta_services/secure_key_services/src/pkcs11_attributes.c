@@ -949,3 +949,14 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 
 	return SKS_OK;
 }
+
+bool object_is_private(struct sks_attrs_head *head)
+{
+	if (get_class(head) == SKS_CKO_PRIVATE_KEY)
+		return true;
+
+	if (get_bool(head, SKS_CKA_PRIVATE))
+		return true;
+
+	return false;
+}
