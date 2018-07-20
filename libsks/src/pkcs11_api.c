@@ -668,7 +668,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -720,7 +720,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session,
 	case CKR_TOKEN_WRITE_PROTECTED:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -801,7 +801,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -835,7 +835,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -864,7 +864,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session)
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -904,7 +904,7 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -971,7 +971,7 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -1006,7 +1006,7 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE session,
 	case CKR_SESSION_HANDLE_INVALID:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -1047,7 +1047,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -1116,7 +1116,7 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -1153,7 +1153,7 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -1241,6 +1241,33 @@ CK_RV C_SignInit(CK_SESSION_HANDLE session,
 
 	rv = ck_signverify_init(session, mechanism, key, CK_TRUE);
 
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_KEY_FUNCTION_NOT_PERMITTED:
+	case CKR_KEY_HANDLE_INVALID:
+	case CKR_KEY_SIZE_RANGE:
+	case CKR_KEY_TYPE_INCONSISTENT:
+	case CKR_MECHANISM_INVALID:
+	case CKR_MECHANISM_PARAM_INVALID:
+	case CKR_OK:
+	case CKR_OPERATION_ACTIVE:
+	case CKR_PIN_EXPIRED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_USER_NOT_LOGGED_IN:
+		break;
+	default:
+		assert(!rv);
+	}
+
 	return rv;
 }
 
@@ -1276,6 +1303,27 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE session,
 
 	rv = ck_signverify_update(session, in, in_len, CK_TRUE);
 
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DATA_LEN_RANGE:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_USER_NOT_LOGGED_IN:
+		break;
+	default:
+		assert(!rv);
+	}
+
 	return rv;
 }
 
@@ -1289,6 +1337,29 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE session,
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_final(session, out, out_len, CK_TRUE);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_BUFFER_TOO_SMALL:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DATA_LEN_RANGE:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_USER_NOT_LOGGED_IN:
+	case CKR_FUNCTION_REJECTED:
+		break;
+	default:
+		assert(!rv);
+	}
 
 	return rv;
 }
@@ -1333,28 +1404,74 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE session,
 
 	rv = ck_signverify_init(session, mechanism, key, CK_FALSE);
 
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_KEY_FUNCTION_NOT_PERMITTED:
+	case CKR_KEY_HANDLE_INVALID:
+	case CKR_KEY_SIZE_RANGE:
+	case CKR_KEY_TYPE_INCONSISTENT:
+	case CKR_MECHANISM_INVALID:
+	case CKR_MECHANISM_PARAM_INVALID:
+	case CKR_OK:
+	case CKR_OPERATION_ACTIVE:
+	case CKR_PIN_EXPIRED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_USER_NOT_LOGGED_IN:
+		break;
+	default:
+		assert(!rv);
+	}
+
 	return rv;
 }
 
 CK_RV C_Verify(CK_SESSION_HANDLE session,
 	       CK_BYTE_PTR in,
 	       CK_ULONG in_len,
-	       CK_BYTE_PTR sign,
-	       CK_ULONG sign_len)
+	       CK_BYTE_PTR out,
+	       CK_ULONG out_len)
 {
 	CK_RV rv;
-	CK_ULONG out_len = sign_len;
+	CK_ULONG out_size = out_len;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	rv = ck_signverify_update(session, in, in_len, CK_FALSE);
-	if (rv)
-		goto bail;
+	rv = ck_signverify_oneshot(session, in, in_len, out, &out_size,
+				   CK_FALSE);
 
-	rv = ck_signverify_final(session, sign, &out_len, CK_FALSE);
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DATA_INVALID:
+	case CKR_DATA_LEN_RANGE:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_SIGNATURE_INVALID:
+	case CKR_SIGNATURE_LEN_RANGE:
+		break;
+	default:
+		assert(!rv);
+	}
 
-bail:
 	return rv;
 }
 
@@ -1368,6 +1485,26 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE session,
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_update(session, in, in_len, CK_FALSE);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DATA_LEN_RANGE:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+		break;
+	default:
+		assert(!rv);
+	}
 
 	return rv;
 }
@@ -1383,6 +1520,27 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE session,
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = ck_signverify_final(session, sign, &out_len, CK_FALSE);
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DATA_LEN_RANGE:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_NOT_INITIALIZED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_SIGNATURE_INVALID:
+	case CKR_SIGNATURE_LEN_RANGE:
+		break;
+	default:
+		assert(!rv);
+	}
 
 	return rv;
 }
@@ -1533,7 +1691,7 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
@@ -1585,7 +1743,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session,
 	case CKR_USER_NOT_LOGGED_IN:
 		break;
 	default:
-		assert(rv);
+		assert(!rv);
 	}
 
 	return rv;
