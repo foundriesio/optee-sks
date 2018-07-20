@@ -627,6 +627,35 @@ struct sks_attribute_head {
 #define SKS_CMD_GENERATE_KEY_PAIR	0x00000028
 
 /*
+ * SKS_CMD_ENCRYPT_ONESHOT - Update and finalize encryption processing
+ * SKS_CMD_DECRYPT_ONESHOT - Update and finalize decryption processing
+ *
+ * [in]		memref[0] = 32bit session handle
+ * [in]		memref[1] = input data to be processed
+ * [out]	memref[0] = 32bit fine grain retrun code
+ * [out]	memref[2] = output processed data
+ *
+ * These commands relate to the PKCS#11 API functions C_EncryptUpdate() and
+ * C_DecryptUpdate.
+ */
+#define SKS_CMD_ENCRYPT_ONESHOT		0x00000029
+#define SKS_CMD_DECRYPT_ONESHOT		0x0000002a
+
+/*
+ * SKS_CMD_SIGN_ONESHOT - Update and finalize a signature computation
+ * SKS_CMD_VERIFY_ONESHOT - Update and finalize a signature verification
+ *
+ * [in]		memref[0] = 32bit session handle
+ * [in]		memref[1] = input data to be processed
+ * [out]	memref[0] = 32bit fine grain retrun code
+ *
+ * These commands relate to the PKCS#11 API functions C_SignUpdate() and
+ * C_VerifyUpdate.
+ */
+#define SKS_CMD_SIGN_ONESHOT		0x0000002b
+#define SKS_CMD_VERIFY_ONESHOT		0x0000002c
+
+/*
  * Command return codes
  * SKS_CKR_<x> relates cryptoki CKR_<x> in meaning if not in value.
  */
