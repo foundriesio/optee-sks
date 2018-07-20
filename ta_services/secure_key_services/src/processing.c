@@ -114,15 +114,15 @@ uint32_t entry_import_object(uintptr_t tee_session,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
+	rv = get_ready_session(&session, session_handle, tee_session);
 	if (rv)
 		return rv;
 
-	template_size = sizeof(*template) + template->attrs_size;
-
-	rv = get_ready_session(&session, session_handle, tee_session);
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
 	if (rv)
 		goto bail;
+
+	template_size = sizeof(*template) + template->attrs_size;
 
 	/*
 	 * Prepare a clean initial state for the requested object attributes.

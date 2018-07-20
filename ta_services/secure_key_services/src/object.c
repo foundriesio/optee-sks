@@ -25,7 +25,7 @@ struct sks_object *sks_handle2object(uint32_t handle,
 	return handle_lookup(&session->object_handle_db, handle);
 }
 
-uint32_t sks_object2handle(struct sks_object * obj,
+uint32_t sks_object2handle(struct sks_object *obj,
 			   struct pkcs11_session *session)
 {
 	return handle_lookup_handle(&session->object_handle_db, obj);
@@ -78,8 +78,9 @@ static void cleanup_persistent_object(struct sks_object *obj,
 		return;
 
 	/* Open handle with write properties to destroy the object */
-	if (obj->attribs_hdl != TEE_HANDLE_NULL)
+	if (obj->attribs_hdl != TEE_HANDLE_NULL) {
 		TEE_CloseObject(obj->attribs_hdl);
+	}
 
 	res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
 					obj->uuid, sizeof(TEE_UUID),
@@ -96,6 +97,7 @@ out:
 	destroy_object_uuid(token, obj);
 
 	LIST_REMOVE(obj, link);
+
 	cleanup_volatile_obj_ref(obj);
 }
 
@@ -175,6 +177,13 @@ struct sks_object *create_token_object_instance(struct sks_attrs_head *head,
 	return obj;
 }
 
+/*
+ * create_object - create an SKS object from its attributes and value
+ *
+ * @session - session requesting object creation
+ * @attributes - reference to serialized attributes
+ * @handle - generated handle for the created object
+ */
 uint32_t create_object(void *sess, struct sks_attrs_head *head,
 		       uint32_t *out_handle)
 {
@@ -234,6 +243,7 @@ uint32_t create_object(void *sess, struct sks_attrs_head *head,
 						obj->uuid);
 		if (rv)
 			goto bail;
+
 		LIST_INSERT_HEAD(&session->token->object_list, obj, link);
 	} else {
 		rv = SKS_OK;
@@ -314,12 +324,15 @@ static uint32_t token_obj_matches_ref(struct sks_attrs_head *req_attrs,
 					       obj->uuid, sizeof(*obj->uuid),
 					       TEE_DATA_FLAG_ACCESS_READ,
 					       &hdl);
-		if (res)
+		if (res) {
+			EMSG("OpenPersistent failed 0x%" PRIx32, res);
 			return tee2sks_error(res);
+		}
 	}
 
 	res = TEE_GetObjectInfo1(hdl, &info);
 	if (res) {
+		EMSG("GetObjectInfo failed 0x%" PRIx32, res);
 		rv = tee2sks_error(res);
 		goto bail;
 	}
@@ -331,13 +344,21 @@ static uint32_t token_obj_matches_ref(struct sks_attrs_head *req_attrs,
 	}
 
 	res = TEE_ReadObjectData(hdl, attr, info.dataSize, &read_bytes);
-	if (!res)
+	if (!res) {
 		res = TEE_SeekObjectData(hdl, 0, TEE_DATA_SEEK_SET);
+		if (res)
+			EMSG("Seek to 0 failed 0x%" PRIx32, res);
+	}
+
 	if (res) {
 		rv = tee2sks_error(res);
+		EMSG("Read %" PRIu32 " bytes, failed 0x%" PRIx32,
+			read_bytes, res);
 		goto bail;
 	}
 	if (read_bytes != info.dataSize) {
+		EMSG("Read %" PRIu32 " bytes, expected 0x%" PRIu32,
+			read_bytes, info.dataSize);
 		rv = SKS_ERROR;
 		goto bail;
 	}
@@ -418,7 +439,7 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	}
 
 	/*
-	 * Can search object only in ready state and no already active search
+	 * Can search object only in ready state and not already active search
 	 * FIXME: not clear if C_FindObjects can be called while a processing
 	 * is active. It seems not... but to be confirmed!
 	 */

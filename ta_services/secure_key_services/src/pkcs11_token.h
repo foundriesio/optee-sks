@@ -10,6 +10,7 @@
 
 #include "handle.h"
 #include "object.h"
+#include "pkcs11_attributes.h"
 
 /* Hard coded description */
 #define SKS_CRYPTOKI_TOKEN_LABEL		"op-tee pkcs#11 token (dev...)"
@@ -172,34 +173,36 @@ struct pkcs11_client {
  * Structure tracking the PKCS#11 sessions
  *
  * @link - list of the session belowing to a client
- * @token - token/slot this session belongs to
- * @tee_session - TEE session use to create the PLCS session
- * @handle - identifier of the session
- * @readwrite - true if the session is read/write, false if read-only
- * @state - R/W SO, R/W user, RO user, R/W public, RO public. See PKCS11.
- * @processing - ongoing active processing function
+ * @tee_session - TEE session handle used by PKCS11 session client
+ * @client - client the session belongs to (FIXME: redondant with tee_session)
+ * @token - token this session belongs to
+ * @handle - identifier of the session published to the client
+ * @object_list - entry of the session objects list
+ * @object_handle_db - database for object handles published by the session
+ * @state - R/W SO, R/W user, RO user, R/W public, RO public.
+ * @processing - ongoing active processing function or ready state
  * @processing_relogged - true once client logged since last operation update
- * @client - client the session belongs to
- * @tee_op_handle - handle on active crypto operation or TEE_HANDLE_NULL
+ * @processing_always_authen - true if user need to login before each use
  * @proc_id - SKS ID of the active processing
  * @proc_params - parameters saved in memory for the active processing
+ * @tee_op_handle - handle on active crypto operation or TEE_HANDLE_NULL
  * @find_ctx - point to active search context (null if no active search)
  */
 struct pkcs11_session {
 	TAILQ_ENTRY(pkcs11_session) link;
+	uintptr_t tee_session;
+	struct pkcs11_client *client;
+	struct ck_token *token;
+	uint32_t handle;
 	struct object_list object_list;
 	struct handle_db object_handle_db;
-	struct ck_token *token;
-	uintptr_t tee_session;
-	uint32_t handle;
 	enum pkcs11_session_state state;
 	enum pkcs11_proc_state processing;
 	bool processing_relogged;
 	bool processing_always_authen;
-	struct pkcs11_client *client;
-	TEE_OperationHandle tee_op_handle;
 	uint32_t proc_id;
 	void *proc_params;
+	TEE_OperationHandle tee_op_handle;
 	struct pkcs11_find_objects *find_ctx;
 };
 

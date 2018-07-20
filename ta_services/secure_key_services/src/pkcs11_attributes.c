@@ -205,8 +205,9 @@ uint32_t check_mechanism_against_processing(uint32_t mechanism_type,
 	}
 
 	if (!allowed)
-		EMSG("Processing not permitted per PKCS#11 %s for %u",
-			sks2str_proc(mechanism_type), function);
+		EMSG("Processing %s (%" PRIx32 ") not permitted (%u)",
+			sks2str_proc(mechanism_type), mechanism_type,
+			function);
 
 	return allowed ? SKS_OK : SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 }
@@ -240,10 +241,11 @@ static uint8_t *pkcs11_object_default_boolprop(uint32_t attribute)
 	case SKS_CKA_UNWRAP:
 	case SKS_CKA_EXTRACTABLE:
 	case SKS_CKA_WRAP_WITH_TRUSTED:
+	case SKS_CKA_ALWAYS_AUTHENTICATE:
 	case SKS_CKA_TRUSTED:
 		return (uint8_t *)&bool_false;
 	default:
-		DMSG("Unexpected boolprop attribute %" PRIx32, attribute);
+		DMSG("No default for boolprop attribute 0x%" PRIx32, attribute);
 		TEE_Panic(0); // FIXME: errno
 	}
 
@@ -340,7 +342,12 @@ static uint32_t set_optional_attributes(struct sks_attrs_head **out,
 /*
  * Below are listed the mandated or optional epected attributes for
  * PKCS#11 storage objects.
+ *
+ * Note: boolprops (manadated boolean attributes) SKS_CKA_ALWAYS_SENSITIVE,
+ * and SKS_CKA_NEVER_EXTRACTABLE are set by the token, not provided
+ * in the client template.
  */
+
 /* PKCS#11 specification on any object (session/token) of the storage */
 static const uint32_t pkcs11_any_object_boolprops[] = {
 	SKS_CKA_TOKEN, SKS_CKA_PRIVATE,
@@ -364,9 +371,9 @@ static const uint32_t pkcs11_any_key_optional[] = {
 };
 /* PKCS#11 specification for any symmetric key aside pkcs11_any_key_xxx */
 static const uint32_t pkcs11_symm_key_boolprops[] = {
-	SKS_CKA_SENSITIVE, SKS_CKA_EXTRACTABLE,
 	SKS_CKA_ENCRYPT, SKS_CKA_DECRYPT, SKS_CKA_SIGN, SKS_CKA_VERIFY,
 	SKS_CKA_WRAP, SKS_CKA_UNWRAP,
+	SKS_CKA_SENSITIVE, SKS_CKA_EXTRACTABLE,
 	SKS_CKA_WRAP_WITH_TRUSTED, SKS_CKA_TRUSTED,
 };
 static const uint32_t pkcs11_symm_key_optional[] = {
@@ -464,6 +471,8 @@ static uint32_t create_pkcs11_symm_key_attributes(struct sks_attrs_head **out,
 	case SKS_CKK_SHA224_HMAC:
 		break;
 	default:
+		EMSG("Invalid key type (0x%" PRIx32 ", %s)",
+			get_type(*out), sks2str_key_type(get_type(*out)));
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
 
@@ -679,8 +688,10 @@ uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
 
-	if (private && pkcs11_session_is_public(session))
+	if (private && pkcs11_session_is_public(session)) {
+		DMSG("Private object access from a public session");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
+	}
 
 	/*
 	 * TODO: START_DATE and END_DATE: complies with current time?
@@ -892,7 +903,8 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 		    key_type == SKS_CKK_AES)
 			break;
 
-		DMSG("%s invalid key", sks2str_proc(proc_id));
+		DMSG("%s invalid key %s/%s", sks2str_proc(proc_id),
+			sks2str_class(key_class), sks2str_key_type(key_type));
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 
 	case SKS_CKM_MD5_HMAC:
@@ -939,13 +951,15 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 		break;
 
 	default:
-		DMSG("Processing not supported 0x%" PRIx32 " (%s)", proc_id,
+		DMSG("Invalid processing 0x%" PRIx32 " (%s)", proc_id,
 			sks2str_proc(proc_id));
 		return SKS_CKR_MECHANISM_INVALID;
 	}
 
-	if (!parent_key_complies_allowed_processings(proc_id, head))
+	if (!parent_key_complies_allowed_processings(proc_id, head)) {
+		DMSG("Allowed mechanism failed");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
+	}
 
 	return SKS_OK;
 }

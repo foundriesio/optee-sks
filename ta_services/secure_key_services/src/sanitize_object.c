@@ -317,7 +317,7 @@ uint32_t sanitize_client_object(struct sks_attrs_head **dst,
 			goto bail;
 
 		if (!valid_sks_attribute_id(cli_ref.id, cli_ref.size)) {
-			EMSG("Invalid attribute id %" PRIx32, cli_ref.id);
+			EMSG("Invalid attribute id 0x%" PRIx32, cli_ref.id);
 			rc = SKS_CKR_TEMPLATE_INCONSISTENT;
 			goto bail;
 		}

@@ -243,12 +243,14 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 		ctrl->memref.size = sizeof(uint32_t);
 
 		res = sks2tee_noerr(rc);
+
+		DMSG("SKS TA exit: %s rc 0x%08" PRIx32 "/%s",
+			sks2str_skscmd(cmd), rc, sks2str_rc(rc));
 	} else {
 		res = sks2tee_error(rc);
+		DMSG("SKS TA exit: %s rc 0x%08" PRIx32 "/%s, TEE rc %" PRIx32,
+			sks2str_skscmd(cmd), rc, sks2str_rc(rc), res);
 	}
-
-	DMSG("SKS TA exit: %s rc 0x%08" PRIx32 "/%s",
-		sks2str_skscmd(cmd), rc, sks2str_rc(rc));
 
 	return res;
 

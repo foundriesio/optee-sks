@@ -78,7 +78,7 @@ static void init_pin_keys(struct ck_token *token, unsigned int uid)
 	res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
 					file, sizeof(file), 0, key_hdl);
 	if (res == TEE_SUCCESS) {
-		MSG("pin key found");
+		DMSG("PIN key found");
 		return;
 	}
 
@@ -142,7 +142,6 @@ void destroy_object_uuid(struct ck_token *token __unused,
 		return;
 
 	/* TODO: check uuid is not still registered in persistent db ? */
-
 	TEE_Free(obj->uuid);
 	obj->uuid = NULL;
 }
@@ -180,7 +179,7 @@ uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid)
 	}
 
 	if (index < 0) {
-		EMSG("Cannot unregster an invalid persistent object");
+		EMSG("Cannot unregister an invalid persistent object");
 		return SKS_NOT_FOUND;
 	}
 

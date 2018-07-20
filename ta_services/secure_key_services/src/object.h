@@ -16,8 +16,9 @@ struct sks_object {
 	LIST_ENTRY(sks_object) link;
 	/* pointer to the serialized object attributes */
 	void *attributes;
-	TEE_ObjectHandle key_handle;
-	/* These are for persistent/token objects (TODO: move to attributes) */
+	TEE_ObjectHandle key_handle;	/* Valid handle for TEE operations */
+
+	/* These are for persistent/token objects */
 	TEE_UUID *uuid;
 	TEE_ObjectHandle attribs_hdl;
 };
@@ -33,24 +34,9 @@ uint32_t sks_object2handle(struct sks_object *obj,
 struct sks_object *create_token_object_instance(struct sks_attrs_head *head,
 						TEE_UUID *uuid);
 
-
-/*
- * create_object - create an SKS object from its attributes and value
- *
- * @session - session requesting object creation
- * @attributes - reference to serialized attributes
- * @handle - generated handle for the created object
- */
 uint32_t create_object(void *session, struct sks_attrs_head *attributes,
 			uint32_t *handle);
 
-/*
- * destroy_object - destroy an SKS object
- *
- * @session - session requesting object destruction
- * @object - reference to the sks object
- * @session_object_only - true is only session object shall be destroyed
- */
 void destroy_object(struct pkcs11_session *session, struct sks_object *object,
 		    bool session_object_only);
 

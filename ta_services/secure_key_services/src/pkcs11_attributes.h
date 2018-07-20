@@ -9,7 +9,6 @@
 
 #include <inttypes.h>
 
-#include "pkcs11_token.h"
 #include "serializer.h"
 
 /*
@@ -107,6 +106,9 @@ enum processing_func {
 	SKS_FUNCTION_MODIFY,
 	SKS_FUNCTION_DESTROY,
 };
+
+struct sks_attrs_head;
+struct pkcs11_session;
 
 /* Create an attribute list for a new object (TODO: add parent attribs) */
 uint32_t create_attributes_from_template(struct sks_attrs_head **out,

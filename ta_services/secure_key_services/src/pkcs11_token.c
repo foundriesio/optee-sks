@@ -719,8 +719,8 @@ static void set_session_state(struct pkcs11_client *client,
 	 * target token gives client loggin configuration.
 	 */
 	TAILQ_FOREACH(sess, &client->session_list, link) {
-		if (sess == session)
-			MSG("session found in list!!!");
+		assert(sess != session);
+
 		if (sess->token != session->token)
 			continue;
 
@@ -923,7 +923,7 @@ static void close_ck_session(struct pkcs11_session *session)
 	if (session->tee_op_handle != TEE_HANDLE_NULL)
 		TEE_FreeOperation(session->tee_op_handle);
 
-	/* Do not put (destroy) object handles: whole database is destroyed */
+	/* No need to put object handles, the whole database is destroyed */
 	while (!LIST_EMPTY(&session->object_list)) {
 		destroy_object(session, LIST_FIRST(&session->object_list),
 				true);

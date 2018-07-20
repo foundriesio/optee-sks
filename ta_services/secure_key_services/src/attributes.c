@@ -77,8 +77,10 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 		uint32_t mask = shift < 32 ? BIT(shift) : BIT(shift - 32);
 		uint32_t val = *(uint8_t *)data ? mask : 0;
 
-		if (size != sizeof(uint8_t))
+		if (size != sizeof(uint8_t)) {
+			EMSG("Invalid size %zu", size);
 			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		}
 
 		if (shift < 32)
 			(*head)->boolpropl = ((*head)->boolpropl & ~mask) | val;
@@ -428,6 +430,7 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 		} else {
 			rc = get_attribute_ptr(candidate, sks_ref.id,
 					       &found, &size);
+
 			if (rc || !found || size != sks_ref.size ||
 			    TEE_MemCompare(ref_attr + sizeof(sks_ref),
 					   found, size)) {
