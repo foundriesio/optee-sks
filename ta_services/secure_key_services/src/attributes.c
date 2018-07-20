@@ -386,6 +386,13 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 /*
  * Debug: dump CK attribute array to output trace
  */
+#define ATTR_TRACE_FMT	"%s attr %s / %s\t(0x%04" PRIx32 " %" PRIu32 "-byte"
+#define ATTR_FMT_0BYTE	ATTR_TRACE_FMT ")"
+#define ATTR_FMT_1BYTE	ATTR_TRACE_FMT ": %02x)"
+#define ATTR_FMT_2BYTE	ATTR_TRACE_FMT ": %02x %02x)"
+#define ATTR_FMT_3BYTE	ATTR_TRACE_FMT ": %02x %02x %02x)"
+#define ATTR_FMT_4BYTE	ATTR_TRACE_FMT ": %02x %02x %02x %02x)"
+#define ATTR_FMT_ARRAY	ATTR_TRACE_FMT ": %02x %02x %02x %02x ...)"
 
 static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 {
@@ -405,51 +412,57 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 
 	for (; cur < (char *)end; cur += next_off) {
 		struct sks_ref sks_ref;
+		uint8_t data[4];
 
 		TEE_MemMove(&sks_ref, cur, sizeof(sks_ref));
+		TEE_MemMove(&data[0], cur + sizeof(sks_ref),
+			    MIN(sks_ref.size, sizeof(data)));
+
 		next_off = sizeof(sks_ref) + sks_ref.size;
 
-		// TODO: nice ui to trace the attribute info
 		switch (sks_ref.size) {
 		case 0:
-			IMSG_RAW("%s attr %s (0x%" PRIx32
-				 " %" PRIu32 " byte) :",
-				 prefix, sks2str_attr(sks_ref.id),
+			IMSG_RAW(ATTR_FMT_0BYTE,
+				 prefix, sks2str_attr(sks_ref.id), "*",
 				 sks_ref.id, sks_ref.size);
 			break;
 		case 1:
-			IMSG_RAW("%s attr %s (0x%" PRIx32
-				 " %" PRIu32 " byte) : %02x ",
+			IMSG_RAW(ATTR_FMT_1BYTE,
 				 prefix, sks2str_attr(sks_ref.id),
-				 sks_ref.id, sks_ref.size,
-				 *((char *)cur + sizeof(sks_ref) + 0));
+				 sks2str_attr_value(sks_ref.id, sks_ref.size,
+						    cur + sizeof(sks_ref)),
+				 sks_ref.id, sks_ref.size, data[0]);
 			break;
 		case 2:
-			IMSG_RAW("%s attr %s (0x%" PRIx32
-				 " %" PRIu32 " byte) : %02x %02x",
+			IMSG_RAW(ATTR_FMT_2BYTE,
 				 prefix, sks2str_attr(sks_ref.id),
-				 sks_ref.id, sks_ref.size,
-				 *((char *)cur + sizeof(sks_ref) + 0),
-				 *((char *)cur + sizeof(sks_ref) + 1));
+				 sks2str_attr_value(sks_ref.id, sks_ref.size,
+						    cur + sizeof(sks_ref)),
+				 sks_ref.id, sks_ref.size, data[0], data[1]);
 			break;
 		case 3:
-			IMSG_RAW("%s attr %s (0x%" PRIx32
-				 " %" PRIu32 " byte) : %02x %02x %02x",
+			IMSG_RAW(ATTR_FMT_3BYTE,
 				 prefix, sks2str_attr(sks_ref.id),
+				 sks2str_attr_value(sks_ref.id, sks_ref.size,
+						    cur + sizeof(sks_ref)),
 				 sks_ref.id, sks_ref.size,
-				 *((char *)cur + sizeof(sks_ref) + 0),
-				 *((char *)cur + sizeof(sks_ref) + 1),
-				 *((char *)cur + sizeof(sks_ref) + 2));
+				 data[0], data[1], data[2]);
+			break;
+		case 4:
+			IMSG_RAW(ATTR_FMT_4BYTE,
+				 prefix, sks2str_attr(sks_ref.id),
+				 sks2str_attr_value(sks_ref.id, sks_ref.size,
+						    cur + sizeof(sks_ref)),
+				 sks_ref.id, sks_ref.size,
+				 data[0], data[1], data[2], data[3]);
 			break;
 		default:
-			IMSG_RAW("%s attr %s (0x%" PRIx32
-				 " %" PRIu32 " byte) : %02x %02x %02x %02x",
+			IMSG_RAW(ATTR_FMT_ARRAY,
 				 prefix, sks2str_attr(sks_ref.id),
+				 sks2str_attr_value(sks_ref.id, sks_ref.size,
+						    cur + sizeof(sks_ref)),
 				 sks_ref.id, sks_ref.size,
-				 *((char *)cur + sizeof(sks_ref) + 0),
-				 *((char *)cur + sizeof(sks_ref) + 1),
-				 *((char *)cur + sizeof(sks_ref) + 2),
-				 *((char *)cur + sizeof(sks_ref) + 3));
+				 data[0], data[1], data[2], data[3]);
 			break;
 		}
 
@@ -465,9 +478,9 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 		}
 	}
 
-	/* sanity */
+	/* Sanity */
 	if (cur != (char *)end) {
-		EMSG("unexpected none alignement\n");
+		EMSG("Warning: unexpect alignment in object attibutes");
 	}
 
 	TEE_Free(prefix2);
@@ -489,19 +502,18 @@ uint32_t trace_attributes(const char *prefix, void *ref)
 	if (prefix)
 		TEE_MemMove(pre, prefix, strlen(prefix));
 
-	// TODO: nice ui to trace the attribute info
-	IMSG_RAW("%s,--- (serial object) Attributes list --------\n", pre);
-	IMSG_RAW("%s| %" PRIu32 " item(s) - %" PRIu32 " bytes\n",
+	IMSG_RAW("%s,--- (serial object) Attributes list --------", pre);
+	IMSG_RAW("%s| %" PRIu32 " item(s) - %" PRIu32 " bytes",
 		pre, head.attrs_count, head.attrs_size);
 #ifdef SKS_SHEAD_WITH_TYPE
-	IMSG_RAW("%s| class (0x%" PRIx32 ") %s type (0x%" PRIx32 ") %s\n",
+	IMSG_RAW("%s| class (0x%" PRIx32 ") %s type (0x%" PRIx32 ") %s",
 		 pre, head.class, sks2str_class(head.class),
 		 head.type, sks2str_type(head.type, head.class));
 #endif
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	for (n = 0; n < SKS_BOOLPROP_LAST_SHIFT; n++)
-		IMSG_RAW("%s| attr %s (0x%" PRIx32 " %" PRIu32 " byte) : %u\n",
+		IMSG_RAW("%s| attr %s (0x%" PRIx32 " %" PRIu32 " byte) : %u",
 			 prefix, sks2str_attr(SKS_BP_ATTR(n)), SKS_BP_ATTR(n), 1,
 			 n < 32 ?
 			 !!(head.boolpropl & BIT(n)) :
@@ -514,7 +526,7 @@ uint32_t trace_attributes(const char *prefix, void *ref)
 	if (rc)
 		goto bail;
 
-	IMSG_RAW("%s`-----------------------\n", prefix ? prefix : "");
+	IMSG_RAW("%s`-----------------------", prefix ? prefix : "");
 
 bail:
 	TEE_Free(pre);

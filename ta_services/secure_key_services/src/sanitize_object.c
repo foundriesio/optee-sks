@@ -111,7 +111,7 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 
 	/* Sanity */
 	if (cur != end) {
-		EMSG("unexpected unalignment\n");
+		EMSG("Unexpected alignment issue");
 		return SKS_FAILED;
 	}
 
@@ -328,7 +328,7 @@ uint32_t sanitize_client_object(struct sks_attrs_head **dst,
 
 	/* sanity */
 	if (cur != end) {
-		EMSG("unexpected none alignement\n");
+		EMSG("Unexpected alignment inssue");
 		rc = SKS_FAILED;
 		goto bail;
 	}
@@ -360,24 +360,53 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 
 	for (; cur < (char *)end; cur += next) {
 		struct sks_ref sks_ref;
+		uint8_t data[4] = { 0 };
+		uint32_t data_u32;
 
 		TEE_MemMove(&sks_ref, cur, sizeof(sks_ref));
+		TEE_MemMove(&data[0], cur + sizeof(sks_ref),
+			    MIN(sks_ref.size, sizeof(data)));
+		TEE_MemMove(&data_u32, cur + sizeof(sks_ref), sizeof(data_u32));
+
 		next = sizeof(sks_ref) + sks_ref.size;
 
-		// TODO: nice ui to trace the attribute info
-		IMSG("%s attr %s (%" PRIx32 " %" PRIx32 " byte) : %02x %02x %02x %02x ...\n",
-			prefix, sks2str_attr(sks_ref.id), sks_ref.id, sks_ref.size,
-			*((char *)cur + sizeof(sks_ref) + 0),
-			*((char *)cur + sizeof(sks_ref) + 1),
-			*((char *)cur + sizeof(sks_ref) + 2),
-			*((char *)cur + sizeof(sks_ref) + 3));
+		IMSG_RAW("%s Attr %s / %s (0x%04" PRIx32 " %" PRIu32 "-byte)",
+			prefix, sks2str_attr(sks_ref.id),
+			sks2str_attr_value(sks_ref.id, sks_ref.size,
+					   cur + sizeof(sks_ref)),
+			sks_ref.id, sks_ref.size);
+
+		switch (sks_ref.size) {
+		case 0:
+			break;
+		case 1:
+			DMSG_RAW("%s Attr byte value: %02x", prefix, data[0]);
+			break;
+		case 2:
+			DMSG_RAW("%s Attr byte value: %02x %02x",
+				 prefix, data[0], data[1]);
+			break;
+		case 3:
+			DMSG_RAW("%s Attr byte value: %02x %02x %02x",
+				 prefix, data[0], data[1], data[2]);
+			break;
+		case 4:
+			DMSG_RAW("%s Attr byte value: %02x %02x %02x %02x",
+				 prefix, data[0], data[1], data[2], data[3]);
+			break;
+		default:
+			DMSG_RAW("%s Attr byte value: %02x %02x %02x %02x ...",
+				 prefix, data[0], data[1], data[2], data[3]);
+			break;
+		}
 
 		switch (sks_ref.id) {
 		case SKS_CKA_WRAP_TEMPLATE:
 		case SKS_CKA_UNWRAP_TEMPLATE:
 		case SKS_CKA_DERIVE_TEMPLATE:
 			rc = trace_attributes_from_api_head(prefix2,
-							cur + sizeof(sks_ref));
+							cur + sizeof(sks_ref),
+							(char *)end - cur);
 			if (rc)
 				return rc;
 			break;
@@ -386,16 +415,17 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 		}
 	}
 
-	/* sanity */
+	/* Sanity */
 	if (cur != (char *)end) {
-		EMSG("unexpected none alignement\n");
+		EMSG("Warning: unexpected alignment issue");
 	}
 
 	TEE_Free(prefix2);
 	return SKS_OK;
 }
 
-uint32_t trace_attributes_from_api_head(const char *prefix, void *ref)
+uint32_t trace_attributes_from_api_head(const char *prefix,
+					void *ref, size_t size)
 {
 	struct sks_object_head head;
 	char *pre;
@@ -404,6 +434,12 @@ uint32_t trace_attributes_from_api_head(const char *prefix, void *ref)
 
 	TEE_MemMove(&head, ref, sizeof(head));
 
+	if (size > sizeof(head) + head.attrs_size) {
+		EMSG("template overflows client buffer (%u/%u)",
+			size, sizeof(head) + head.attrs_size);
+		return SKS_FAILED;
+	}
+
 
 	pre = TEE_Malloc(prefix ? strlen(prefix) + 2 : 2, TEE_MALLOC_FILL_ZERO);
 	if (!pre)
@@ -411,9 +447,8 @@ uint32_t trace_attributes_from_api_head(const char *prefix, void *ref)
 	if (prefix)
 		TEE_MemMove(pre, prefix, strlen(prefix));
 
-	// TODO: nice ui to trace the attribute info
-	IMSG_RAW("%s,--- (serial object) Attributes list --------\n", pre);
-	IMSG_RAW("%s| %" PRIx32 " item(s) - %" PRIu32 " bytes\n",
+	IMSG_RAW("%s,--- (serial object) Attributes list --------", pre);
+	IMSG_RAW("%s| %" PRIx32 " item(s) - %" PRIu32 " bytes",
 		pre, head.attrs_count, head.attrs_size);
 
 	offset = sizeof(head);
@@ -423,7 +458,7 @@ uint32_t trace_attributes_from_api_head(const char *prefix, void *ref)
 	if (rc)
 		goto bail;
 
-	IMSG_RAW("%s`-----------------------\n", prefix ? prefix : "");
+	IMSG_RAW("%s`-----------------------", prefix ? prefix : "");
 
 bail:
 	TEE_Free(pre);

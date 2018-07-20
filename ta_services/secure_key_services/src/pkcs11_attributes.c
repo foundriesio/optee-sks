@@ -340,6 +340,7 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	uint8_t bbool;
 
 #ifdef DEBUG	/* Sanity: check func argument */
+	trace_attributes_from_api_head("template", template, template_size);
 	switch (func) {
 	case SKS_FUNCTION_GENERATE:
 	case SKS_FUNCTION_IMPORT:
@@ -374,7 +375,7 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 		goto bail;
 
 #ifdef DEBUG
-	assert(get_attribute(&attrs, SKS_CKA_LOCAL, NULL, NULL) ==
+	assert(get_attribute(attrs, SKS_CKA_LOCAL, NULL, NULL) ==
 		SKS_NOT_FOUND);
 #endif
 	switch (func) {
