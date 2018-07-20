@@ -531,23 +531,19 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 	struct serialargs ctrlargs;
 	uint32_t token_id;
 	struct ck_token *token;
-	const uint32_t mecha_list[] = {
-		SKS_CKM_AES_ECB,
-		SKS_CKM_AES_CBC,
-		SKS_CKM_AES_CBC_PAD,
-		SKS_CKM_AES_CTS,
-		SKS_CKM_AES_CTR,
-		SKS_CKM_AES_GCM,
-		SKS_CKM_AES_CCM,
-	};
+	uint32_t mechanisms_count = (uint32_t)get_supported_mechanisms(NULL, 0);
+	size_t __maybe_unused count;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(mecha_list)) {
-		out->memref.size = sizeof(mecha_list);
+	if (out->memref.size < mechanisms_count * sizeof(uint32_t)) {
+		out->memref.size = mechanisms_count * sizeof(uint32_t);
 		return SKS_SHORT_BUFFER;
 	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
@@ -559,9 +555,18 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 	if (!token)
 		return SKS_CKR_SLOT_ID_INVALID;
 
-	/* TODO: can a token support a restricted mechanism list */
-	out->memref.size = sizeof(mecha_list);
-	TEE_MemMove(out->memref.buffer, mecha_list, sizeof(mecha_list));
+	out->memref.size = sizeof(uint32_t) *
+		get_supported_mechanisms(out->memref.buffer, mechanisms_count);
+
+	assert(out->memref.size == mechanisms_count * sizeof(uint32_t));
+
+#ifdef DEBUG
+	for (count = 0; count < mechanisms_count; count++) {
+		IMSG("PKCS#11 token #%u: mechanism 0x%04" PRIx32 ": %s",
+			token_id, ((uint32_t *)out->memref.buffer)[count],
+			sks2str_proc(((uint32_t *)out->memref.buffer)[count]));
+	}
+#endif
 
 	return SKS_OK;
 }
@@ -598,22 +603,69 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	if (!token)
 		return SKS_CKR_SLOT_ID_INVALID;
 
+	if (!mechanism_is_supported(type))
+		return SKS_CKR_MECHANISM_INVALID;
+
 	TEE_MemFill(&info, 0, sizeof(info));
 
-	/* TODO: full list of supported algorithm/mechanism */
 	switch (type) {
-	case SKS_CKM_AES_GCM:
-	case SKS_CKM_AES_CCM:
-		info.flags |= SKS_CKFM_SIGN | SKS_CKFM_VERIFY;
+	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+		info.min_key_size = 1;		/* in bits */
+		info.max_key_size = 4096;	/* in bits */
+		break;
+	case SKS_CKM_AES_KEY_GEN:
 	case SKS_CKM_AES_ECB:
 	case SKS_CKM_AES_CBC:
 	case SKS_CKM_AES_CBC_PAD:
-	case SKS_CKM_AES_CTS:
 	case SKS_CKM_AES_CTR:
-		info.flags |= SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
+	case SKS_CKM_AES_CTS:
+	case SKS_CKM_AES_GCM:
+	case SKS_CKM_AES_CCM:
+	case SKS_CKM_AES_GMAC:
+	case SKS_CKM_AES_CMAC:
+	case SKS_CKM_AES_CMAC_GENERAL:
+		info.min_key_size = 128;	/* in bits */
+		info.max_key_size = 256;	/* in bits */
+		break;
+		break;
+	}
+
+	switch (type) {
+	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+	case SKS_CKM_AES_KEY_GEN:
+		info.flags = SKS_CKFM_GENERATE;
+		break;
+	case SKS_CKM_AES_ECB:
+	case SKS_CKM_AES_CBC:
+	case SKS_CKM_AES_CBC_PAD:
+		info.flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
 			     SKS_CKFM_WRAP | SKS_CKFM_UNWRAP | SKS_CKFM_DERIVE;
-		info.min_key_size = 128;
-		info.max_key_size = 256;
+		break;
+	case SKS_CKM_AES_CTR:
+	case SKS_CKM_AES_CTS:
+	case SKS_CKM_AES_GCM:
+	case SKS_CKM_AES_CCM:
+		info.flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
+			     SKS_CKFM_WRAP | SKS_CKFM_UNWRAP;
+		break;
+	case SKS_CKM_AES_GMAC:
+		info.flags = SKS_CKFM_SIGN | SKS_CKFM_VERIFY | SKS_CKFM_DERIVE;
+		break;
+	case SKS_CKM_AES_CMAC:
+	case SKS_CKM_AES_CMAC_GENERAL:
+	case SKS_CKM_MD5_HMAC:
+	case SKS_CKM_SHA_1_HMAC:
+	case SKS_CKM_SHA224_HMAC:
+	case SKS_CKM_SHA256_HMAC:
+	case SKS_CKM_SHA384_HMAC:
+	case SKS_CKM_SHA512_HMAC:
+	case SKS_CKM_AES_XCBC_MAC:
+		info.flags = SKS_CKFM_SIGN | SKS_CKFM_VERIFY;
+		break;
+	case SKS_CKM_AES_ECB_ENCRYPT_DATA:
+	case SKS_CKM_AES_CBC_ENCRYPT_DATA:
+		info.flags = SKS_CKFM_DERIVE;
+		break;
 		break;
 
 	default:

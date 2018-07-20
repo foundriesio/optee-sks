@@ -33,6 +33,8 @@ int sks_attr2boolprop_shift(uint32_t attr);
 
 bool id_is_sks_key_type(uint32_t id);
 bool id_is_sks_mechanism(uint32_t id);
+size_t get_supported_mechanisms(uint32_t *array, size_t array_count);
+bool mechanism_is_supported(uint32_t id);
 
 /*
  * Convert SKS retrun code into a GPD TEE result ID when matching.

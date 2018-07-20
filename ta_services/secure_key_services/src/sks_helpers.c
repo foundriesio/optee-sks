@@ -438,6 +438,49 @@ bool id_is_sks_mechanism(uint32_t id)
 	return false;
 }
 
+bool mechanism_is_supported(uint32_t id)
+{
+	size_t n;
+
+	for (n = 0; n < ARRAY_SIZE(processing_ids); n++) {
+		if (processing_ids[n].id == id)
+			return processing_ids[n].supported;
+	}
+
+	return false;
+}
+
+size_t get_supported_mechanisms(uint32_t *array, size_t array_count)
+{
+	size_t n;
+	size_t m;
+	size_t count = 0;
+
+	for (n = 0; n < ARRAY_SIZE(processing_ids); n++) {
+		if (processing_ids[n].supported)
+			count++;
+	}
+
+	if (array_count == 0)
+		return count;
+
+	if (array_count < count) {
+		EMSG("Expect well sized array");
+		return 0;
+	}
+
+	for (n = 0, m = 0; n < ARRAY_SIZE(processing_ids); n++) {
+		if (processing_ids[n].supported) {
+			array[m] = processing_ids[n].id;
+			m++;
+		}
+	}
+
+	assert(m == count);
+
+	return m;
+}
+
 #if CFG_TEE_TA_LOG_LEVEL > 0
 /*
  * Convert a SKS ID into its label string
@@ -457,7 +500,7 @@ const char *sks2str_attr(uint32_t id)
 	return unknown;
 }
 
-static const char *sks2str_mechanism(uint32_t id)
+static const char *sks2str_mechanism_type(uint32_t id)
 {
 	size_t n;
 
@@ -534,7 +577,7 @@ const char *sks2str_proc(uint32_t id)
 	if (str != unknown)
 		return str;
 
-	return sks2str_mechanism(id);
+	return sks2str_mechanism_type(id);
 }
 
 const char *sks2str_proc_flag(uint32_t id)
