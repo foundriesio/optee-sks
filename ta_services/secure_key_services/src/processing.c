@@ -491,7 +491,7 @@ uint32_t entry_cipher_init(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		goto bail;
 
-	rv = check_parent_attrs_against_token(session, obj->attributes);
+	rv = check_access_attrs_against_token(session, obj->attributes);
 	if (rv)
 		goto bail;
 
@@ -984,7 +984,7 @@ uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		goto bail;
 
-	rv = check_parent_attrs_against_token(session, obj->attributes);
+	rv = check_access_attrs_against_token(session, obj->attributes);
 	if (rv)
 		goto bail;
 

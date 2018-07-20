@@ -23,24 +23,6 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
-/* Currently handle pkcs11 sessions and tokens */
-
-static inline bool session_allows_persistent_object(void *session)
-{
-	/* Currently supporting only pkcs11 session */
-	struct pkcs11_session *ck_session = session;
-
-	return pkcs11_session_is_read_write(ck_session);
-}
-
-static inline bool session_allows_trusted_object(void *session)
-{
-	/* Currently supporting only pkcs11 session */
-	struct pkcs11_session *ck_session = session;
-
-	return pkcs11_session_is_security_officer(ck_session);
-}
-
 /*
  * Object default boolean attributes as per PKCS#11
  */
@@ -474,12 +456,14 @@ static uint32_t check_attrs_misc_integrity(struct sks_attrs_head *head)
 uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 					  struct sks_attrs_head *head)
 {
+	bool private = true;
+
 	switch(get_class(head)) {
 	case SKS_CKO_SECRET_KEY:
 	case SKS_CKO_PUBLIC_KEY:
 	case SKS_CKO_DATA:
 		if (!get_bool(head, SKS_CKA_PRIVATE))
-			return SKS_OK;
+			private = false;
 		break;
 	case SKS_CKO_PRIVATE_KEY:
 		break;
@@ -487,14 +471,13 @@ uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
 
-	switch (session->state) {
-	case PKCS11_SESSION_SO_READ_WRITE:
-	case PKCS11_SESSION_USER_READ_WRITE:
-	case PKCS11_SESSION_USER_READ_ONLY:
-		return SKS_OK;
-	default:
+	if (private && pkcs11_session_is_public(session))
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
-	}
+
+	/*
+	 * TODO: START_DATE and END_DATE: complies with current time?
+	 */
+	return SKS_OK;
 }
 
 /*
@@ -510,13 +493,13 @@ uint32_t check_created_attrs_against_token(struct pkcs11_session *session,
 		return rc;
 
 	if (get_bool(head, SKS_CKA_TRUSTED) &&
-	    !session_allows_trusted_object(session)) {
+	    !pkcs11_session_is_security_officer(session)) {
 		DMSG("Can't create trusted object");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
 
 	if (get_bool(head, SKS_CKA_TOKEN) &&
-	    !session_allows_persistent_object(session)) {
+	    !pkcs11_session_is_read_write(session)) {
 		DMSG("Can't create persistent object");
 		return SKS_CKR_SESSION_READ_ONLY;
 	}
@@ -764,26 +747,3 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 
 	return SKS_OK;
 }
-
-/*
- * Check the attributes of a new secret match the token/session state
- *
- * @session - session reference
- * @head - head of the attributes of the to-be-created object
- * Return SKS_OK on compliance or an error code.
- */
-uint32_t check_parent_attrs_against_token(struct pkcs11_session *session __unused,
-					  struct sks_attrs_head *head)
-{
-	if (get_bool(head, SKS_CKA_PRIVATE)) {
-		/* TODO: add some user authentication means */
-		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
-	}
-
-	/*
-	 * TODO: START_DATE and END_DATE
-	 */
-
-	return SKS_OK;
-}
-

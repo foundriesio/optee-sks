@@ -244,17 +244,14 @@ int check_processing_state(struct pkcs11_session *session,
 			   enum pkcs11_proc_state state);
 
 bool pkcs11_session_is_read_write(struct pkcs11_session *session);
+bool pkcs11_session_is_public(struct pkcs11_session *session);
+bool pkcs11_session_is_user(struct pkcs11_session *session);
+bool pkcs11_session_is_security_officer(struct pkcs11_session *session);
 
 static inline
 struct object_list *pkcs11_get_session_objects(struct pkcs11_session *session)
 {
 	return &session->object_list;
-}
-
-static inline
-bool pkcs11_session_is_security_officer(struct pkcs11_session *session)
-{
-	return session->state == PKCS11_SESSION_SO_READ_WRITE;
 }
 
 static inline

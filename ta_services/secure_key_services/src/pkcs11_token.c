@@ -143,6 +143,23 @@ bool pkcs11_session_is_read_write(struct pkcs11_session *session)
 	}
 }
 
+bool pkcs11_session_is_security_officer(struct pkcs11_session *session)
+{
+	return session->state == PKCS11_SESSION_SO_READ_WRITE;
+}
+
+bool pkcs11_session_is_user(struct pkcs11_session *session)
+{
+	return session->state == PKCS11_SESSION_USER_READ_WRITE ||
+		session->state == PKCS11_SESSION_USER_READ_ONLY;
+}
+
+bool pkcs11_session_is_public(struct pkcs11_session *session)
+{
+	return session->state == PKCS11_SESSION_PUBLIC_READ_WRITE ||
+		session->state == PKCS11_SESSION_PUBLIC_READ_ONLY;
+}
+
 struct pkcs11_session *sks_handle2session(uint32_t handle,
 					  uintptr_t tee_session)
 {
