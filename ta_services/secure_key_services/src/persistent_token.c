@@ -287,6 +287,7 @@ struct ck_token *init_token_db(unsigned int token_id)
 	struct token_persistent_main *db_main;	/* Copy persistent database */
 	struct token_persistent_objs *db_objs;	/* Copy persistent database */
 	int n;
+	void *ptr;
 
 	if (!token)
 		return NULL;
@@ -327,19 +328,26 @@ struct ck_token *init_token_db(unsigned int token_id)
 			TEE_Panic(0);
 
 		size += db_objs->count * sizeof(TEE_UUID);
-		db_objs = TEE_Realloc(db_objs, size);
-		if (!db_objs)
+		ptr = TEE_Realloc(db_objs, size);
+		if (!ptr)
 			goto error;
 
-		size -= sizeof(*db_objs);
-		res = TEE_ReadObjectData(db_hdl, db_objs, size, &size);
+		db_objs = ptr;
+		size -= sizeof(struct token_persistent_objs);
+		res = TEE_ReadObjectData(db_hdl, db_objs->uuids, size, &size);
 		if (res || size != (db_objs->count * sizeof(TEE_UUID)))
 			TEE_Panic(0);
 
 		for (idx = 0; idx < db_objs->count; idx++) {
 			/* Create an empty object instance */
 			struct sks_object *obj;
-			TEE_UUID *uuid = &db_objs->uuids[idx];
+			TEE_UUID *uuid;
+
+			uuid = TEE_Malloc(sizeof(TEE_UUID), 0);
+			if (!uuid)
+				goto error;
+
+			TEE_MemMove(uuid, &db_objs->uuids[idx], sizeof(*uuid));
 
 			obj = create_token_object_instance(NULL, uuid);
 			if (!obj)
