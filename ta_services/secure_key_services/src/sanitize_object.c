@@ -23,9 +23,12 @@
  */
 #define SKS_ID(sks)			case sks:
 
-static bool consistent_class_and_type(uint32_t object, uint32_t type)
+bool sanitize_consistent_class_and_type(struct sks_attrs_head *attrs)
 {
-	switch (object) {
+	uint32_t class = get_class(attrs);
+	uint32_t type = get_type(attrs);
+
+	switch (class) {
 	case SKS_CKO_DATA:
 		return true;
 	case SKS_CKO_SECRET_KEY:
@@ -57,8 +60,11 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 	uint32_t type_found;
 	struct sks_attribute_head cli_ref;
 	uint32_t __maybe_unused rc;
+	size_t __maybe_unused src_size;
 
 	TEE_MemMove(&head, src, sizeof(struct sks_object_head));
+
+	src_size = sizeof(struct sks_object_head) + head.attrs_size;
 
 	class_found = SKS_UNDEFINED_ID;
 	type_found = SKS_UNDEFINED_ID;
@@ -71,19 +77,21 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 		TEE_MemMove(&cli_ref, cur, sizeof(cli_ref));
 		len = sizeof(cli_ref) + cli_ref.size;
 
-
 		if (sks_attr_is_class(cli_ref.id)) {
 			uint32_t class;
 
-			if (cli_ref.size != sks_attr_is_class(cli_ref.id))
-				return SKS_CKR_TEMPLATE_INCONSISTENT;
+			if (cli_ref.size != sks_attr_is_class(cli_ref.id)) {
+				rc = SKS_CKR_TEMPLATE_INCONSISTENT;
+				goto bail;
+			}
 
 			TEE_MemMove(&class, cur + sizeof(cli_ref), cli_ref.size);
 
 			if (class_found != SKS_UNDEFINED_ID &&
 			    class_found != class) {
 				EMSG("Conflicting class value");
-				return SKS_CKR_TEMPLATE_INCONSISTENT;
+				rc = SKS_CKR_TEMPLATE_INCONSISTENT;
+				goto bail;
 			}
 
 			class_found = class;
@@ -94,15 +102,18 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 		if (sks_attr_is_type(cli_ref.id)) {
 			uint32_t type;
 
-			if (cli_ref.size != sks_attr_is_type(cli_ref.id))
-				return SKS_CKR_TEMPLATE_INCONSISTENT;
+			if (cli_ref.size != sks_attr_is_type(cli_ref.id)) {
+				rc = SKS_CKR_TEMPLATE_INCONSISTENT;
+				goto bail;
+			}
 
 			TEE_MemMove(&type, cur + sizeof(cli_ref), cli_ref.size);
 
 			if (type_found != SKS_UNDEFINED_ID &&
 			    type_found != type) {
 				EMSG("Conflicting type-in-class value");
-				return SKS_CKR_TEMPLATE_INCONSISTENT;
+				rc = SKS_CKR_TEMPLATE_INCONSISTENT;
+				goto bail;
 			}
 
 			type_found = type;
@@ -112,24 +123,27 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 	/* Sanity */
 	if (cur != end) {
 		EMSG("Unexpected alignment issue");
-		return SKS_FAILED;
+		rc = SKS_FAILED;
+		goto bail;
 	}
 
-	if (!consistent_class_and_type(class_found, type_found)) {
-		MSG("inconsistent class/type");
-		return SKS_CKR_TEMPLATE_INCONSISTENT;
+	if (class_found != SKS_UNDEFINED_ID) {
+		rc = add_attribute(dst, SKS_CKA_CLASS,
+				   &class_found, sizeof(uint32_t));
+		if (rc)
+			goto bail;
 	}
 
-	rc = add_attribute(dst, SKS_CKA_CLASS, &class_found, sizeof(uint32_t));
-	if (rc)
-		return rc;
+	if (type_found != SKS_UNDEFINED_ID) {
+		rc = add_attribute(dst, SKS_CKA_KEY_TYPE,
+				   &type_found, sizeof(uint32_t));
+	}
 
-	rc = add_attribute(dst, SKS_CKA_KEY_TYPE, &type_found,
-			   sizeof(uint32_t));
+bail:
 	if (rc)
-		return rc;
+		trace_attributes_from_api_head("bad-template", src, src_size);
 
-	return SKS_OK;
+	return rc;
 }
 
 static uint32_t sanitize_boolprop(struct sks_attrs_head __maybe_unused **dst,

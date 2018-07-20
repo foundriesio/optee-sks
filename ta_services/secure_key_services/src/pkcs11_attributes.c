@@ -540,6 +540,12 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	if (rv)
 		goto bail;
 
+	if (!sanitize_consistent_class_and_type(temp)) {
+		EMSG("inconsistent class/type");
+		rv = SKS_CKR_TEMPLATE_INCONSISTENT;
+		goto bail;
+	}
+
 	switch (get_class(temp)) {
 	case SKS_CKO_DATA:
 		rv = create_pkcs11_data_attributes(&attrs, temp);

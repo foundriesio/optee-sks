@@ -33,7 +33,8 @@ uint32_t init_attributes_head(struct sks_attrs_head **head)
 	return SKS_OK;
 }
 
-static bool attribute_is_in_head(uint32_t attribute __maybe_unused)
+#if defined(SKS_SHEAD_WITH_TYPE) || defined(SKS_SHEAD_WITH_BOOLPROPS)
+static bool attribute_is_in_head(uint32_t attribute)
 {
 #ifdef SKS_SHEAD_WITH_TYPE
 	if (attribute == SKS_CKA_CLASS || sks_attr_is_type(attribute))
@@ -47,6 +48,7 @@ static bool attribute_is_in_head(uint32_t attribute __maybe_unused)
 
 	return false;
 }
+#endif
 
 uint32_t add_attribute(struct sks_attrs_head **head,
 			uint32_t attribute, void *data, size_t size)
@@ -379,8 +381,11 @@ bool get_bool(struct sks_attrs_head *head, uint32_t attribute)
 #endif
 
 	rc = get_attribute(head, attribute, &bbool, &size);
-	assert(rc == SKS_OK);
 
+	if (rc == SKS_NOT_FOUND)
+		return false;
+
+	assert(rc == SKS_OK);
 	return !!bbool;
 }
 
@@ -391,8 +396,8 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 	unsigned char *ref_attr = ref->attrs;
 	uint32_t rc;
 
-	if (!ref->attrs_count ||
-	    get_attribute(ref, SKS_CKA_CLASS, NULL, NULL)) {
+	if (!ref->attrs_count) {
+		DMSG("Empty reference: no match");
 		return false;
 	}
 

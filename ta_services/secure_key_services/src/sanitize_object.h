@@ -9,6 +9,14 @@
 
 #include "serializer.h"
 
+/*
+ * sanitize_consistent_class_and_type - Check object type matches object class
+ *
+ * @attrs - object attributes
+ * Return true if class/type matches, else return false
+ */
+bool sanitize_consistent_class_and_type(struct sks_attrs_head *attrs);
+
 /**
  * sanitize_client_object - Setup a serializer from a serialized object
  *
