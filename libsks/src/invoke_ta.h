@@ -97,16 +97,26 @@ static inline TEEC_SharedMemory *sks_register_shm_inout(struct sks_invoke *ctx,
 void sks_free_shm(TEEC_SharedMemory *shm);
 
 /**
- * invoke_sks_ta - Invoke a SKS request to the TEE
+ * ck_invoke_ta*() - Invoke a SKS request to the TEE
+ * ck_invoke_ta_in() - Invoke a SKS request to the TEE
+ * ck_invoke_ta_in_out() - Invoke a SKS request to the TEE
+ * ck_invoke_ta_in_in() - Invoke a SKS request to the TEE
  *
  * @ctx - supplied TEE session context
  * @cmd - SKS TA command ID
  * @ctrl - command serialized input arguments. Shm, buffer or NULL pointer.
  * @ctrl_sz - byte size of ctrl if ctrl is a buffer pointer
- * @in - input to-be-processed data. shm pointer.Shm, buffer or NULL pointer.
- * @in_sz - byte size of ctrl if ctrl is a buffer pointer
- * @out - output to-be-processed data. shm pointer.Shm, buffer or NULL pointer.
- * @out_sz - byte size of ctrl if ctrl is a buffer pointer
+ * @in - input to-be-processed data. Shm, buffer or NULL pointer.
+ * @in_sz - byte size of @in if @in is a buffer pointer
+ * @in_in - 1 if input, 0 if output, meaningless if @in is a Shm reference
+ * @out - output data. Shm, buffer or NULL pointer.
+ * @out_sz - byte size of @out if @out is a buffer pointer
+ * @out_in - 1 if input, 0 if output, meaningless if @out is a Shm reference
+ * @in2 - secondary input to-be-processed data. Shm, buffer or NULL pointer.
+ * @in2_sz - byte size of @in2 if @in2 is a buffer pointer
+ * @in2_in - 1 if input, 0 if output, meaningless if @in2 is a Shm reference
+ *
+ * Return a CK_RV return value.
  *
  * Allocate input SHM on behalf of supplied TEE context.
  * If the supplied context is not initialized, init it through
@@ -121,19 +131,28 @@ void sks_free_shm(TEEC_SharedMemory *shm);
  * ctrl_sz, in_sz and out_sz are null if the related reference is a SHM buffer
  * and are not null if the related reference is a non SHM buffer. Note that
  * out_sz is a pointer.
- *
- * Function return values versus TA invocation statuses:
- * - CKR_OK on invocation success (TEEC_SUCCESS)
- * - CKR_BUFFER_TOO_SMALL on TEEC_ERROR_SHORT_BUFFER. This affect only the
- *   output data buffer.
- * - CKR_DEVICE_MEMORY on TEEC_ERROR_OUT_OF_MEMORY.
- * - TODO...
  */
+
 CK_RV ck_invoke_ta(struct sks_invoke *sks_ctx,
+		   unsigned long cmd,
+		   void *ctrl, size_t ctrl_sz);
+
+CK_RV ck_invoke_ta_in(struct sks_invoke *sks_ctx,
+		      unsigned long cmd,
+		      void *ctrl, size_t ctrl_sz,
+		      void *in, size_t in_sz);
+
+CK_RV ck_invoke_ta_in_out(struct sks_invoke *sks_ctx,
 		   unsigned long cmd,
 		   void *ctrl, size_t ctrl_sz,
 		   void *in, size_t in_sz,
 		   void *out, size_t *out_sz);
+
+CK_RV ck_invoke_ta_in_in(struct sks_invoke *sks_ctx,
+		   unsigned long cmd,
+		   void *ctrl, size_t ctrl_sz,
+		   void *in, size_t in_sz,
+		   void *in2, size_t in2_sz);
 
 /* sks_invoke_terminate - Release all allocated invocation resources */
 void sks_invoke_terminate(void);
