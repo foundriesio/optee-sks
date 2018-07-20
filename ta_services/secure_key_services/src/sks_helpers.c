@@ -416,18 +416,24 @@ bool valid_sks_attribute_id(uint32_t id, uint32_t size)
 	return false;
 }
 
-bool id_is_sks_key_type(uint32_t id)
+bool key_type_is_symm_key(uint32_t id)
 {
-	size_t n;
-
-	for (n = 0; n < ARRAY_SIZE(string_key_type); n++)
-		if (id == string_key_type[n].id)
-			return true;
-
-	return false;
+	switch (id) {
+	case SKS_CKK_AES:
+	case SKS_CKK_GENERIC_SECRET:
+	case SKS_CKK_MD5_HMAC:
+	case SKS_CKK_SHA_1_HMAC:
+	case SKS_CKK_SHA224_HMAC:
+	case SKS_CKK_SHA256_HMAC:
+	case SKS_CKK_SHA384_HMAC:
+	case SKS_CKK_SHA512_HMAC:
+		return true;
+	default:
+		return false;
+	}
 }
 
-bool id_is_sks_mechanism(uint32_t id)
+bool mechanism_is_valid(uint32_t id)
 {
 	size_t n;
 

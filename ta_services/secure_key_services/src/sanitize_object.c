@@ -29,9 +29,9 @@ static bool consistent_class_and_type(uint32_t object, uint32_t type)
 	case SKS_CKO_DATA:
 		return true;
 	case SKS_CKO_SECRET_KEY:
-		return id_is_sks_key_type(type);
+		return key_type_is_symm_key(type);
 	case SKS_CKO_MECHANISM:
-		return id_is_sks_mechanism(type);
+		return mechanism_is_valid(type);
 	case SKS_CKO_PUBLIC_KEY:
 	case SKS_CKO_PRIVATE_KEY:
 	case SKS_CKO_OTP_KEY:
