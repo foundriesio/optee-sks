@@ -86,8 +86,8 @@ static uint32_t pkcs11_import_object_boolprop(struct sks_attrs_head **out,
 	return add_attribute(out, attribute, attr, sizeof(uint8_t));
 }
 
-static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **obj,
-						 struct sks_attrs_head *head)
+static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
+						 struct sks_attrs_head *temp)
 {
 	/* Mandated attributes from template or a know default value */
 	uint32_t class;
@@ -105,15 +105,15 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **obj,
 	size_t n;
 	uint32_t rv;
 
-	init_attributes_head(obj);
+	init_attributes_head(out);
 
 	/* Object class is mandatory */
-	class = get_class(head);
+	class = get_class(temp);
 	if (class == SKS_UNDEFINED_ID) {
 		DMSG("No object class found");
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
-	rv = add_attribute(obj, SKS_CKA_CLASS, &class, sizeof(uint32_t));
+	rv = add_attribute(out, SKS_CKA_CLASS, &class, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
@@ -122,7 +122,7 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **obj,
 	 * at least to a default value.
 	 */
 	for (n = 0; n < ARRAY_SIZE(boolprops); n++) {
-		rv = pkcs11_import_object_boolprop(obj, head, boolprops[n]);
+		rv = pkcs11_import_object_boolprop(out, temp, boolprops[n]);
 		if (rv)
 			return rv;
 	}
@@ -132,10 +132,10 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **obj,
 		size_t size;
 		void *value;
 
-		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
+		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
 			continue;
 
-		rv = add_attribute(obj, opt_attrs[n], value, size);
+		rv = add_attribute(out, opt_attrs[n], value, size);
 		if (rv)
 			return rv;
 	}
@@ -143,11 +143,10 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **obj,
 	return rv;
 }
 
-static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **obj,
-						struct sks_attrs_head *template)
+static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **out,
+						struct sks_attrs_head *temp)
 {
 	/* Mandated attributes from template or a know default value */
-	struct sks_attrs_head *head = template;
 	uint32_t type;
 	const uint32_t boolprops[] = {
 		SKS_CKA_DERIVE,
@@ -162,17 +161,17 @@ static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **obj,
 	size_t n;
 	uint32_t rv;
 
-	rv = create_pkcs11_storage_attributes(obj, head);
+	rv = create_pkcs11_storage_attributes(out, temp);
 	if (rv)
 		return rv;
 
 	/* Object type-in-class is mandatory */
-	type = get_type(head);
+	type = get_type(temp);
 	if (type == SKS_UNDEFINED_ID) {
 		DMSG("No object type found");
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
-	rv = add_attribute(obj, SKS_CKA_KEY_TYPE, &type, sizeof(uint32_t));
+	rv = add_attribute(out, SKS_CKA_KEY_TYPE, &type, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
@@ -181,7 +180,7 @@ static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **obj,
 	 * at least to a default value.
 	 */
 	for (n = 0; n < ARRAY_SIZE(boolprops); n++) {
-		rv = pkcs11_import_object_boolprop(obj, head, boolprops[n]);
+		rv = pkcs11_import_object_boolprop(out, temp, boolprops[n]);
 		if (rv)
 			return rv;
 	}
@@ -191,10 +190,10 @@ static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **obj,
 		size_t size;
 		void *value;
 
-		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
+		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
 			continue;
 
-		rv = add_attribute(obj, opt_attrs[n], value, size);
+		rv = add_attribute(out, opt_attrs[n], value, size);
 		if (rv)
 			return rv;
 	}
@@ -202,8 +201,8 @@ static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **obj,
 	return rv;
 }
 
-static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
-						struct sks_attrs_head *head)
+static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **out,
+						struct sks_attrs_head *temp)
 {
 	/* Mandated attributes from template or a know default value */
 	const uint32_t boolprops[] = {
@@ -229,7 +228,7 @@ static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
 	size_t n;
 	uint32_t rv;
 
-	rv = create_pkcs11_genkey_attributes(obj, head);
+	rv = create_pkcs11_genkey_attributes(out, temp);
 	if (rv)
 		return rv;
 
@@ -238,7 +237,7 @@ static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
 	 * at least to a default value.
 	 */
 	for (n = 0; n < ARRAY_SIZE(boolprops); n++) {
-		rv = pkcs11_import_object_boolprop(obj, head, boolprops[n]);
+		rv = pkcs11_import_object_boolprop(out, temp, boolprops[n]);
 		if (rv)
 			return rv;
 	}
@@ -248,22 +247,21 @@ static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **obj,
 		size_t size;
 		void *value;
 
-		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
+		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
 			continue;
 
-		rv = add_attribute(obj, opt_attrs[n], value, size);
+		rv = add_attribute(out, opt_attrs[n], value, size);
 		if (rv)
 			return rv;
 	}
 
-	assert(get_class(*obj) == SKS_CKO_SECRET_KEY);
+	assert(get_class(*out) == SKS_CKO_SECRET_KEY);
 	return rv;
 }
 
-static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **obj,
-					      struct sks_attrs_head *template)
+static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **out,
+					      struct sks_attrs_head *temp)
 {
-	struct sks_attrs_head *head = template;
 	/* Optional attributes set if template defines it */
 	const uint32_t opt_attrs[] = {
 		SKS_CKA_OBJECT_ID, SKS_CKA_APPLICATION, SKS_CKA_VALUE,
@@ -271,7 +269,7 @@ static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **obj,
 	size_t n;
 	uint32_t rv;
 
-	rv = create_pkcs11_storage_attributes(obj, head);
+	rv = create_pkcs11_storage_attributes(out, temp);
 	if (rv)
 		return rv;
 
@@ -280,15 +278,15 @@ static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **obj,
 		size_t size;
 		void *value;
 
-		if (get_attribute_ptr(head, opt_attrs[n], &value, &size))
+		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
 			continue;
 
-		rv = add_attribute(obj, opt_attrs[n], value, size);
+		rv = add_attribute(out, opt_attrs[n], value, size);
 		if (rv)
 			return rv;
 	}
 
-	assert(get_class(*obj) == SKS_CKO_DATA);
+	assert(get_class(*out) == SKS_CKO_DATA);
 
 	return rv;
 }
