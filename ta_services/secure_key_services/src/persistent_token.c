@@ -185,7 +185,7 @@ uint32_t unregister_persistent_object(struct ck_token *token, TEE_UUID *uuid)
 
 	ptr = TEE_Malloc(sizeof(struct token_persistent_objs) +
 			 ((token->db_objs->count - 1) * sizeof(TEE_UUID)),
-			 0);
+			 TEE_USER_MEM_HINT_NO_FILL_ZERO);
 	if (!ptr)
 		return SKS_MEMORY;
 
@@ -342,7 +342,8 @@ struct ck_token *init_token_db(unsigned int token_id)
 			struct sks_object *obj;
 			TEE_UUID *uuid;
 
-			uuid = TEE_Malloc(sizeof(TEE_UUID), 0);
+			uuid = TEE_Malloc(sizeof(TEE_UUID),
+					  TEE_USER_MEM_HINT_NO_FILL_ZERO);
 			if (!uuid)
 				goto error;
 
