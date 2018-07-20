@@ -698,14 +698,18 @@ struct sks_attribute_head {
 /*
  * Processing parameters
  *
- * These can hardly be described by ANSI-C structures since some field of the
- * structure have a size specify by a previous field. Therefore the format of
- * the parameter binary data for each supported processing is define here from
- * this comment rather than using C structures. Processing parameters are used
- * as argument the C_EncryptInit and friends using the struct sks_reference
- * format where field 'type' is the SKS processing ID and field 'size' is the
- * parameter byte size. Below is shown the head struct sks_reference fields
- * and the trailling data (the effective parameters binary blob).
+ * These can hardly be described by ANSI-C structures since the byte size of
+ * some fields of the structure are specified by a previous field in the
+ * structure. Therefore the format of the parameter binary data for each
+ * supported processing is defined here from this comment rather than using
+ * C structures.
+ *
+ * Processing parameters are used as argument the C_EncryptInit and friends
+ * using the struct sks_attribute_head format where field 'type' is the SKS
+ * processing ID and field 'size' is the parameter byte size. Below is shown
+ * the head structure struct sks_attribute_head fields and the trailling data
+ * that are the effective parameters binary blob for the target
+ * processing/mechanism.
  *
  * AES ECB
  *   head:	32bit type = SKS_CKM_AES_ECB
@@ -718,13 +722,13 @@ struct sks_attribute_head {
  *		32bit params byte size = 16
  *  params:	16byte IV
  *
- * AES CTR
+ * AES CTR, params relates to struct CK_AES_CTR_PARAMS.
  *   head:	32bit type = SKS_CKM_AES_CTR
  *		32bit params byte size = 20
  *  params:	32bit counter bit increment
  *		16byte IV
  *
- * AES GCM
+ * AES GCM, params relates to struct CK_AES_GCM_PARAMS.
  *   head:	32bit type = SKS_CKM_AES_GCM
  *		32bit params byte size
  *  params:	32bit IV_byte_size
@@ -733,7 +737,7 @@ struct sks_attribute_head {
  *		byte array: AAD data (AAD_byte_size bytes)
  *		32bit tag bit size
  *
- * AES CCM
+ * AES CCM, params relates to struct CK_AES_CCM_PARAMS.
  *   head:	32bit type = SKS_CKM_AES_CCM
  *		32bit params byte size
  *  params:	32bit data_byte_size
@@ -747,8 +751,8 @@ struct sks_attribute_head {
  *   head:	32bit type = SKS_CKM_AES_GMAC
  *		32bit params byte size = 12
  *  params:	12byte IV
-
- * AES CMAC with general length
+ *
+ * AES CMAC with general length, params relates to struct CK_MAC_GENERAL_PARAMS.
  *   head:	32bit type = SKS_CKM_AES_CMAC_GENERAL
  *		32bit params byte size = 12
  *  params:	32bit byte size of the output CMAC data
@@ -757,13 +761,13 @@ struct sks_attribute_head {
  *   head:	32bit type = SKS_CKM_AES_CMAC_GENERAL
  *		32bit size = 0
  *
- * AES derive by ECB
+ * AES derive by ECB, params relates to struct CK_KEY_DERIVATION_STRING_DATA.
  *   head:	32bit type = SKS_CKM_AES_ECB_ENCRYPT_DATA
  *		32bit params byte size
  *  params:	32bit byte size of the data to encrypt
  *		byte array: data to encrypt
  *
- * AES derive by CBC
+ * AES derive by CBC, params relates to struct CK_AES_CBC_ENCRYPT_DATA_PARAMS.
  *   head:	32bit type = SKS_CKM_AES_CBC_ENCRYPT_DATA
  *		32bit params byte size
  *  params:	16byte IV
