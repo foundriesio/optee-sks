@@ -260,11 +260,12 @@ static uint32_t pkcs11_import_object_boolprop(struct sks_attrs_head **out,
 					      struct sks_attrs_head *template,
 					      uint32_t attribute)
 {
+	uint32_t rv;
 	uint8_t bbool;
 	size_t size = sizeof(uint8_t);
-	uint32_t rv = get_attribute(template, attribute, &bbool, &size);
 	void *attr;
 
+	rv = get_attribute(template, attribute, &bbool, &size);
 	if (rv || !bbool)
 		attr = pkcs11_object_default_boolprop(attribute);
 	else
@@ -274,23 +275,113 @@ static uint32_t pkcs11_import_object_boolprop(struct sks_attrs_head **out,
 	return add_attribute(out, attribute, attr, sizeof(uint8_t));
 }
 
+static uint32_t set_mandatory_boolprops(struct sks_attrs_head **out,
+					struct sks_attrs_head *temp,
+					uint32_t const *bp, size_t bp_count)
+{
+	uint32_t rv = SKS_OK;
+	size_t n;
+
+	for (n = 0; n < bp_count; n++) {
+		rv = pkcs11_import_object_boolprop(out, temp, bp[n]);
+		if (rv)
+			return rv;
+	}
+
+	return rv;
+}
+
+static uint32_t __unused set_mandatory_attributes(struct sks_attrs_head **out,
+					 struct sks_attrs_head *temp,
+					 uint32_t const *bp, size_t bp_count)
+{
+	uint32_t rv = SKS_OK;
+	size_t n;
+
+	for (n = 0; n < bp_count; n++) {
+		size_t size;
+		void *value;
+
+		if (get_attribute_ptr(temp, bp[n], &value, &size)) {
+			/* FIXME: currently set attribute as empty. Fail? */
+			size = 0;
+		}
+
+		rv = add_attribute(out, bp[n], value, size);
+		if (rv)
+			return rv;
+	}
+
+	return rv;
+}
+
+static uint32_t set_optional_attributes(struct sks_attrs_head **out,
+					struct sks_attrs_head *temp,
+					uint32_t const *bp, size_t bp_count)
+{
+	uint32_t rv = SKS_OK;
+	size_t n;
+
+	for (n = 0; n < bp_count; n++) {
+		size_t size;
+		void *value;
+
+		if (get_attribute_ptr(temp, bp[n], &value, &size))
+			continue;
+
+		rv = add_attribute(out, bp[n], value, size);
+		if (rv)
+			return rv;
+	}
+
+	return rv;
+}
+
+/*
+ * Below are listed the mandated or optional epected attributes for
+ * PKCS#11 storage objects.
+ */
+/* PKCS#11 specification on any object (session/token) of the storage */
+static const uint32_t pkcs11_any_object_boolprops[] = {
+	SKS_CKA_TOKEN, SKS_CKA_PRIVATE,
+	SKS_CKA_MODIFIABLE, SKS_CKA_COPYABLE, SKS_CKA_DESTROYABLE,
+};
+static const uint32_t pkcs11_any_object_optional[] = {
+	SKS_CKA_LABEL,
+};
+/* PKCS#11 specification for raw data object aside pkcs11_any_object_xxx */
+const uint32_t pkcs11_raw_data_optional[] = {
+	SKS_CKA_OBJECT_ID, SKS_CKA_APPLICATION, SKS_CKA_VALUE,
+};
+/* PKCS#11 specification for any key object aside pkcs11_any_object_xxx */
+static const uint32_t pkcs11_any_key_boolprops[] = {
+	SKS_CKA_DERIVE,
+};
+static const uint32_t pkcs11_any_key_optional[] = {
+	SKS_CKA_ID,
+	SKS_CKA_START_DATE, SKS_CKA_END_DATE,
+	SKS_CKA_ALLOWED_MECHANISMS,
+};
+/* PKCS#11 specification for any symmetric key aside pkcs11_any_key_xxx */
+static const uint32_t pkcs11_symm_key_boolprops[] = {
+	SKS_CKA_SENSITIVE, SKS_CKA_EXTRACTABLE,
+	SKS_CKA_ENCRYPT, SKS_CKA_DECRYPT, SKS_CKA_SIGN, SKS_CKA_VERIFY,
+	SKS_CKA_WRAP, SKS_CKA_UNWRAP,
+	SKS_CKA_WRAP_WITH_TRUSTED, SKS_CKA_TRUSTED,
+};
+static const uint32_t pkcs11_symm_key_optional[] = {
+	SKS_CKA_WRAP_TEMPLATE, SKS_CKA_UNWRAP_TEMPLATE, SKS_CKA_DERIVE_TEMPLATE,
+	SKS_CKA_VALUE, SKS_CKA_VALUE_LEN,
+};
+
 static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 						 struct sks_attrs_head *temp)
 {
-	/* Mandated attributes from template or a know default value */
+	uint32_t const *boolprops = &pkcs11_any_object_boolprops[0];
+	uint32_t const *optional = &pkcs11_any_object_optional[0];
+	size_t boolprops_count = ARRAY_SIZE(pkcs11_any_object_boolprops);
+	size_t optional_count = ARRAY_SIZE(pkcs11_any_object_optional);
 	uint32_t class;
-	const uint32_t boolprops[] = {
-		SKS_CKA_TOKEN,
-		SKS_CKA_PRIVATE,
-		SKS_CKA_MODIFIABLE,
-		SKS_CKA_COPYABLE,
-		SKS_CKA_DESTROYABLE,
-	};
-	/* Optional attributes set if template defines it */
-	const uint32_t opt_attrs[] = {
-		SKS_CKA_LABEL,
-	};
-	size_t n;
 	uint32_t rv;
 
 	init_attributes_head(out);
@@ -301,183 +392,104 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 	/* Object class is mandatory */
 	class = get_class(temp);
 	if (class == SKS_UNDEFINED_ID) {
-		DMSG("No object class found");
+		EMSG("Class attribute not found");
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
 	rv = add_attribute(out, SKS_CKA_CLASS, &class, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
-	/*
-	 * Following storage object attributes must be defined,
-	 * at least to a default value.
-	 */
-	for (n = 0; n < ARRAY_SIZE(boolprops); n++) {
-		rv = pkcs11_import_object_boolprop(out, temp, boolprops[n]);
-		if (rv)
-			return rv;
-	}
+	rv = set_mandatory_boolprops(out, temp, boolprops, boolprops_count);
+	if (rv)
+		return rv;
 
-	/* Following attributes may be defined */
-	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		size_t size;
-		void *value;
-
-		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
-			continue;
-
-		rv = add_attribute(out, opt_attrs[n], value, size);
-		if (rv)
-			return rv;
-	}
-
-	return rv;
+	return set_optional_attributes(out, temp, optional, optional_count);
 }
 
 static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **out,
 						struct sks_attrs_head *temp)
 {
-	/* Mandated attributes from template or a know default value */
+	uint32_t const *boolprops = &pkcs11_any_key_boolprops[0];
+	uint32_t const *optional = &pkcs11_any_key_optional[0];
+	size_t boolprops_count = ARRAY_SIZE(pkcs11_any_key_boolprops);
+	size_t optional_count = ARRAY_SIZE(pkcs11_any_key_optional);
 	uint32_t type;
-	const uint32_t boolprops[] = {
-		SKS_CKA_DERIVE,
-	};
-	/* Optional attributes set if template defines it */
-	const uint32_t opt_attrs[] = {
-		SKS_CKA_ID,
-		SKS_CKA_START_DATE,
-		SKS_CKA_END_DATE,
-		SKS_CKA_ALLOWED_MECHANISMS,
-	};
-	size_t n;
 	uint32_t rv;
 
 	rv = create_pkcs11_storage_attributes(out, temp);
 	if (rv)
 		return rv;
 
-	/* Object type-in-class is mandatory */
 	type = get_type(temp);
 	if (type == SKS_UNDEFINED_ID) {
-		DMSG("No object type found");
+		EMSG("Key type attribute not found");
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
 	rv = add_attribute(out, SKS_CKA_KEY_TYPE, &type, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
-	/*
-	 * Following generic key attributes must be defined,
-	 * at least to a default value.
-	 */
-	for (n = 0; n < ARRAY_SIZE(boolprops); n++) {
-		rv = pkcs11_import_object_boolprop(out, temp, boolprops[n]);
-		if (rv)
-			return rv;
-	}
+	rv = set_mandatory_boolprops(out, temp, boolprops, boolprops_count);
+	if (rv)
+		return rv;
 
-	/* Following attributes may be defined */
-	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		size_t size;
-		void *value;
-
-		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
-			continue;
-
-		rv = add_attribute(out, opt_attrs[n], value, size);
-		if (rv)
-			return rv;
-	}
-
-	return rv;
+	return set_optional_attributes(out, temp, optional, optional_count);
 }
 
-static uint32_t create_pkcs11_symkey_attributes(struct sks_attrs_head **out,
-						struct sks_attrs_head *temp)
+static uint32_t create_pkcs11_symm_key_attributes(struct sks_attrs_head **out,
+						  struct sks_attrs_head *temp)
 {
-	/* Mandated attributes from template or a know default value */
-	const uint32_t boolprops[] = {
-		SKS_CKA_SENSITIVE,
-		SKS_CKA_ENCRYPT,
-		SKS_CKA_DECRYPT,
-		SKS_CKA_SIGN,
-		SKS_CKA_VERIFY,
-		SKS_CKA_WRAP,
-		SKS_CKA_UNWRAP,
-		SKS_CKA_EXTRACTABLE,
-		SKS_CKA_WRAP_WITH_TRUSTED,
-		SKS_CKA_TRUSTED,
-	};
-	/* Optional attributes set if template defines it */
-	const uint32_t opt_attrs[] = {
-		SKS_CKA_WRAP_TEMPLATE,
-		SKS_CKA_UNWRAP_TEMPLATE,
-		SKS_CKA_DERIVE_TEMPLATE,
-		SKS_CKA_VALUE,
-		SKS_CKA_VALUE_LEN,
-	};
-	size_t n;
+	uint32_t const *boolprops = &pkcs11_symm_key_boolprops[0];
+	uint32_t const *optional = &pkcs11_symm_key_optional[0];
+	size_t boolprops_count = ARRAY_SIZE(pkcs11_symm_key_boolprops);
+	size_t optional_count = ARRAY_SIZE(pkcs11_symm_key_optional);
 	uint32_t rv;
+
+	assert(get_class(temp) == SKS_CKO_SECRET_KEY);
 
 	rv = create_pkcs11_genkey_attributes(out, temp);
 	if (rv)
 		return rv;
 
-	/*
-	 * Following symmetric key attributes must be defined,
-	 * at least to a default value.
-	 */
-	for (n = 0; n < ARRAY_SIZE(boolprops); n++) {
-		rv = pkcs11_import_object_boolprop(out, temp, boolprops[n]);
-		if (rv)
-			return rv;
-	}
-
-	/* Following attributes may be defined */
-	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		size_t size;
-		void *value;
-
-		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
-			continue;
-
-		rv = add_attribute(out, opt_attrs[n], value, size);
-		if (rv)
-			return rv;
-	}
-
 	assert(get_class(*out) == SKS_CKO_SECRET_KEY);
-	return rv;
+
+	switch (get_type(*out)) {
+	case SKS_CKK_GENERIC_SECRET:
+	case SKS_CKK_AES:
+	case SKS_CKK_MD5_HMAC:
+	case SKS_CKK_SHA_1_HMAC:
+	case SKS_CKK_SHA256_HMAC:
+	case SKS_CKK_SHA384_HMAC:
+	case SKS_CKK_SHA512_HMAC:
+	case SKS_CKK_SHA224_HMAC:
+		break;
+	default:
+		return SKS_CKR_TEMPLATE_INCONSISTENT;
+	}
+
+	rv = set_mandatory_boolprops(out, temp, boolprops, boolprops_count);
+	if (rv)
+		return rv;
+
+	return set_optional_attributes(out, temp, optional, optional_count);
 }
 
 static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **out,
 					      struct sks_attrs_head *temp)
 {
-	/* Optional attributes set if template defines it */
-	const uint32_t opt_attrs[] = {
-		SKS_CKA_OBJECT_ID, SKS_CKA_APPLICATION, SKS_CKA_VALUE,
-	};
-	size_t n;
 	uint32_t rv;
+
+	assert(get_class(temp) == SKS_CKO_DATA);
 
 	rv = create_pkcs11_storage_attributes(out, temp);
 	if (rv)
 		return rv;
 
-	/* Following attributes may be defined */
-	for (n = 0; n < ARRAY_SIZE(opt_attrs); n++) {
-		size_t size;
-		void *value;
-
-		if (get_attribute_ptr(temp, opt_attrs[n], &value, &size))
-			continue;
-
-		rv = add_attribute(out, opt_attrs[n], value, size);
-		if (rv)
-			return rv;
-	}
-
 	assert(get_class(*out) == SKS_CKO_DATA);
+
+	rv = set_optional_attributes(out, temp,
+				     &pkcs11_raw_data_optional[0],
+				     ARRAY_SIZE(pkcs11_raw_data_optional));
 
 	return rv;
 }
@@ -528,16 +540,12 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	if (rv)
 		goto bail;
 
-	/*
-	 * TODO: On SKS_FUNCTION_COPY, don't use default values, only template
-	 * and parent object
-	 */
 	switch (get_class(temp)) {
 	case SKS_CKO_DATA:
 		rv = create_pkcs11_data_attributes(&attrs, temp);
 		break;
 	case SKS_CKO_SECRET_KEY:
-		rv = create_pkcs11_symkey_attributes(&attrs, temp);
+		rv = create_pkcs11_symm_key_attributes(&attrs, temp);
 		break;
 	default:
 		DMSG("Invalid object class 0x%" PRIx32 "/%s",
