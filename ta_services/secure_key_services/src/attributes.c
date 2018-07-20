@@ -71,7 +71,7 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	shift = sks_attr2boolprop_shift(attribute);
-	if (shift >= 0) {
+	if (head_contains_boolprops(*head) && shift >= 0) {
 		uint32_t mask = shift < 32 ? BIT(shift) : BIT(shift - 32);
 		uint32_t val = *(uint8_t *)data ? mask : 0;
 
@@ -116,11 +116,13 @@ uint32_t remove_attribute(struct sks_attrs_head **head, uint32_t attribute)
 	char *end;
 	size_t next_off;
 
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
 	/* Can't remove an attribute that is defined in the head */
-	if (attribute_is_in_head(attribute)) {
-		EMSG("Can't remove attribute in the head");
+	if (head_contains_boolprops(*head) && attribute_is_in_head(attribute)) {
+		EMSG("Can't remove attribute from the head");
 		return SKS_FAILED;
 	}
+#endif
 
 	/* Let's find the target attribute */
 	cur = (char *)h + sizeof(struct sks_attrs_head);
@@ -156,11 +158,13 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
 	size_t next_off;
 	size_t found = 0;
 
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
 	/* Can't remove an attribute that is defined in the head */
-	if (attribute_is_in_head(attribute)) {
-		EMSG("Can't remove attribute is in the head");
-		return SKS_FAILED;
+	if (head_contains_boolprops(*head) && attribute_is_in_head(attribute)) {
+		EMSG("Can't remove attribute from the head");
+		TEE_Panic(0);
 	}
+#endif
 
 	/* Let's find the target attribute */
 	cur = (char *)h + sizeof(struct sks_attrs_head);
@@ -213,6 +217,14 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 	size_t found = 0;
 	void **attr_ptr = attr;
 	size_t *attr_size_ptr = attr_size;
+
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
+	/* Can't return a pointer to a boolprop attribute */
+	if (head_contains_boolprops(head) && attribute_is_in_head(attribute)) {
+		EMSG("Can't get poitner to an attribute in the head");
+		TEE_Panic(0);
+	}
+#endif
 
 	for (; cur < end; cur += next_off) {
 		/* Structure aligned copy of the sks_ref in the object */
@@ -272,7 +284,8 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 	}
 #endif
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
-	if (sks_attr2boolprop_shift(attribute) >= 0)
+	if (head_contains_boolprops(head) &&
+	    sks_attr2boolprop_shift(attribute) >= 0)
 		TEE_Panic(0);
 #endif
 
@@ -312,7 +325,7 @@ uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	shift = sks_attr2boolprop_shift(attribute);
-	if (shift >= 0) {
+	if (head_contains_boolprops(head) && shift >= 0) {
 		uint32_t *boolprop;
 
 		boolprop = (shift < 32) ? &head->boolpropl : &head->boolproph;
@@ -345,6 +358,32 @@ found:
 	return SKS_OK;
 }
 
+bool get_bool(struct sks_attrs_head *head, uint32_t attribute)
+{
+	uint32_t rc __maybe_unused;
+	uint8_t bbool;
+	size_t size = sizeof(bbool);
+	int __maybe_unused shift;
+
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
+	shift = sks_attr2boolprop_shift(attribute);
+	if (shift < 0)
+		TEE_Panic(SKS_NOT_FOUND);
+
+	if (head_contains_boolprops(head)) {
+		if (shift > 31)
+			return head->boolproph & BIT(shift - 32);
+		else
+			return head->boolpropl & BIT(shift);
+	}
+#endif
+
+	rc = get_attribute(head, attribute, &bbool, &size);
+	assert(rc == SKS_OK);
+
+	return !!bbool;
+}
+
 bool attributes_match_reference(struct sks_attrs_head *candidate,
 				struct sks_attrs_head *ref)
 {
@@ -357,18 +396,38 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 		return false;
 	}
 
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
+	/*
+	 * All boolprops attributes must ne explicitly defined
+	 * as an attribute reference in the reference object.
+	 */
+	assert(!head_contains_boolprops(ref));
+#endif
+
 	for (count = 0; count < ref->attrs_count; count++) {
 		struct sks_ref sks_ref;
 		void *found;
 		size_t size;
+		int shift;
 
 		TEE_MemMove(&sks_ref, ref_attr, sizeof(sks_ref));
 
-		rc = get_attribute_ptr(candidate, sks_ref.id, &found, &size);
+		shift = sks_attr2boolprop_shift(sks_ref.id);
+		if (shift >= 0) {
+			bool bb_ref = get_bool(ref, sks_ref.id);
+			bool bb_candidate = get_bool(candidate, sks_ref.id);
 
-		if (rc || !found || size != sks_ref.size ||
-		    TEE_MemCompare(ref_attr + sizeof(sks_ref), found, size)) {
-			return false;
+			if (bb_ref != bb_candidate) {
+				return false;
+			}
+		} else {
+			rc = get_attribute_ptr(candidate, sks_ref.id,
+					       &found, &size);
+			if (rc || !found || size != sks_ref.size ||
+			    TEE_MemCompare(ref_attr + sizeof(sks_ref),
+					   found, size)) {
+				return false;
+			}
 		}
 
 		ref_attr += sizeof(sks_ref) + sks_ref.size;
@@ -481,6 +540,21 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 	return SKS_OK;
 }
 
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
+static void trace_boolprops(const char *prefix, struct sks_attrs_head *head)
+{
+	size_t n __maybe_unused;
+
+	for (n = 0; n <= SKS_BOOLPROPS_LAST; n++) {
+		bool bp = n < 32 ? !!(head->boolpropl & BIT(n)) :
+				 !!(head->boolproph & BIT(n - 32));
+
+		IMSG_RAW("%s| attr %s / %s (0x%" PRIx32 ")",
+			 prefix, sks2str_attr(n), bp ? "TRUE" : "FALSE", n);
+	}
+}
+#endif
+
 uint32_t trace_attributes(const char *prefix, void *ref)
 {
 	struct sks_attrs_head head;
@@ -506,12 +580,8 @@ uint32_t trace_attributes(const char *prefix, void *ref)
 #endif
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
-	for (n = 0; n < SKS_BOOLPROP_LAST_SHIFT; n++)
-		IMSG_RAW("%s| attr %s (0x%" PRIx32 " %" PRIu32 " byte) : %u",
-			 prefix, sks2str_attr(SKS_BP_ATTR(n)), SKS_BP_ATTR(n), 1,
-			 n < 32 ?
-			 !!(head.boolpropl & BIT(n)) :
-			 !!(head.boolproph & BIT(n - 32)));
+	if (head_contains_boolprops(&head))
+		trace_boolprops(pre, &head);
 #endif
 
 	pre[prefix ? strlen(prefix) : 0] = '|';

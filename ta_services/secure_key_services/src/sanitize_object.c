@@ -120,10 +120,6 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
 
-#ifdef SKS_SHEAD_WITH_TYPE
-	(*dst)->class = class_found;
-	(*dst)->type = type_found;
-#else
 	rc = add_attribute(dst, SKS_CKA_CLASS, &class_found, sizeof(uint32_t));
 	if (rc)
 		return rc;
@@ -132,7 +128,6 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 			   sizeof(uint32_t));
 	if (rc)
 		return rc;
-#endif
 
 	return SKS_OK;
 }
@@ -175,7 +170,6 @@ static uint32_t sanitize_boolprop(struct sks_attrs_head __maybe_unused **dst,
 	else
 		*boolprop_ptr &= ~mask;
 
-#ifndef SKS_SHEAD_WITH_BOOLPROPS
 	/* Store the attribute inside the serialized data */
 	if (!(*sanity_ptr & mask)) {
 		uint32_t rc;
@@ -186,7 +180,6 @@ static uint32_t sanitize_boolprop(struct sks_attrs_head __maybe_unused **dst,
 		if (rc)
 			return rc;
 	}
-#endif
 
 	*sanity_ptr |= mask;
 
@@ -218,11 +211,6 @@ static uint32_t sanitize_boolprops(struct sks_attrs_head **dst, void *src)
 		if (rc != SKS_OK && rc != SKS_NOT_FOUND)
 			return rc;
 	}
-
-#ifdef SKS_SHEAD_WITH_BOOLPROPS
-	(*dst)->boolpropl = boolprops[0];
-	(*dst)->boolproph = boolprops[1];
-#endif
 
 	return SKS_OK;
 }

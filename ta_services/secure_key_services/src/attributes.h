@@ -14,6 +14,18 @@
 
 #include "sks_helpers.h"
 
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
+static inline void set_attributes_in_head(struct sks_attrs_head *head)
+{
+	head->boolproph |= SKS_BOOLPROPH_FLAG;
+}
+
+static inline bool head_contains_boolprops(struct sks_attrs_head __unused *head)
+{
+	return head->boolproph & SKS_BOOLPROPH_FLAG;
+}
+#endif
+
 /*
  * Allocation a reference for a serialized attributes.
  * Can be freed from a simple TEE_Free(reference);
@@ -134,33 +146,7 @@ static inline uint32_t get_type(struct sks_attrs_head *head)
 }
 #endif
 
-#ifdef SKS_SHEAD_WITH_BOOLPROPS
-static inline bool get_bool(struct sks_attrs_head *head, uint32_t attribute)
-{
-	int shift = sks_attr2boolprop_shift(attribute);
-
-	if (shift < 0)
-		TEE_Panic(SKS_NOT_FOUND);
-
-	if (shift > 31)
-		return head->boolproph & BIT(shift - 32) ? true : false;
-	else
-		return head->boolpropl & BIT(shift) ? true : false;
-}
-#else
-static inline bool get_bool(struct sks_attrs_head *head, uint32_t attribute)
-{
-	uint32_t rc __maybe_unused;
-	uint8_t bbool;
-	size_t size = sizeof(bbool);
-
-	/* Would quicker reading from a bit field */
-	rc = get_attribute(head, attribute, &bbool, &size);
-	assert(rc == SKS_OK);
-
-	return !!bbool;
-}
-#endif
+bool get_bool(struct sks_attrs_head *head, uint32_t attribute);
 
 /* Debug: dump object attributes to IMSG() trace console */
 uint32_t trace_attributes(const char *prefix, void *ref);

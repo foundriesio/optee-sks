@@ -106,6 +106,9 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 	uint32_t rv;
 
 	init_attributes_head(out);
+#ifdef SKS_SHEAD_WITH_BOOLPROPS
+	set_attributes_in_head(*out);
+#endif
 
 	/* Object class is mandatory */
 	class = get_class(temp);
