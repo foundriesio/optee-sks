@@ -747,8 +747,8 @@ static void set_session_state(struct pkcs11_client *client,
 
 	switch (state) {
 	case PKCS11_SESSION_USER_READ_WRITE:
-		session->state = readonly ? PKCS11_SESSION_PUBLIC_READ_ONLY :
-					  PKCS11_SESSION_PUBLIC_READ_WRITE;
+		session->state = readonly ? PKCS11_SESSION_USER_READ_ONLY :
+					  PKCS11_SESSION_USER_READ_WRITE;
 		break;
 	case PKCS11_SESSION_SO_READ_WRITE:
 		/* SO cannot open read-only sessions */
