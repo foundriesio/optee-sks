@@ -66,4 +66,13 @@ CK_RV ck_find_objects(CK_SESSION_HANDLE session,
 
 CK_RV ck_find_objects_final(CK_SESSION_HANDLE session);
 
+CK_RV ck_generate_key_pair(CK_SESSION_HANDLE session,
+			   CK_MECHANISM_PTR mechanism,
+			   CK_ATTRIBUTE_PTR pub_attribs,
+			   CK_ULONG pub_count,
+			   CK_ATTRIBUTE_PTR priv_attribs,
+			   CK_ULONG priv_count,
+			   CK_OBJECT_HANDLE_PTR pub_key,
+			   CK_OBJECT_HANDLE_PTR priv_key);
+
 #endif /*__PKCS11_PROCESSING_H*/
