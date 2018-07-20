@@ -23,6 +23,194 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
+struct pkcs11_mechachism_modes {
+	uint32_t id;
+	uint32_t flags;
+	bool available;
+	bool one_shot;
+};
+
+/*
+ * SKS_CKFM_EC_F_P
+ * SKS_CKFM_EC_F_2M
+ * SKS_CKFM_EC_ECPARAMETERS
+ * SKS_CKFM_EC_NAMEDCURVE
+ * SKS_CKFM_EC_UNCOMPRESS
+ * SKS_CKFM_EC_COMPRESS
+ */
+#define SKS_ECM		0
+
+/* SKS_CKFM_HW: need to ask core one HW support of the mechanisms */
+#define SKS_M(_label, _dig, _enc, _dec, _sig, _ver,		\
+		_sr, _vr, _der, _wra, _unw, _gen, _gpa, _1s)	\
+	{							\
+		.id = SKS_CKM_  ## _label,			\
+		.one_shot = _1s,				\
+		.flags = (_enc ? SKS_CKFM_ENCRYPT : 0) |	\
+			(_dec ? SKS_CKFM_DECRYPT : 0) |		\
+			(_dig ? SKS_CKFM_DIGEST : 0) |		\
+			(_sig ? SKS_CKFM_SIGN : 0) |		\
+			(_sr ? SKS_CKFM_SIGN_RECOVER : 0) |	\
+			(_ver ? SKS_CKFM_VERIFY : 0) |		\
+			(_vr ? SKS_CKFM_VERIFY_RECOVER : 0) |	\
+			(_gen ? SKS_CKFM_GENERATE : 0) |	\
+			(_gpa ? SKS_CKFM_GENERATE_PAIR : 0) |	\
+			(_wra ? SKS_CKFM_WRAP : 0) |		\
+			(_unw ? SKS_CKFM_UNWRAP : 0) |		\
+			(_der ? SKS_CKFM_DERIVE : 0) |		\
+			SKS_ECM,				\
+	}
+
+static const __maybe_unused struct pkcs11_mechachism_modes pkcs11_modes[] = {
+	/*
+	 * PKCS#11 directives on mechanism support for the several processing
+	 * modes.
+	 *				1: One shot processing only --------.
+	 *				Gp: Generate secret pair --------.  |
+	 *				Ge: Generate secret value ----.  |  |
+	 *				Wr|Uw: Wrap/Unwrap -------.   |  |  |
+	 *				Dr: Derive ----------.    |   |  |  |
+	 *		Sr|Vr: SignRecover/VerifyRecov --.   |    |   |  |  |
+	 *		Si|Ve: Sign/Verify --------.     |   |    |   |  |  |
+	 *		En|De: Encrypt/Decrypt     |     |   |    |   |  |  |
+	 *		Di: Digest -----.    |     |     |   |    |   |  |  |
+	 *				|   / \   / \   / \  |   / \  |  |  |
+	 * Mechanism			Di|En|De|Si|Ve|Sr|Vr|Dr|Wr|Uw|Ge|Gp|1
+	 */
+	SKS_M(AES_ECB,			0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
+	SKS_M(AES_CBC,			0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
+	SKS_M(AES_CBC_PAD,		0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
+	SKS_M(AES_CTS,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+	SKS_M(AES_CTR,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+	SKS_M(AES_GCM,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+	SKS_M(AES_CCM,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+	SKS_M(AES_GMAC,			0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0),
+	SKS_M(AES_CMAC,			0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(AES_CMAC_GENERAL,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(AES_ECB_ENCRYPT_DATA,	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0),
+	SKS_M(AES_CBC_ENCRYPT_DATA,	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0),
+	SKS_M(AES_KEY_GEN,		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0),
+	/* Mechanism			Di|En|De|Si|Ve|Sr|Vr|Dr|Wr|Uw|Ge|Gp|1 */
+	SKS_M(GENERIC_SECRET_KEY_GEN,	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0),
+	SKS_M(MD5_HMAC,			0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(SHA_1_HMAC,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(SHA224_HMAC,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(SHA256_HMAC,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(SHA384_HMAC,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(SHA512_HMAC,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	SKS_M(AES_XCBC_MAC,		0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+	/*
+	 * Mechanism			Di|En|De|Si|Ve|Sr|Vr|Dr|Wr|Uw|Ge|Gp|1
+	 *                              |   \_/   \_/   \_/  |   \_/  |  |  |
+	 *		Di: Digest -----'    |     |     |   |    |   |  |  |
+	 *		En|De: Encrypt/Decrypt     |     |   |    |   |  |  |
+	 *		Si|Ve: Sign/Verify --------'     |   |    |   |  |  |
+	 *		Sr|Vr: SignUpdate/VerifyRecover -'   |    |   |  |  |
+	 *				Dr: Derive ----------'    |   |  |  |
+	 *				Wr|Uw: Wrap/Unwrap -------'   |  |  |
+	 *				Ge: Generate secret value ----'  |  |
+	 *				Gp: Generate secret pair --------'  |
+	 *				1: One shot processing only --------'
+	 */
+};
+
+static uint32_t sks_function2ckfm(enum processing_func function)
+{
+	switch (function) {
+	case SKS_FUNCTION_DIGEST:
+		return SKS_CKFM_DIGEST;
+	case SKS_FUNCTION_GENERATE:
+		return SKS_CKFM_GENERATE;
+	case SKS_FUNCTION_GENERATE_PAIR:
+		return SKS_CKFM_GENERATE_PAIR;
+	case SKS_FUNCTION_DERIVE:
+		return SKS_CKFM_DERIVE;
+	case SKS_FUNCTION_WRAP:
+		return SKS_CKFM_WRAP;
+	case SKS_FUNCTION_UNWRAP:
+		return SKS_CKFM_UNWRAP;
+	case SKS_FUNCTION_ENCRYPT:
+		return SKS_CKFM_ENCRYPT;
+	case SKS_FUNCTION_DECRYPT:
+		return SKS_CKFM_DECRYPT;
+	case SKS_FUNCTION_SIGN:
+		return SKS_CKFM_SIGN;
+	case SKS_FUNCTION_VERIFY:
+		return SKS_CKFM_VERIFY;
+	case SKS_FUNCTION_SIGN_RECOVER:
+		return SKS_CKFM_SIGN_RECOVER;
+	case SKS_FUNCTION_VERIFY_RECOVER:
+		return SKS_CKFM_VERIFY_RECOVER;
+	default:
+		return 0;
+	}
+}
+
+int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags)
+{
+	size_t n;
+	uint32_t test_flags = flags & (SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
+				SKS_CKFM_DERIVE | SKS_CKFM_DIGEST |
+				SKS_CKFM_SIGN | SKS_CKFM_SIGN_RECOVER |
+				SKS_CKFM_VERIFY | SKS_CKFM_VERIFY_RECOVER |
+				SKS_CKFM_GENERATE | SKS_CKFM_GENERATE_PAIR |
+				SKS_CKFM_WRAP | SKS_CKFM_UNWRAP);
+
+	for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
+		if (pkcs11_modes[n].id == mechanism_type) {
+			if (test_flags & ~pkcs11_modes[n].flags) {
+				EMSG("%s flags: 0x%" PRIx32 " vs 0x%" PRIx32,
+					sks2str_proc(mechanism_type),
+					test_flags, pkcs11_modes[n].flags);
+			}
+			return test_flags & ~pkcs11_modes[n].flags;
+		}
+	}
+
+	return 1;
+}
+
+uint32_t check_mechanism_against_processing(uint32_t mechanism_type,
+					    enum processing_func function)
+{
+	size_t n;
+	bool allowed = false;
+
+	switch (function) {
+	case SKS_FUNCTION_IMPORT:
+	case SKS_FUNCTION_COPY:
+	case SKS_FUNCTION_MODIFY:
+	case SKS_FUNCTION_DESTROY:
+		allowed = true;
+		break;
+
+	case SKS_FUNCTION_UPDATE:
+		for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
+			if (pkcs11_modes[n].id == mechanism_type) {
+				allowed = !pkcs11_modes[n].one_shot;
+				break;
+			}
+		}
+		break;
+
+	default:
+		for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
+			if (pkcs11_modes[n].id == mechanism_type) {
+				allowed = pkcs11_modes[n].flags &
+					  sks_function2ckfm(function);
+				break;
+			}
+		}
+		break;
+	}
+
+	if (!allowed)
+		EMSG("Processing not permitted per PKCS#11 %s for %u",
+			sks2str_proc(mechanism_type), function);
+
+	return allowed ? SKS_OK : SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
+}
+
 /*
  * Object default boolean attributes as per PKCS#11
  */
@@ -566,45 +754,39 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 	 */
 	switch (proc_id) {
 	case SKS_PROCESSING_IMPORT:
-		/* sanity: these can be asserted */
 		if (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
 		    bbool) {
 			DMSG_BAD_BBOOL(SKS_CKA_LOCAL, proc_id, head);
 			return SKS_CKR_TEMPLATE_INCONSISTENT;
 		}
-
-		return SKS_OK;
-
+		break;
 	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
-		if (get_type(head) != SKS_CKK_GENERIC_SECRET)
-			return SKS_CKR_TEMPLATE_INCONSISTENT;
-
-		/* sanity: these can be asserted */
+	case SKS_CKM_AES_KEY_GEN:
 		if (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
 		    !bbool) {
 			DMSG_BAD_BBOOL(SKS_CKA_LOCAL, proc_id, head);
 			return SKS_CKR_TEMPLATE_INCONSISTENT;
 		}
+		break;
+	default:
+		TEE_Panic(proc_id);
+		break;
+	}
 
-		return SKS_OK;
-
+	switch (proc_id) {
+	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+		if (get_type(head) != SKS_CKK_GENERIC_SECRET)
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		break;
 	case SKS_CKM_AES_KEY_GEN:
 		if (get_type(head) != SKS_CKK_AES)
 			return SKS_CKR_TEMPLATE_INCONSISTENT;
-
-		/* sanity: these can be asserted */
-		if (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
-				  !bbool) {
-			DMSG_BAD_BBOOL(SKS_CKA_LOCAL, proc_id, head);
-			return SKS_CKR_TEMPLATE_INCONSISTENT;
-		}
-
-		return SKS_OK;
-
+		break;
 	default:
-		DMSG("Processing %s not supported", sks2str_proc(proc_id));
-		return SKS_CKR_MECHANISM_INVALID;
+		break;
 	}
+
+	return SKS_OK;
 }
 
 /* Check processing ID against attributre ALLOWED_PROCESSINGS if any */

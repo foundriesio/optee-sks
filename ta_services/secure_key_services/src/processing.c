@@ -484,6 +484,12 @@ uint32_t entry_cipher_init(uintptr_t tee_session, TEE_Param *ctrl,
 	/*
 	 * Check processing against parent key and token state
 	 */
+	rv = check_mechanism_against_processing(proc_params->id,
+						decrypt ? SKS_FUNCTION_DECRYPT :
+						SKS_FUNCTION_ENCRYPT);
+	if (rv)
+		goto bail;
+
 	rv = check_parent_attrs_against_processing(proc_params->id, decrypt ?
 						   SKS_FUNCTION_DECRYPT :
 						   SKS_FUNCTION_ENCRYPT,
@@ -628,6 +634,11 @@ uint32_t entry_cipher_update(uintptr_t tee_session, TEE_Param *ctrl,
 					    PKCS11_SESSION_DECRYPTING :
 					    PKCS11_SESSION_ENCRYPTING))
 		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+
+	rv = check_mechanism_against_processing(session->proc_id,
+						SKS_FUNCTION_UPDATE);
+	if (rv)
+		return rv;
 
 	switch (session->proc_id) {
 	case SKS_CKM_AES_CCM:
@@ -843,6 +854,11 @@ uint32_t entry_generate_object(uintptr_t tee_session,
 		goto bail;
 	}
 
+	rv = check_mechanism_against_processing(proc_params->id,
+						SKS_FUNCTION_GENERATE);
+	if (rv)
+		goto bail;
+
 	/*
 	 * Prepare a clean initial state for the requested object attributes.
 	 * Free temorary template once done.
@@ -977,8 +993,14 @@ uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
 	/*
 	 * Check created object against processing and token state.
 	 */
-	rv = check_parent_attrs_against_processing(proc_params->id, sign ?
-						   SKS_FUNCTION_SIGN :
+	rv = check_mechanism_against_processing(proc_params->id,
+						sign ? SKS_FUNCTION_SIGN :
+						SKS_FUNCTION_VERIFY);
+	if (rv)
+		goto bail;
+
+	rv = check_parent_attrs_against_processing(proc_params->id,
+						   sign ? SKS_FUNCTION_SIGN :
 						   SKS_FUNCTION_VERIFY,
 						   obj->attributes);
 	if (rv)
@@ -1093,6 +1115,11 @@ uint32_t entry_signverify_update(uintptr_t tee_session, TEE_Param *ctrl,
 	if (check_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
 						 PKCS11_SESSION_VERIFYING))
 		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+
+	rv = check_mechanism_against_processing(session->proc_id,
+						SKS_FUNCTION_UPDATE);
+	if (rv)
+		goto bail;
 
 	if (!in || out) {
 		rv = SKS_BAD_PARAM;

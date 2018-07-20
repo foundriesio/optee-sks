@@ -13,6 +13,7 @@
 
 #include "handle.h"
 #include "pkcs11_token.h"
+#include "pkcs11_attributes.h"
 #include "serializer.h"
 #include "sks_helpers.h"
 
@@ -693,11 +694,12 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	case SKS_CKM_AES_CBC_ENCRYPT_DATA:
 		info.flags = SKS_CKFM_DERIVE;
 		break;
-		break;
 
 	default:
 		break;
 	}
+
+	assert(check_pkcs11_mechanism_flags(type, info.flags) == 0);
 
 	out->memref.size = sizeof(info);
 	TEE_MemMove(out->memref.buffer, &info, sizeof(info));

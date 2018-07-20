@@ -89,9 +89,9 @@
  */
 
 enum processing_func {
-	SKS_FUNCTION_IMPORT,
-	SKS_FUNCTION_COPY,
+	SKS_FUNCTION_DIGEST,
 	SKS_FUNCTION_GENERATE,
+	SKS_FUNCTION_GENERATE_PAIR,
 	SKS_FUNCTION_DERIVE,
 	SKS_FUNCTION_WRAP,
 	SKS_FUNCTION_UNWRAP,
@@ -99,6 +99,13 @@ enum processing_func {
 	SKS_FUNCTION_DECRYPT,
 	SKS_FUNCTION_SIGN,
 	SKS_FUNCTION_VERIFY,
+	SKS_FUNCTION_SIGN_RECOVER,
+	SKS_FUNCTION_VERIFY_RECOVER,
+	SKS_FUNCTION_UPDATE,
+	SKS_FUNCTION_IMPORT,
+	SKS_FUNCTION_COPY,
+	SKS_FUNCTION_MODIFY,
+	SKS_FUNCTION_DESTROY,
 };
 
 /* Create an attribute list for a new object (TODO: add parent attribs) */
@@ -129,5 +136,10 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 
 uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 					  struct sks_attrs_head *head);
+
+uint32_t check_mechanism_against_processing(uint32_t mechanism_type,
+					    enum processing_func function);
+
+int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags);
 
 #endif /*__PKCS11_ATTRIBUTE_H*/
