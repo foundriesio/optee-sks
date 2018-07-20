@@ -608,6 +608,25 @@ struct sks_attribute_head {
 #define SKS_CMD_LOGOUT			0x00000027
 
 /*
+ * SKS_CMD_GENERATE_KEY_PAIR - Generate an asymmetric key pair
+ *
+ * [in]		memref[0] = [
+ *			32bit session handle,
+ *			(struct sks_attribute_head)mechanism + mecha parameters,
+ *			(struct sks_object_head)pubkey_attribs + attributes data
+ *			(struct sks_object_head)privkeyattribs + attributes data
+ *		]
+ * [out]	memref[0] = 32bit fine grain retrun code
+ * [out]	memref[2] = [
+ *			32bit public key handle,
+ *			32bit prive key handle
+ *		]
+ *
+ * This command relates to the PKCS#11 API functions C_GenerateKeyPair().
+ */
+#define SKS_CMD_GENERATE_KEY_PAIR	0x00000028
+
+/*
  * Command return codes
  * SKS_CKR_<x> relates cryptoki CKR_<x> in meaning if not in value.
  */
