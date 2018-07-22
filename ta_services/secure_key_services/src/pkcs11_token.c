@@ -575,6 +575,149 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 	return SKS_OK;
 }
 
+static uint32_t supported_mechanism_info_flag(uint32_t proc_id)
+{
+	uint32_t flags = 0;
+
+	switch (proc_id) {
+	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+	case SKS_CKM_AES_KEY_GEN:
+		flags = SKS_CKFM_GENERATE;
+		break;
+	case SKS_CKM_AES_ECB:
+	case SKS_CKM_AES_CBC:
+	case SKS_CKM_AES_CBC_PAD:
+		flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
+			SKS_CKFM_WRAP | SKS_CKFM_UNWRAP | SKS_CKFM_DERIVE;
+		break;
+	case SKS_CKM_AES_CTR:
+	case SKS_CKM_AES_CTS:
+	case SKS_CKM_AES_GCM:
+	case SKS_CKM_AES_CCM:
+		flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
+			SKS_CKFM_WRAP | SKS_CKFM_UNWRAP;
+		break;
+	case SKS_CKM_AES_GMAC:
+		flags = SKS_CKFM_SIGN | SKS_CKFM_VERIFY | SKS_CKFM_DERIVE;
+		break;
+	case SKS_CKM_AES_CMAC:
+	case SKS_CKM_AES_CMAC_GENERAL:
+	case SKS_CKM_MD5_HMAC:
+	case SKS_CKM_SHA_1_HMAC:
+	case SKS_CKM_SHA224_HMAC:
+	case SKS_CKM_SHA256_HMAC:
+	case SKS_CKM_SHA384_HMAC:
+	case SKS_CKM_SHA512_HMAC:
+	case SKS_CKM_AES_XCBC_MAC:
+		flags = SKS_CKFM_SIGN | SKS_CKFM_VERIFY;
+		break;
+	case SKS_CKM_AES_ECB_ENCRYPT_DATA:
+	case SKS_CKM_AES_CBC_ENCRYPT_DATA:
+		flags = SKS_CKFM_DERIVE;
+		break;
+	default:
+		TEE_Panic(proc_id);
+		break;
+	}
+
+	assert(check_pkcs11_mechanism_flags(proc_id, flags) == 0);
+
+	return flags;
+}
+
+static void supported_mechanism_key_size(uint32_t proc_id,
+					 uint32_t *max_key_size,
+					 uint32_t *min_key_size,
+					 bool bit_size_only)
+{
+	uint32_t mult = bit_size_only ? 8 : 1;
+
+	switch (proc_id) {
+	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+		*min_key_size = 1;		/* in bits */
+		*max_key_size = 4096;		/* in bits */
+		break;
+	case SKS_CKM_MD5_HMAC:
+		*min_key_size = 16 * mult;
+		*max_key_size = 16 * mult;
+		break;
+	case SKS_CKM_SHA_1_HMAC:
+		*min_key_size = 20 * mult;
+		*max_key_size = 20 * mult;
+		break;
+	case SKS_CKM_SHA224_HMAC:
+		*min_key_size = 28 * mult;
+		*max_key_size = 28 * mult;
+		break;
+	case SKS_CKM_SHA256_HMAC:
+		*min_key_size = 32 * mult;
+		*max_key_size = 32 * mult;
+		break;
+	case SKS_CKM_SHA384_HMAC:
+		*min_key_size = 48 * mult;
+		*max_key_size = 48 * mult;
+		break;
+	case SKS_CKM_SHA512_HMAC:
+		*min_key_size = 64 * mult;
+		*max_key_size = 64 * mult;
+		break;
+	case SKS_CKM_AES_XCBC_MAC:
+		*min_key_size = 28 * mult;
+		*max_key_size = 28 * mult;
+		break;
+	case SKS_CKM_AES_KEY_GEN:
+	case SKS_CKM_AES_ECB:
+	case SKS_CKM_AES_CBC:
+	case SKS_CKM_AES_CBC_PAD:
+	case SKS_CKM_AES_CTR:
+	case SKS_CKM_AES_CTS:
+	case SKS_CKM_AES_GCM:
+	case SKS_CKM_AES_CCM:
+	case SKS_CKM_AES_GMAC:
+	case SKS_CKM_AES_CMAC:
+	case SKS_CKM_AES_CMAC_GENERAL:
+		*min_key_size = 16 * mult;
+		*max_key_size = 32 * mult;
+		break;
+	case SKS_CKM_EC_KEY_PAIR_GEN:
+	case SKS_CKM_ECDSA:
+	case SKS_CKM_ECDSA_SHA1:
+	case SKS_CKM_ECDSA_SHA224:
+	case SKS_CKM_ECDSA_SHA256:
+	case SKS_CKM_ECDSA_SHA384:
+	case SKS_CKM_ECDSA_SHA512:
+	case SKS_CKM_ECDH1_DERIVE:
+	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
+	case SKS_CKM_ECMQV_DERIVE:
+	case SKS_CKM_ECDH_AES_KEY_WRAP:
+		*min_key_size = 160;	/* in bits */
+		*max_key_size = 521;	/* in bits */
+		break;
+	case SKS_CKM_RSA_PKCS_KEY_PAIR_GEN:
+	case SKS_CKM_RSA_PKCS:
+	case SKS_CKM_RSA_9796:
+	case SKS_CKM_RSA_X_509:
+	case SKS_CKM_SHA1_RSA_PKCS:
+	case SKS_CKM_RSA_PKCS_OAEP:
+	case SKS_CKM_SHA1_RSA_PKCS_PSS:
+	case SKS_CKM_SHA256_RSA_PKCS:
+	case SKS_CKM_SHA384_RSA_PKCS:
+	case SKS_CKM_SHA512_RSA_PKCS:
+	case SKS_CKM_SHA256_RSA_PKCS_PSS:
+	case SKS_CKM_SHA384_RSA_PKCS_PSS:
+	case SKS_CKM_SHA512_RSA_PKCS_PSS:
+	case SKS_CKM_SHA224_RSA_PKCS:
+	case SKS_CKM_SHA224_RSA_PKCS_PSS:
+		*min_key_size = 256;	/* in bits */
+		*max_key_size = 4096;	/* in bits */
+		break;
+	default:
+		*min_key_size = 0;
+		*max_key_size = 0;
+		break;
+	}
+}
+
 uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
@@ -583,7 +726,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	uint32_t token_id;
 	uint32_t type;
 	struct ck_token *token;
-	struct sks_mechanism_info info;
+	struct sks_mechanism_info *info;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -595,6 +738,8 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 
 	if ((uintptr_t)out->memref.buffer & 0x3UL)
 		return SKS_BAD_PARAM;
+
+	info = (struct sks_mechanism_info *)out->memref.buffer;
 
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
@@ -613,76 +758,12 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	if (!mechanism_is_supported(type))
 		return SKS_CKR_MECHANISM_INVALID;
 
-	TEE_MemFill(&info, 0, sizeof(info));
+	info->flags = supported_mechanism_info_flag(type);
 
-	switch (type) {
-	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
-		info.min_key_size = 1;		/* in bits */
-		info.max_key_size = 4096;	/* in bits */
-		break;
-	case SKS_CKM_AES_KEY_GEN:
-	case SKS_CKM_AES_ECB:
-	case SKS_CKM_AES_CBC:
-	case SKS_CKM_AES_CBC_PAD:
-	case SKS_CKM_AES_CTR:
-	case SKS_CKM_AES_CTS:
-	case SKS_CKM_AES_GCM:
-	case SKS_CKM_AES_CCM:
-	case SKS_CKM_AES_GMAC:
-	case SKS_CKM_AES_CMAC:
-	case SKS_CKM_AES_CMAC_GENERAL:
-		info.min_key_size = 128;	/* in bits */
-		info.max_key_size = 256;	/* in bits */
-		break;
-	default:
-		break;
-	}
+	supported_mechanism_key_size(type, &info->min_key_size,
+					&info->max_key_size, false);
 
-	switch (type) {
-	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
-	case SKS_CKM_AES_KEY_GEN:
-		info.flags = SKS_CKFM_GENERATE;
-		break;
-	case SKS_CKM_AES_ECB:
-	case SKS_CKM_AES_CBC:
-	case SKS_CKM_AES_CBC_PAD:
-		info.flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
-			     SKS_CKFM_WRAP | SKS_CKFM_UNWRAP | SKS_CKFM_DERIVE;
-		break;
-	case SKS_CKM_AES_CTR:
-	case SKS_CKM_AES_CTS:
-	case SKS_CKM_AES_GCM:
-	case SKS_CKM_AES_CCM:
-		info.flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
-			     SKS_CKFM_WRAP | SKS_CKFM_UNWRAP;
-		break;
-	case SKS_CKM_AES_GMAC:
-		info.flags = SKS_CKFM_SIGN | SKS_CKFM_VERIFY | SKS_CKFM_DERIVE;
-		break;
-	case SKS_CKM_AES_CMAC:
-	case SKS_CKM_AES_CMAC_GENERAL:
-	case SKS_CKM_MD5_HMAC:
-	case SKS_CKM_SHA_1_HMAC:
-	case SKS_CKM_SHA224_HMAC:
-	case SKS_CKM_SHA256_HMAC:
-	case SKS_CKM_SHA384_HMAC:
-	case SKS_CKM_SHA512_HMAC:
-	case SKS_CKM_AES_XCBC_MAC:
-		info.flags = SKS_CKFM_SIGN | SKS_CKFM_VERIFY;
-		break;
-	case SKS_CKM_AES_ECB_ENCRYPT_DATA:
-	case SKS_CKM_AES_CBC_ENCRYPT_DATA:
-		info.flags = SKS_CKFM_DERIVE;
-		break;
-
-	default:
-		break;
-	}
-
-	assert(check_pkcs11_mechanism_flags(type, info.flags) == 0);
-
-	out->memref.size = sizeof(info);
-	TEE_MemMove(out->memref.buffer, &info, sizeof(info));
+	out->memref.size = sizeof(struct sks_mechanism_info);
 
 	return SKS_OK;
 }
