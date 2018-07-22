@@ -14,7 +14,7 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
-uint32_t tee_init_ctr_operation(struct pkcs11_session *session,
+uint32_t tee_init_ctr_operation(struct active_processing *processing,
 				    void *proc_params, size_t params_size)
 {
 	struct serialargs args;
@@ -43,7 +43,7 @@ uint32_t tee_init_ctr_operation(struct pkcs11_session *session,
 		goto bail;
 	}
 
-	TEE_CipherInit(session->tee_op_handle, counter_bits, 16);
+	TEE_CipherInit(processing->tee_op_handle, counter_bits, 16);
 
 	rv = SKS_OK;
 
@@ -51,7 +51,7 @@ bail:
 	return rv;
 }
 
-void tee_release_ctr_operation(struct pkcs11_session *session __unused)
+void tee_release_ctr_operation(struct active_processing *processing __unused)
 {
 	return;
 }
@@ -115,10 +115,10 @@ static void release_ae_aes_context(struct ae_aes_context *ctx)
 	ctx->pending_tag = NULL;
 }
 
-uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
+uint32_t tee_ae_decrypt_update(struct active_processing *processing,
 			       void *in, size_t in_size)
 {
-	struct ae_aes_context *ctx = session->proc_params;
+	struct ae_aes_context *ctx = processing->extra_ctx;
 	size_t data_len;
 	uint32_t size;
 	TEE_Result res;
@@ -159,7 +159,7 @@ uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
 		/* Process pending tag bytes that are effective data byte */
 		uint32_t len = MIN(data_len, ctx->pending_size);
 
-		res = TEE_AEUpdate(session->tee_op_handle,
+		res = TEE_AEUpdate(processing->tee_op_handle,
 				   ctx->pending_tag, len, NULL, &ct_size);
 
 		// TODO: explain this
@@ -180,7 +180,7 @@ uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
 				goto bail;
 			}
 
-			res = TEE_AEUpdate(session->tee_op_handle,
+			res = TEE_AEUpdate(processing->tee_op_handle,
 					   ctx->pending_tag, len, ct, &ct_size);
 			if (res) {
 				rv = tee2sks_error(res);
@@ -206,7 +206,7 @@ uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
 	if (data_len) {
 		/* Process input data that are not potential tag bytes */
 		size = 0;
-		res = TEE_AEUpdate(session->tee_op_handle,
+		res = TEE_AEUpdate(processing->tee_op_handle,
 				   in, data_len, NULL, &size);
 
 		if (res != TEE_ERROR_SHORT_BUFFER &&
@@ -223,7 +223,7 @@ uint32_t tee_ae_decrypt_update(struct pkcs11_session *session,
 			}
 			ct = ptr;
 
-			res = TEE_AEUpdate(session->tee_op_handle,
+			res = TEE_AEUpdate(processing->tee_op_handle,
 					   in, data_len, ct + ct_size, &size);
 			if (res) {
 				rv = tee2sks_error(res);
@@ -308,10 +308,10 @@ static uint32_t reveale_ae_data(struct ae_aes_context *ctx,
 	return SKS_OK;
 }
 
-uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
+uint32_t tee_ae_decrypt_final(struct active_processing *processing,
 			      void *out, uint32_t *out_size)
 {
-	struct ae_aes_context *ctx = session->proc_params;
+	struct ae_aes_context *ctx = processing->extra_ctx;
 	uint32_t rv;
 	TEE_Result res;
 	uint32_t data_size;
@@ -333,7 +333,7 @@ uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
 	}
 
 	data_size = 0;
-	res = TEE_AEDecryptFinal(session->tee_op_handle,
+	res = TEE_AEDecryptFinal(processing->tee_op_handle,
 				 NULL, 0, NULL, &data_size,
 				 ctx->pending_tag, ctx->tag_byte_len);
 
@@ -345,7 +345,7 @@ uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
 			goto bail;
 		}
 
-		res = TEE_AEDecryptFinal(session->tee_op_handle,
+		res = TEE_AEDecryptFinal(processing->tee_op_handle,
 					 NULL, 0, data_ptr, &data_size,
 					 ctx->pending_tag, ctx->tag_byte_len);
 
@@ -356,7 +356,7 @@ uint32_t tee_ae_decrypt_final(struct pkcs11_session *session,
 		}
 	}
 
-	/* AE decyrption is completed */
+	/* AE decryption is completed */
 	TEE_Free(ctx->pending_tag);
 	ctx->pending_tag = NULL;
 
@@ -390,10 +390,10 @@ bail:
 	return rv;
 }
 
-uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
+uint32_t tee_ae_encrypt_final(struct active_processing *processing,
 			      void *out, uint32_t *out_size)
 {
-	struct ae_aes_context *ctx = session->proc_params;
+	struct ae_aes_context *ctx = processing->extra_ctx;
 	TEE_Result res;
 	uint8_t *tag;
 	uint32_t tag_len = 0;
@@ -403,7 +403,7 @@ uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
 		return SKS_BAD_PARAM;
 
 	/* Check the required sizes (warning: 2 output len: data + tag) */
-	res = TEE_AEEncryptFinal(session->tee_op_handle,
+	res = TEE_AEEncryptFinal(processing->tee_op_handle,
 				 NULL, 0, NULL, &size,
 				 &tag, &tag_len);
 
@@ -422,7 +422,7 @@ uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
 	/* Process data and tag input the client output buffer */
 	tag = (uint8_t *)out + size;
 
-	res = TEE_AEEncryptFinal(session->tee_op_handle,
+	res = TEE_AEEncryptFinal(processing->tee_op_handle,
 				 NULL, 0, out, &size, tag, &tag_len);
 
 	if (tag_len != ctx->tag_byte_len) {
@@ -436,7 +436,7 @@ uint32_t tee_ae_encrypt_final(struct pkcs11_session *session,
 	return tee2sks_error(res);
 }
 
-uint32_t tee_init_ccm_operation(struct pkcs11_session *session,
+uint32_t tee_init_ccm_operation(struct active_processing *processing,
 				void *proc_params, size_t params_size)
 {
 	uint32_t rv;
@@ -513,14 +513,14 @@ uint32_t tee_init_ccm_operation(struct pkcs11_session *session,
 		goto bail;
 	}
 
-	TEE_AEInit(session->tee_op_handle, nonce, nonce_len, mac_len * 8,
+	TEE_AEInit(processing->tee_op_handle, nonce, nonce_len, mac_len * 8,
 					   aad_len, data_len);
 	if (aad_len)
-		TEE_AEUpdateAAD(session->tee_op_handle, aad, aad_len);
+		TEE_AEUpdateAAD(processing->tee_op_handle, aad, aad_len);
 
-	/* session owns the active processing params */
-	assert(!session->proc_params);
-	session->proc_params = params;
+	/* Session processing owns the active processing params */
+	assert(!processing->extra_ctx);
+	processing->extra_ctx = params;
 
 	rv = SKS_OK;
 
@@ -535,19 +535,19 @@ bail:
 	return rv;
 }
 
-void tee_release_ccm_operation(struct pkcs11_session *session)
+void tee_release_ccm_operation(struct active_processing *processing)
 {
-	struct ae_aes_context *ctx = session->proc_params;
+	struct ae_aes_context *ctx = processing->extra_ctx;
 
 	release_ae_aes_context(ctx);
-	TEE_Free(session->proc_params);
-	session->proc_params = NULL;
+	TEE_Free(processing->extra_ctx);
+	processing->extra_ctx = NULL;
 }
 
 /*
  * GCM
  */
-uint32_t tee_init_gcm_operation(struct pkcs11_session *session,
+uint32_t tee_init_gcm_operation(struct active_processing *processing,
 				    void *proc_params, size_t params_size)
 {
 	struct serialargs args;
@@ -620,14 +620,14 @@ uint32_t tee_init_gcm_operation(struct pkcs11_session *session,
 		goto bail;
 	}
 
-	/* session owns the active processing params */
-	assert(!session->proc_params);
-	session->proc_params = params;
+	/* Session processing owns the active processing params */
+	assert(!processing->extra_ctx);
+	processing->extra_ctx = params;
 
-	TEE_AEInit(session->tee_op_handle, iv, iv_len, tag_bitlen, 0, 0);
+	TEE_AEInit(processing->tee_op_handle, iv, iv_len, tag_bitlen, 0, 0);
 
 	if (aad_len)
-		TEE_AEUpdateAAD(session->tee_op_handle, aad, aad_len);
+		TEE_AEUpdateAAD(processing->tee_op_handle, aad, aad_len);
 
 	rv = SKS_OK;
 
@@ -643,11 +643,11 @@ bail:
 	return rv;
 }
 
-void tee_release_gcm_operation(struct pkcs11_session *session)
+void tee_release_gcm_operation(struct active_processing *processing)
 {
-	struct ae_aes_context *ctx = session->proc_params;
+	struct ae_aes_context *ctx = processing->extra_ctx;
 
 	release_ae_aes_context(ctx);
-	TEE_Free(session->proc_params);
-	session->proc_params = NULL;
+	TEE_Free(processing->extra_ctx);
+	processing->extra_ctx = NULL;
 }

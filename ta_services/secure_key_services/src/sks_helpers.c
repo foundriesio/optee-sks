@@ -12,6 +12,7 @@
 #include "attributes.h"
 #include "object.h"
 #include "pkcs11_attributes.h"
+#include "processing.h"
 #include "sks_helpers.h"
 
 static const char __maybe_unused unknown[] = "<unknown-identifier>";

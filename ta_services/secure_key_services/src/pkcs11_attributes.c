@@ -201,11 +201,11 @@ uint32_t check_mechanism_against_processing(struct pkcs11_session *session,
 
 	case SKS_FUNC_STEP_ONESHOT:
 	case SKS_FUNC_STEP_UPDATE:
-		if (session->processing_always_authen &&
-		    !session->processing_relogged)
+		if (session->processing->always_authen &&
+		    !session->processing->relogged)
 			return SKS_CKR_USER_NOT_LOGGED_IN;
 
-		if (!session->processing_updated) {
+		if (!session->processing->updated) {
 			allowed = true;
 		} else {
 			for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
@@ -218,8 +218,8 @@ uint32_t check_mechanism_against_processing(struct pkcs11_session *session,
 		break;
 
 	case SKS_FUNC_STEP_FINAL:
-		if (session->processing_always_authen &&
-		    !session->processing_relogged)
+		if (session->processing->always_authen &&
+		    !session->processing->relogged)
 			return SKS_CKR_USER_NOT_LOGGED_IN;
 
 		return SKS_OK;

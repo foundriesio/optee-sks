@@ -15,6 +15,7 @@
 #include "handle.h"
 #include "pkcs11_token.h"
 #include "pkcs11_attributes.h"
+#include "processing.h"
 #include "serializer.h"
 #include "sks_helpers.h"
 
@@ -170,123 +171,57 @@ struct pkcs11_session *sks_handle2session(uint32_t handle,
 	return handle_lookup(&client->session_handle_db, (int)handle);
 }
 
-static void __set_processing_state(struct pkcs11_session *session,
-				   enum pkcs11_proc_state state,
-				   struct sks_object *obj1,
-				   struct sks_object *obj2)
-{
-	session->processing_relogged = false;
-	session->processing_updated = false;
-	session->processing_always_authen = false;
-
-	if (obj1 && get_bool(obj1->attributes, SKS_CKA_ALWAYS_AUTHENTICATE))
-		session->processing_always_authen = true;
-
-	if (obj2 && get_bool(obj2->attributes, SKS_CKA_ALWAYS_AUTHENTICATE))
-		session->processing_always_authen = true;
-
-	session->processing = state;
-}
-
-void reset_processing_state(struct pkcs11_session *session)
-{
-	__set_processing_state(session, PKCS11_SESSION_READY, NULL, NULL);
-}
-
 /*
- * PKCS#11 expects an session must finalize (or cancel) an operation
- * before starting a new one.
- *
- * enum pkcs11_proc_state provides the valid operation states for a
- * PKCS#11 session.
- *
- * set_processing_state() changes the session operation state.
+ * Currently not support dual operations.
  */
 int set_processing_state(struct pkcs11_session *session,
 			 enum processing_func function,
 			 struct sks_object *obj1, struct sks_object *obj2)
 {
-	if (!session)
-		return 1;
+	enum pkcs11_proc_state state;
+	struct active_processing *proc;
+
+	if (session->processing)
+		return SKS_CKR_OPERATION_ACTIVE;
 
 	switch (function) {
 	case SKS_FUNCTION_ENCRYPT:
-		switch (session->processing) {
-		case PKCS11_SESSION_READY:
-			__set_processing_state(session,
-						PKCS11_SESSION_ENCRYPTING,
-						obj1, obj2);
-			return 0;
-		case PKCS11_SESSION_ENCRYPTING:
-		case PKCS11_SESSION_DIGESTING_ENCRYPTING:
-		case PKCS11_SESSION_SIGNING_ENCRYPTING:
-			return 0;
-		default:
-			return -1;
-		}
+		state = PKCS11_SESSION_ENCRYPTING;
 		break;
 	case SKS_FUNCTION_DECRYPT:
-		switch (session->processing) {
-		case PKCS11_SESSION_READY:
-			__set_processing_state(session,
-						PKCS11_SESSION_DECRYPTING,
-						obj1, obj2);
-			return 0;
-		case PKCS11_SESSION_DECRYPTING:
-		case PKCS11_SESSION_DECRYPTING_DIGESTING:
-		case PKCS11_SESSION_DECRYPTING_VERIFYING:
-			return 0;
-		default:
-			return -1;
-		}
+		state = PKCS11_SESSION_DECRYPTING;
 		break;
 	case SKS_FUNCTION_SIGN:
-		switch (session->processing) {
-		case PKCS11_SESSION_READY:
-			__set_processing_state(session,
-						PKCS11_SESSION_SIGNING,
-						obj1, obj2);
-			return 0;
-		case PKCS11_SESSION_SIGNING:
-		case PKCS11_SESSION_SIGNING_ENCRYPTING:
-			return 0;
-		default:
-			return -1;
-		}
+		state = PKCS11_SESSION_SIGNING;
 		break;
 	case SKS_FUNCTION_VERIFY:
-		switch (session->processing) {
-		case PKCS11_SESSION_READY:
-			__set_processing_state(session,
-						PKCS11_SESSION_VERIFYING,
-						obj1, obj2);
-			return 0;
-		case PKCS11_SESSION_VERIFYING:
-		case PKCS11_SESSION_DECRYPTING_VERIFYING:
-			return 0;
-		default:
-			return -1;
-		}
+		state = PKCS11_SESSION_VERIFYING;
 		break;
 	case SKS_FUNCTION_DIGEST:
-		switch (session->processing) {
-		case PKCS11_SESSION_READY:
-			__set_processing_state(session,
-						PKCS11_SESSION_DIGESTING,
-						obj1, obj2);
-			return 0;
-		case PKCS11_SESSION_DIGESTING:
-		case PKCS11_SESSION_DIGESTING_ENCRYPTING:
-		case PKCS11_SESSION_DECRYPTING_DIGESTING:
-			return 0;
-		default:
-			return -1;
-		}
+		state = PKCS11_SESSION_DIGESTING;
 		break;
 	default:
 		TEE_Panic(function);
 		return -1;
 	}
+
+	proc = TEE_Malloc(sizeof(*proc), TEE_MALLOC_FILL_ZERO);
+	if (!proc)
+		return SKS_MEMORY;
+
+	/* Boolean are default to false and pointers to NULL */
+	proc->state = state;
+	proc->tee_op_handle = TEE_HANDLE_NULL;
+
+	if (obj1 && get_bool(obj1->attributes, SKS_CKA_ALWAYS_AUTHENTICATE))
+		proc->always_authen = true;
+
+	if (obj2 && get_bool(obj2->attributes, SKS_CKA_ALWAYS_AUTHENTICATE))
+		proc->always_authen = true;
+
+	session->processing = proc;
+
+	return SKS_OK;
 }
 
 static void cipher_pin(TEE_ObjectHandle key_handle, uint8_t *buf, size_t len)
@@ -925,11 +860,7 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 	}
 
 	session->tee_session = tee_session;
-	session->processing = PKCS11_SESSION_READY;
-	session->tee_op_handle = TEE_HANDLE_NULL;
 	session->token = token;
-	session->proc_id = SKS_UNDEFINED_ID;
-
 	session->client = client;
 
 	LIST_INIT(&session->object_list);
@@ -965,8 +896,7 @@ uint32_t entry_ck_token_rw_session(uintptr_t tee_session, TEE_Param *ctrl,
 
 static void close_ck_session(struct pkcs11_session *session)
 {
-	if (session->tee_op_handle != TEE_HANDLE_NULL)
-		TEE_FreeOperation(session->tee_op_handle);
+	release_active_processing(session);
 
 	/* No need to put object handles, the whole database is destroyed */
 	while (!LIST_EMPTY(&session->object_list)) {
@@ -1470,8 +1400,8 @@ uint32_t entry_login(uintptr_t tee_session, TEE_Param *ctrl,
 		break;
 
 	case SKS_CKU_CONTEXT_SPECIFIC:
-		if (session->processing == PKCS11_SESSION_READY ||
-		    !session->processing_always_authen)
+		if (!session_is_active(session) ||
+		    !session->processing->always_authen)
 			return SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 		if (pkcs11_session_is_public(session))
@@ -1485,7 +1415,7 @@ uint32_t entry_login(uintptr_t tee_session, TEE_Param *ctrl,
 		else
 			rv = check_user_pin(session, pin, pin_size);
 
-		session->processing_relogged = (rv == SKS_OK);
+		session->processing->relogged = (rv == SKS_OK);
 
 		if (rv == SKS_CKR_PIN_LOCKED)
 			session_logout(session);

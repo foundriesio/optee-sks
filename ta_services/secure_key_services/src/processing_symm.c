@@ -127,7 +127,7 @@ static uint32_t allocate_tee_operation(struct pkcs11_session *session,
 	uint32_t mode = 0;
 	TEE_Result res;
 
-	assert(session->tee_op_handle == TEE_HANDLE_NULL);
+	assert(session->processing->tee_op_handle == TEE_HANDLE_NULL);
 
 	if (sks2tee_algorithm(&algo, proc_params))
 		return SKS_FAILED;
@@ -150,7 +150,8 @@ static uint32_t allocate_tee_operation(struct pkcs11_session *session,
 		break;
 	}
 
-	res = TEE_AllocateOperation(&session->tee_op_handle, algo, mode, size);
+	res = TEE_AllocateOperation(&session->processing->tee_op_handle,
+				    algo, mode, size);
 	if (res)
 		EMSG("TEE_AllocateOp. failed %" PRIx32 " %" PRIx32 " %" PRIx32,
 			algo, mode, size);
@@ -200,7 +201,8 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 	}
 
 key_ready:
-	res = TEE_SetOperationKey(session->tee_op_handle, obj->key_handle);
+	res = TEE_SetOperationKey(session->processing->tee_op_handle,
+				  obj->key_handle);
 	if (res) {
 		DMSG("TEE_SetOperationKey failed, %" PRIx32, res);
 		goto error;
@@ -233,14 +235,14 @@ static uint32_t init_tee_operation(struct pkcs11_session *session,
 		if (proc_params->size)
 			return SKS_CKR_MECHANISM_PARAM_INVALID;
 
-		TEE_MACInit(session->tee_op_handle, NULL, 0);
+		TEE_MACInit(session->processing->tee_op_handle, NULL, 0);
 		rv = SKS_OK;
 		break;
 	case SKS_CKM_AES_ECB:
 		if (proc_params->size)
 			return SKS_CKR_MECHANISM_PARAM_INVALID;
 
-		TEE_CipherInit(session->tee_op_handle, NULL, 0);
+		TEE_CipherInit(session->processing->tee_op_handle, NULL, 0);
 		rv = SKS_OK;
 		break;
 	case SKS_CKM_AES_CBC:
@@ -249,23 +251,27 @@ static uint32_t init_tee_operation(struct pkcs11_session *session,
 		if (proc_params->size != 16)
 			return SKS_CKR_MECHANISM_PARAM_INVALID;
 
-		TEE_CipherInit(session->tee_op_handle, proc_params->data, 16);
+		TEE_CipherInit(session->processing->tee_op_handle,
+			       proc_params->data, 16);
 		rv = SKS_OK;
 		break;
 	case SKS_CKM_AES_CTR:
-		rv = tee_init_ctr_operation(session, proc_params->data,
+		rv = tee_init_ctr_operation(session->processing,
+					    proc_params->data,
 					    proc_params->size);
 		break;
 	case SKS_CKM_AES_CCM:
-		rv = tee_init_ccm_operation(session, proc_params->data,
+		rv = tee_init_ccm_operation(session->processing,
+					    proc_params->data,
 					    proc_params->size);
 		break;
 	case SKS_CKM_AES_GCM:
-		rv = tee_init_gcm_operation(session, proc_params->data,
+		rv = tee_init_gcm_operation(session->processing,
+					    proc_params->data,
 					    proc_params->size);
 		break;
 	default:
-		TEE_Panic(session->proc_id);
+		TEE_Panic(proc_params->id);
 		break;
 	}
 
@@ -317,6 +323,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	void *in2_buf = io2 ? io2->memref.buffer : NULL;
 	uint32_t in2_size = io2 ? io2->memref.size : 0;
 	bool output_data = false;
+	struct active_processing *proc = session->processing;
 
 	switch (step) {
 	case SKS_FUNC_STEP_ONESHOT:
@@ -331,7 +338,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	 * Feed active operation with with data
 	 * (SKS_FUNC_STEP_UPDATE/_ONESHOT)
 	 */
-	switch (session->proc_id) {
+	switch (proc->mecha_type) {
 	case SKS_CKM_AES_CMAC_GENERAL:
 	case SKS_CKM_AES_CMAC:
 	case SKS_CKM_MD5_HMAC:
@@ -352,7 +359,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		switch (function) {
 		case SKS_FUNCTION_SIGN:
 		case SKS_FUNCTION_VERIFY:
-			TEE_MACUpdate(session->tee_op_handle, in_buf, in_size);
+			TEE_MACUpdate(proc->tee_op_handle, in_buf, in_size);
 			rv = SKS_OK;
 			break;
 		default:
@@ -373,7 +380,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
 		case SKS_FUNCTION_DECRYPT:
-			res = TEE_CipherUpdate(session->tee_op_handle,
+			res = TEE_CipherUpdate(proc->tee_op_handle,
 						in_buf, in_size,
 						out_buf, &out_size);
 			output_data = true;
@@ -392,7 +399,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
-			res = TEE_AEUpdate(session->tee_op_handle,
+			res = TEE_AEUpdate(proc->tee_op_handle,
 					   in_buf, in_size, out_buf, &out_size);
 			output_data = true;
 			rv = tee2sks_error(res);
@@ -404,7 +411,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 			}
 			break;
 		case SKS_FUNCTION_DECRYPT:
-			rv = tee_ae_decrypt_update(session, in_buf, in_size);
+			rv = tee_ae_decrypt_update(proc, in_buf, in_size);
 			out_size = 0;
 			output_data = true;
 			break;
@@ -414,7 +421,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		}
 		break;
 	default:
-		TEE_Panic(session->proc_id);
+		TEE_Panic(proc->mecha_type);
 		break;
 	}
 
@@ -424,7 +431,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	/*
 	 * Finalize (SKS_FUNC_STEP_ONESHOT/_FINAL) operation
 	 */
-	switch (session->proc_id) {
+	switch (session->processing->mecha_type) {
 	case SKS_CKM_AES_CMAC_GENERAL:
 	case SKS_CKM_AES_CMAC:
 	case SKS_CKM_MD5_HMAC:
@@ -436,13 +443,13 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	case SKS_CKM_AES_XCBC_MAC:
 		switch (function) {
 		case SKS_FUNCTION_SIGN:
-			res = TEE_MACComputeFinal(session->tee_op_handle,
+			res = TEE_MACComputeFinal(proc->tee_op_handle,
 						  NULL, 0, out_buf, &out_size);
 			output_data = true;
 			rv = tee2sks_error(res);
 			break;
 		case SKS_FUNCTION_VERIFY:
-			res = TEE_MACCompareFinal(session->tee_op_handle,
+			res = TEE_MACCompareFinal(proc->tee_op_handle,
 						  NULL, 0, in2_buf, in2_size);
 			rv = tee2sks_error(res);
 			break;
@@ -460,7 +467,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
 		case SKS_FUNCTION_DECRYPT:
-			res = TEE_CipherDoFinal(session->tee_op_handle,
+			res = TEE_CipherDoFinal(proc->tee_op_handle,
 						in_buf, in_size,
 						out_buf, &out_size);
 			output_data = true;
@@ -476,7 +483,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	case SKS_CKM_AES_GCM:
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
-			rv = tee_ae_encrypt_final(session, out_buf, &out_size2);
+			rv = tee_ae_encrypt_final(proc, out_buf, &out_size2);
 			output_data = true;
 
 			/*
@@ -490,7 +497,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 			}
 			break;
 		case SKS_FUNCTION_DECRYPT:
-			rv = tee_ae_decrypt_final(session, out_buf, &out_size);
+			rv = tee_ae_decrypt_final(proc, out_buf, &out_size);
 			output_data = true;
 			break;
 		default:
@@ -499,7 +506,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		}
 		break;
 	default:
-		TEE_Panic(session->proc_id);
+		TEE_Panic(proc->mecha_type);
 		break;
 	}
 

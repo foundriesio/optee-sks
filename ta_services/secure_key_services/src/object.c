@@ -292,6 +292,9 @@ uint32_t entry_destroy_object(uintptr_t tee_session, TEE_Param *ctrl,
 	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
+	if (session_is_active(session))
+		return SKS_CKR_OPERATION_ACTIVE;
+
 	object = sks_handle2object(object_handle, session);
 	if (!object)
 		return SKS_BAD_PARAM;
@@ -443,7 +446,7 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	 * FIXME: not clear if C_FindObjects can be called while a processing
 	 * is active. It seems not... but to be confirmed!
 	 */
-	if (session->processing != PKCS11_SESSION_READY) {
+	if (session_is_active(session)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
 	}

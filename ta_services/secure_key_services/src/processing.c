@@ -30,11 +30,43 @@ static uint32_t get_ready_session(struct pkcs11_session **sess,
 	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (session->processing != PKCS11_SESSION_READY)
+	if (session_is_active(session))
 		return SKS_CKR_OPERATION_ACTIVE;
 
 	*sess = session;
+
 	return SKS_OK;
+}
+
+static bool func_matches_state(enum processing_func function,
+				enum pkcs11_proc_state state)
+{
+	switch (function) {
+	case SKS_FUNCTION_ENCRYPT:
+		return (state == PKCS11_SESSION_ENCRYPTING ||
+			state == PKCS11_SESSION_DIGESTING_ENCRYPTING ||
+			state == PKCS11_SESSION_SIGNING_ENCRYPTING);
+	case SKS_FUNCTION_DECRYPT:
+		return (state == PKCS11_SESSION_DECRYPTING ||
+			state == PKCS11_SESSION_DECRYPTING_DIGESTING ||
+			state == PKCS11_SESSION_DECRYPTING_VERIFYING);
+	case SKS_FUNCTION_DIGEST:
+		return (state == PKCS11_SESSION_DIGESTING ||
+			state == PKCS11_SESSION_DIGESTING_ENCRYPTING);
+	case SKS_FUNCTION_SIGN:
+		return (state == PKCS11_SESSION_SIGNING ||
+			state == PKCS11_SESSION_SIGNING_ENCRYPTING);
+	case SKS_FUNCTION_VERIFY:
+		return (state == PKCS11_SESSION_VERIFYING ||
+			state == PKCS11_SESSION_DECRYPTING_VERIFYING);
+	case SKS_FUNCTION_SIGN_RECOVER:
+		return state == PKCS11_SESSION_SIGNING_RECOVER;
+	case SKS_FUNCTION_VERIFY_RECOVER:
+		return state == PKCS11_SESSION_SIGNING_RECOVER;
+	default:
+		TEE_Panic(function);
+		return false;
+	}
 }
 
 static uint32_t get_active_session(struct pkcs11_session **sess,
@@ -49,149 +81,41 @@ static uint32_t get_active_session(struct pkcs11_session **sess,
 	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	switch (session->processing) {
-	case PKCS11_SESSION_READY:
-		break;
-	case PKCS11_SESSION_ENCRYPTING:
-		switch (function) {
-		case SKS_FUNCTION_ENCRYPT:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_DECRYPTING:
-		switch (function) {
-		case SKS_FUNCTION_DECRYPT:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_DIGESTING:
-		switch (function) {
-		case SKS_FUNCTION_DIGEST:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_DIGESTING_ENCRYPTING:
-		switch (function) {
-		case SKS_FUNCTION_DIGEST:
-		case SKS_FUNCTION_ENCRYPT:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_DECRYPTING_DIGESTING:
-		switch (function) {
-		case SKS_FUNCTION_DECRYPT:
-		case SKS_FUNCTION_DIGEST:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_SIGNING:
-		switch (function) {
-		case SKS_FUNCTION_SIGN:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_SIGNING_ENCRYPTING:
-		switch (function) {
-		case SKS_FUNCTION_SIGN:
-		case SKS_FUNCTION_ENCRYPT:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_VERIFYING:
-		switch (function) {
-		case SKS_FUNCTION_VERIFY:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_DECRYPTING_VERIFYING:
-		switch (function) {
-		case SKS_FUNCTION_DECRYPT:
-		case SKS_FUNCTION_VERIFY:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_SIGNING_RECOVER:
-		switch (function) {
-		case SKS_FUNCTION_SIGN_RECOVER:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	case PKCS11_SESSION_VERIFYING_RECOVER:
-		switch (function) {
-		case SKS_FUNCTION_VERIFY_RECOVER:
-			rv = SKS_OK;
-			break;
-		default:
-			break;
-		}
-		break;
-	default:
-		break;
-	}
-
-	if (rv == SKS_OK)
+	if (session->processing &&
+	    func_matches_state(function, session->processing->state)) {
 		*sess = session;
+		rv = SKS_OK;
+	}
 
 	return rv;
 }
 
-static void release_active_processing(struct pkcs11_session *session)
+void release_active_processing(struct pkcs11_session *session)
 {
-	switch (session->proc_id) {
+	if (!session->processing)
+		return;
+
+	switch (session->processing->mecha_type) {
 	case SKS_CKM_AES_CTR:
-		tee_release_ctr_operation(session);
+		tee_release_ctr_operation(session->processing);
 		break;
 	case SKS_CKM_AES_GCM:
-		tee_release_gcm_operation(session);
+		tee_release_gcm_operation(session->processing);
 		break;
 	case SKS_CKM_AES_CCM:
-		tee_release_ccm_operation(session);
+		tee_release_ccm_operation(session->processing);
 		break;
 	default:
 		break;
 	}
 
-	session->proc_id = SKS_UNDEFINED_ID;
-	session->processing_relogged = false;
-	session->processing_updated = false;
-	session->processing_always_authen = false;
-
-	if (session->tee_op_handle != TEE_HANDLE_NULL) {
-		TEE_FreeOperation(session->tee_op_handle);
-		session->tee_op_handle = TEE_HANDLE_NULL;
+	if (session->processing->tee_op_handle != TEE_HANDLE_NULL) {
+		TEE_FreeOperation(session->processing->tee_op_handle);
+		session->processing->tee_op_handle = TEE_HANDLE_NULL;
 	}
 
-	reset_processing_state(session);
+	TEE_Free(session->processing);
+	session->processing = NULL;
 }
 
 uint32_t entry_import_object(uintptr_t tee_session,
@@ -294,7 +218,6 @@ bail:
 
 size_t get_object_key_bit_size(struct sks_object *obj)
 {
-	void *a_ptr;
 	size_t a_size;
 	struct sks_attrs_head *attrs = obj->attributes;
 
@@ -514,8 +437,9 @@ uint32_t entry_processing_init(uintptr_t tee_session, TEE_Param *ctrl,
 	if (!obj)
 		return SKS_CKR_KEY_HANDLE_INVALID;
 
-	if (set_processing_state(session, function, obj, NULL))
-		return SKS_CKR_OPERATION_ACTIVE;
+	rv = set_processing_state(session, function, obj, NULL);
+	if (rv)
+		return rv;
 
 	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
 	if (rv)
@@ -540,8 +464,7 @@ uint32_t entry_processing_init(uintptr_t tee_session, TEE_Param *ctrl,
 		rv = init_symm_operation(session, function, proc_params, obj);
 	}
 	if (rv == SKS_OK) {
-		session->processing_updated = false;
-		session->proc_id = proc_params->id;
+		session->processing->mecha_type = proc_params->id;
 	}
 
 bail:
@@ -574,6 +497,7 @@ uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
 	struct serialargs ctrlargs;
 	uint32_t session_handle;
 	struct pkcs11_session *session;
+	uint32_t mecha_type;
 
 	if (!ctrl)
 		return SKS_BAD_PARAM;
@@ -590,18 +514,18 @@ uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
 		return rv;
 
 	// TODO: check user authen and object activiation dates
-
-	rv = check_mechanism_against_processing(session, session->proc_id,
+	mecha_type = session->processing->mecha_type;
+	rv = check_mechanism_against_processing(session, mecha_type,
 						function, step);
 	if (rv)
 		goto bail;
 
 	rv = SKS_CKR_MECHANISM_INVALID;
-	if (processing_is_tee_symm(session->proc_id)) {
+	if (processing_is_tee_symm(mecha_type)) {
 		rv = step_symm_operation(session, function, step, in, out);
 	}
 	if (rv == SKS_OK)
-		session->processing_updated = true;
+		session->processing->updated = true;
 
 bail:
 	switch (step) {
@@ -641,6 +565,7 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 	struct serialargs ctrlargs;
 	uint32_t session_handle;
 	struct pkcs11_session *session;
+	uint32_t mecha_type;
 
 	assert(function == SKS_FUNCTION_VERIFY);
 
@@ -659,14 +584,14 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 		return rv;
 
 	// TODO: check user authen and object activiation dates
-
-	rv = check_mechanism_against_processing(session, session->proc_id,
+	mecha_type = session->processing->mecha_type;
+	rv = check_mechanism_against_processing(session, mecha_type,
 						function, step);
 	if (rv)
 		goto bail;
 
 	rv = SKS_CKR_MECHANISM_INVALID;
-	if (processing_is_tee_symm(session->proc_id)) {
+	if (processing_is_tee_symm(mecha_type)) {
 		rv = step_symm_operation(session, function, step, in, in2);
 	}
 bail:
