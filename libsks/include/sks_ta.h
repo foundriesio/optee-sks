@@ -707,6 +707,7 @@ struct sks_attribute_head {
 #define SKS_CKR_USER_TOO_MANY_TYPES		0x00000029
 #define SKS_CKR_USER_TYPE_INVALID		0x0000002a
 #define SKS_CKR_SESSION_READ_ONLY_EXISTS	0x0000002b
+#define SKS_CKR_KEY_SIZE_RANGE			0x0000002c
 
 /* Status without strict equivalence in Cryptoki API */
 #define SKS_NOT_FOUND				0x00001000
@@ -813,6 +814,8 @@ struct sks_attribute_head {
 #define SKS_CKK_SHA512_HMAC			0x007
 #define SKS_CKK_EC				0x008
 #define SKS_CKK_RSA				0x009
+#define SKS_CKK_DSA				0x00a
+#define SKS_CKK_DH				0x00b
 
 /*
  * Valid values for attribute SKS_CKA_MECHANISM_TYPE
@@ -873,6 +876,7 @@ struct sks_attribute_head {
 #define SKS_CKM_SHA256				0x034
 #define SKS_CKM_SHA384				0x035
 #define SKS_CKM_SHA512				0x036
+#define SKS_CKM_DH_PKCS_DERIVE			0x037
 
 /* SKS added IDs for operation without cryptoki mechanism ID defined */
 #define SKS_PROCESSING_IMPORT			0x1000
@@ -912,16 +916,17 @@ struct sks_attribute_head {
  * Processing parameters
  *
  * These can hardly be described by ANSI-C structures since the byte size of
- * some fields of the structure are specified by a previous field in the structure.
- * Therefore the format of the parameter binary data for each supported processing
- * is defined here from this comment rather than using C structures.
+ * some fields of the structure are specified by a previous field in the
+ * structure. Therefore the format of the parameter binary data for each
+ * supported processing is defined here from this comment rather than using
+ * C structures.
  *
- * Processing parameters are used as argument the C_EncryptInit and friends using
- * the struct sks_attribute_head format where field 'type' is the SKS processing ID
- * and field 'size' is the parameter byte size. Below is shown the head structure
- * struct sks_attribute_head fields and the trailling data that are the effective
- * parameters binary blob for the target processing/mechanism.
- *
+ * Processing parameters are used as argument the C_EncryptInit and friends
+ * using the struct sks_attribute_head format where field 'type' is the SKS
+ * processing ID and field 'size' is the parameter byte size. Below is shown
+ * the head structure struct sks_attribute_head fields and the trailling data
+ * that are the effective parameters binary blob for the target
+ * processing/mechanism.
  *
  * AES ECB
  *   head:	32bit type = SKS_CKM_AES_ECB
