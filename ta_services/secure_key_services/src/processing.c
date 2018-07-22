@@ -257,8 +257,11 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 			"Invalid size for attribute VALUE_LEN");
 		return SKS_CKR_ATTRIBUTE_VALUE_INVALID;
 	}
-
 	TEE_MemMove(&value_len, data, data_size);
+
+	if (get_type(*head) == SKS_CKK_GENERIC_SECRET)
+		value_len = (value_len + 7) / 8;
+
 	value = TEE_Malloc(value_len, TEE_USER_MEM_HINT_NO_FILL_ZERO);
 	if (!value)
 		return SKS_MEMORY;
@@ -267,7 +270,6 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 
 	rv = add_attribute(head, SKS_CKA_VALUE, value, value_len);
 
-	/* TODO: scratch content of heap memory where key was stored? */
 	TEE_Free(value);
 
 	return rv;
