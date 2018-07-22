@@ -181,6 +181,7 @@ struct pkcs11_client {
  * @object_handle_db - database for object handles published by the session
  * @state - R/W SO, R/W user, RO user, R/W public, RO public.
  * @processing - ongoing active processing function or ready state
+ * @processing_updated - true once an active operation is updated
  * @processing_relogged - true once client logged since last operation update
  * @processing_always_authen - true if user need to login before each use
  * @proc_id - SKS ID of the active processing
@@ -198,8 +199,10 @@ struct pkcs11_session {
 	struct handle_db object_handle_db;
 	enum pkcs11_session_state state;
 	enum pkcs11_proc_state processing;
+	bool processing_updated;
 	bool processing_relogged;
 	bool processing_always_authen;
+	// TODO: end time for object usage
 	uint32_t proc_id;
 	void *proc_params;
 	TEE_OperationHandle tee_op_handle;
@@ -242,12 +245,10 @@ void ck_token_close_tee_session(uintptr_t tee_session);
 struct pkcs11_session *sks_handle2session(uint32_t handle,
 					  uintptr_t tee_session);
 
+void reset_processing_state(struct pkcs11_session *session);
 int set_processing_state(struct pkcs11_session *session,
-			 enum pkcs11_proc_state state);
-
-/* Return 0 if session state matches , else return 1 */
-int check_processing_state(struct pkcs11_session *session,
-			   enum pkcs11_proc_state state);
+			 enum processing_func function,
+			 struct sks_object *obj1, struct sks_object *obj2);
 
 bool pkcs11_session_is_read_write(struct pkcs11_session *session);
 bool pkcs11_session_is_public(struct pkcs11_session *session);

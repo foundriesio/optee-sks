@@ -170,37 +170,62 @@ int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags)
 	return 1;
 }
 
-uint32_t check_mechanism_against_processing(uint32_t mechanism_type,
-					    enum processing_func function)
+uint32_t check_mechanism_against_processing(struct pkcs11_session *session,
+					    uint32_t mechanism_type,
+					    enum processing_func function,
+					    enum processing_step step)
 {
 	size_t n;
 	bool allowed = false;
 
-	switch (function) {
-	case SKS_FUNCTION_IMPORT:
-	case SKS_FUNCTION_COPY:
-	case SKS_FUNCTION_MODIFY:
-	case SKS_FUNCTION_DESTROY:
-		allowed = true;
+
+	switch (step) {
+	case SKS_FUNC_STEP_INIT:
+		switch (function) {
+		case SKS_FUNCTION_IMPORT:
+		case SKS_FUNCTION_COPY:
+		case SKS_FUNCTION_MODIFY:
+		case SKS_FUNCTION_DESTROY:
+			return SKS_OK;
+		default:
+			for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
+				if (pkcs11_modes[n].id == mechanism_type) {
+					allowed = pkcs11_modes[n].flags &
+						  sks_function2ckfm(function);
+					break;
+				}
+			}
+			break;
+		}
 		break;
 
-	case SKS_FUNCTION_UPDATE:
-		for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
-			if (pkcs11_modes[n].id == mechanism_type) {
-				allowed = !pkcs11_modes[n].one_shot;
-				break;
+	case SKS_FUNC_STEP_ONESHOT:
+	case SKS_FUNC_STEP_UPDATE:
+		if (session->processing_always_authen &&
+		    !session->processing_relogged)
+			return SKS_CKR_USER_NOT_LOGGED_IN;
+
+		if (!session->processing_updated) {
+			allowed = true;
+		} else {
+			for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
+				if (pkcs11_modes[n].id == mechanism_type) {
+					allowed = !pkcs11_modes[n].one_shot;
+					break;
+				}
 			}
 		}
 		break;
+
+	case SKS_FUNC_STEP_FINAL:
+		if (session->processing_always_authen &&
+		    !session->processing_relogged)
+			return SKS_CKR_USER_NOT_LOGGED_IN;
+
+		return SKS_OK;
 
 	default:
-		for (n = 0; n < ARRAY_SIZE(pkcs11_modes); n++) {
-			if (pkcs11_modes[n].id == mechanism_type) {
-				allowed = pkcs11_modes[n].flags &
-					  sks_function2ckfm(function);
-				break;
-			}
-		}
+		TEE_Panic(step);
 		break;
 	}
 
@@ -524,7 +549,7 @@ static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **out,
 uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 					 void *template, size_t template_size,
 					 struct sks_attrs_head *parent,
-					 enum processing_func func)
+					 enum processing_func function)
 {
 	struct sks_attrs_head *temp = NULL;
 	struct sks_attrs_head *attrs = NULL;
@@ -533,10 +558,9 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	uint8_t always_sensitive;
 	uint8_t never_extract;
 
-
-#ifdef DEBUG	/* Sanity: check func argument */
+#ifdef DEBUG	/* Sanity: check function argument */
 	trace_attributes_from_api_head("template", template, template_size);
-	switch (func) {
+	switch (function) {
 	case SKS_FUNCTION_GENERATE:
 	case SKS_FUNCTION_IMPORT:
 		break;
@@ -575,7 +599,7 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	assert(get_attribute(attrs, SKS_CKA_LOCAL, NULL, NULL) ==
 		SKS_NOT_FOUND);
 #endif
-	switch (func) {
+	switch (function) {
 	case SKS_FUNCTION_GENERATE:
 		local = SKS_TRUE;
 		break;
@@ -597,7 +621,7 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 		always_sensitive = SKS_FALSE;
 		never_extract = SKS_FALSE;
 
-		switch (func) {
+		switch (function) {
 		case SKS_FUNCTION_DERIVE:
 		case SKS_FUNCTION_COPY:
 			always_sensitive =
@@ -851,38 +875,45 @@ static bool parent_key_complies_allowed_processings(uint32_t proc_id,
  * @head - head of the attributes of parent object.
  */
 uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
-					       enum processing_func func,
+					       enum processing_func function,
 					       struct sks_attrs_head *head)
 {
 	uint32_t rc __maybe_unused;
 	uint32_t key_class = get_class(head);
 	uint32_t key_type = get_type(head);
 
-	if (func == SKS_FUNCTION_ENCRYPT && !get_bool(head, SKS_CKA_ENCRYPT)) {
+	if (function == SKS_FUNCTION_ENCRYPT &&
+	    !get_bool(head, SKS_CKA_ENCRYPT)) {
 		DMSG("encrypt not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
-	if (func == SKS_FUNCTION_DECRYPT && !get_bool(head, SKS_CKA_DECRYPT)) {
+	if (function == SKS_FUNCTION_DECRYPT &&
+	    !get_bool(head, SKS_CKA_DECRYPT)) {
 		DMSG("decrypt not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
-	if (func == SKS_FUNCTION_SIGN && !get_bool(head, SKS_CKA_SIGN)) {
+	if (function == SKS_FUNCTION_SIGN &&
+	    !get_bool(head, SKS_CKA_SIGN)) {
 		DMSG("sign not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
-	if (func == SKS_FUNCTION_VERIFY && get_bool(head, SKS_CKA_VERIFY)) {
+	if (function == SKS_FUNCTION_VERIFY &&
+	    !get_bool(head, SKS_CKA_VERIFY)) {
 		DMSG("verify not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
-	if (func == SKS_FUNCTION_WRAP && !get_bool(head, SKS_CKA_WRAP)) {
+	if (function == SKS_FUNCTION_WRAP &&
+	    !get_bool(head, SKS_CKA_WRAP)) {
 		DMSG("wrap not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
-	if (func == SKS_FUNCTION_UNWRAP && !get_bool(head, SKS_CKA_UNWRAP)) {
+	if (function == SKS_FUNCTION_UNWRAP &&
+	    !get_bool(head, SKS_CKA_UNWRAP)) {
 		DMSG("unwrap not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}
-	if (func == SKS_FUNCTION_DERIVE && !get_bool(head, SKS_CKA_DERIVE)) {
+	if (function == SKS_FUNCTION_DERIVE &&
+	    !get_bool(head, SKS_CKA_DERIVE)) {
 		DMSG("derive not permitted");
 		return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 	}

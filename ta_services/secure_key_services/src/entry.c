@@ -78,9 +78,9 @@ static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 /*
  * Entry point for SKS TA commands
  *
- * ABI: param#0 is control buffer with serialazed arguments.
- *	param#1 is the input data buffer
- *	param#2 is the output data buffer (also used to return handles)
+ * ABI: param#0 is the control buffer with serialazed arguments.
+ *	param#1 is an input/output data buffer
+ *	param#2 is an input/output data buffer (also used to return handles)
  *	param#3 is not used
  *
  * Param#0 ctrl, if defined is an in/out buffer, is used to send back to
@@ -93,141 +93,232 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 				      TEE_Param params[TEE_NUM_PARAMS])
 {
 	TEE_Param *ctrl = NULL;
-	TEE_Param *in = NULL;
-	TEE_Param *out = NULL;
+	TEE_Param *p1_in = NULL;
+	TEE_Param __maybe_unused *p1_out = NULL;
+	TEE_Param *p2_in = NULL;
+	TEE_Param *p2_out = NULL;
 	uintptr_t teesess = (uintptr_t)tee_session;
 	TEE_Result res;
 	uint32_t rc;
 
-	if (TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INPUT ||
-	    TEE_PARAM_TYPE_GET(ptypes, 0) == TEE_PARAM_TYPE_MEMREF_INOUT)
+	/* param#0: input buffer with request serialazed arguments */
+	switch (TEE_PARAM_TYPE_GET(ptypes, 0)) {
+	case TEE_PARAM_TYPE_NONE:
+		break;
+	case TEE_PARAM_TYPE_MEMREF_INPUT:
+	case TEE_PARAM_TYPE_MEMREF_INOUT:
 		ctrl = &params[0];
-	else if (TEE_PARAM_TYPE_GET(ptypes, 0) != TEE_PARAM_TYPE_NONE)
+		break;
+	default:
 		goto bad_types;
+	}
 
-	if (TEE_PARAM_TYPE_GET(ptypes, 1) == TEE_PARAM_TYPE_MEMREF_INPUT)
-		in = &params[1];
-	else if (TEE_PARAM_TYPE_GET(ptypes, 1) != TEE_PARAM_TYPE_NONE)
+	/* param#1: input data buffer */
+	switch (TEE_PARAM_TYPE_GET(ptypes, 1)) {
+	case TEE_PARAM_TYPE_NONE:
+		break;
+	case TEE_PARAM_TYPE_MEMREF_INPUT:
+		p1_in = &params[1];
+		break;
+	case TEE_PARAM_TYPE_MEMREF_OUTPUT:
+		p1_out = &params[1];
+		break;
+	case TEE_PARAM_TYPE_MEMREF_INOUT:
+		p1_in = &params[1];
+		p1_out = &params[1];
+		break;
+	default:
 		goto bad_types;
+	}
 
-	if (TEE_PARAM_TYPE_GET(ptypes, 2) == TEE_PARAM_TYPE_MEMREF_OUTPUT)
-		out = &params[2];
-	else if (TEE_PARAM_TYPE_GET(ptypes, 2) != TEE_PARAM_TYPE_NONE)
+	/* param#2: input or output data buffer */
+	switch (TEE_PARAM_TYPE_GET(ptypes, 2)) {
+	case TEE_PARAM_TYPE_NONE:
+		break;
+	case TEE_PARAM_TYPE_MEMREF_INPUT:
+		p2_in = &params[2];
+		break;
+	case TEE_PARAM_TYPE_MEMREF_OUTPUT:
+		p2_out = &params[2];
+		break;
+	case TEE_PARAM_TYPE_MEMREF_INOUT:
+		p2_in = &params[2];
+		p2_out = &params[2];
+		break;
+	default:
 		goto bad_types;
+	}
 
-	if (TEE_PARAM_TYPE_GET(ptypes, 3) != TEE_PARAM_TYPE_NONE)
+	/* param#3: unused */
+	switch (TEE_PARAM_TYPE_GET(ptypes, 3)) {
+	case TEE_PARAM_TYPE_NONE:
+		break;
+	default:
 		goto bad_types;
+	}
 
-	DMSG("%s ctrl %" PRIu32 "@%p, in %" PRIu32 "@%p, out %" PRIu32 "@%p",
+	DMSG("%s ctrl %" PRIu32 "@%p, %s %" PRIu32 "@%p, %s %" PRIu32 "@%p",
 		sks2str_skscmd(cmd),
 		ctrl ? ctrl->memref.size : 0, ctrl ? ctrl->memref.buffer : 0,
-		in ? in->memref.size : 0, in ? in->memref.buffer : 0,
-		out ? out->memref.size : 0, out ? out->memref.buffer : 0);
+		p1_out ? "out" : (p1_in ? "in" : "---"),
+		p1_out ? p1_out->memref.size : (p1_in ? p1_in->memref.size : 0),
+		p1_out ? p1_out->memref.buffer :
+			(p1_in ? p1_in->memref.buffer : NULL),
+		p2_out ? "out" : (p2_in ? "in" : "---"),
+		p2_out ? p2_out->memref.size : (p2_in ? p2_in->memref.size : 0),
+		p2_out ? p2_out->memref.buffer :
+			(p2_in ? p2_in->memref.buffer : NULL));
 
 	switch (cmd) {
 	case SKS_CMD_PING:
-		rc = entry_ping(ctrl, in, out);
+		rc = entry_ping(ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_CK_SLOT_LIST:
-		rc = entry_ck_slot_list(ctrl, in, out);
+		rc = entry_ck_slot_list(ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_SLOT_INFO:
-		rc = entry_ck_slot_info(ctrl, in, out);
+		rc = entry_ck_slot_info(ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_TOKEN_INFO:
-		rc = entry_ck_token_info(ctrl, in, out);
+		rc = entry_ck_token_info(ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_INIT_TOKEN:
-		rc = entry_ck_token_initialize(ctrl, in, out);
+		rc = entry_ck_token_initialize(ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_CK_MECHANISM_IDS:
-		rc = entry_ck_token_mecha_ids(ctrl, in, out);
+		rc = entry_ck_token_mecha_ids(ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_MECHANISM_INFO:
-		rc = entry_ck_token_mecha_info(ctrl, in, out);
+		rc = entry_ck_token_mecha_info(ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_CK_OPEN_RO_SESSION:
-		rc = entry_ck_token_ro_session(teesess, ctrl, in, out);
+		rc = entry_ck_token_ro_session(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_OPEN_RW_SESSION:
-		rc = entry_ck_token_rw_session(teesess, ctrl, in, out);
+		rc = entry_ck_token_rw_session(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_CLOSE_SESSION:
-		rc = entry_ck_token_close_session(teesess, ctrl, in, out);
+		rc = entry_ck_token_close_session(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_CK_CLOSE_ALL_SESSIONS:
-		rc = entry_ck_token_close_all(teesess, ctrl, in, out);
+		rc = entry_ck_token_close_all(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_IMPORT_OBJECT:
-		rc = entry_import_object(teesess, ctrl, in, out);
+		rc = entry_import_object(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_DESTROY_OBJECT:
-		rc = entry_destroy_object(teesess, ctrl, in, out);
+		rc = entry_destroy_object(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_ENCRYPT_INIT:
+		rc = entry_processing_init(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_ENCRYPT);
+		break;
 	case SKS_CMD_DECRYPT_INIT:
-		rc = entry_cipher_init(teesess, ctrl, in, out,
-					cmd == SKS_CMD_DECRYPT_INIT);
+		rc = entry_processing_init(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_DECRYPT);
 		break;
 	case SKS_CMD_ENCRYPT_UPDATE:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_ENCRYPT,
+					   SKS_FUNC_STEP_UPDATE);
+		break;
 	case SKS_CMD_DECRYPT_UPDATE:
-		rc = entry_cipher_update(teesess, ctrl, in, out,
-					 cmd == SKS_CMD_DECRYPT_UPDATE);
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_DECRYPT,
+					   SKS_FUNC_STEP_UPDATE);
+		break;
+	case SKS_CMD_ENCRYPT_ONESHOT:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_ENCRYPT,
+					   SKS_FUNC_STEP_ONESHOT);
+		break;
+	case SKS_CMD_DECRYPT_ONESHOT:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_DECRYPT,
+					   SKS_FUNC_STEP_ONESHOT);
 		break;
 	case SKS_CMD_ENCRYPT_FINAL:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_ENCRYPT,
+					   SKS_FUNC_STEP_FINAL);
+		break;
 	case SKS_CMD_DECRYPT_FINAL:
-		rc = entry_cipher_final(teesess, ctrl, in, out,
-					cmd == SKS_CMD_DECRYPT_FINAL);
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_DECRYPT,
+					   SKS_FUNC_STEP_FINAL);
 		break;
 
 	case SKS_CMD_GENERATE_SYMM_KEY:
-		rc = entry_generate_object(teesess, ctrl, in, out);
+		rc = entry_generate_secret(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_SIGN_INIT:
+		rc = entry_processing_init(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_SIGN);
+		break;
 	case SKS_CMD_VERIFY_INIT:
-		rc = entry_signverify_init(teesess, ctrl, in, out,
-						cmd == SKS_CMD_SIGN_INIT);
+		rc = entry_processing_init(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_VERIFY);
+		break;
+	case SKS_CMD_SIGN_ONESHOT:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_SIGN,
+					   SKS_FUNC_STEP_ONESHOT);
+		break;
+	case SKS_CMD_VERIFY_ONESHOT:
+		rc = entry_verify_oneshot(teesess, ctrl, p1_in, p2_in,
+					   SKS_FUNCTION_VERIFY,
+					   SKS_FUNC_STEP_ONESHOT);
 		break;
 	case SKS_CMD_SIGN_UPDATE:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_SIGN,
+					   SKS_FUNC_STEP_UPDATE);
+		break;
 	case SKS_CMD_VERIFY_UPDATE:
-		rc = entry_signverify_update(teesess, ctrl, in, out,
-						cmd == SKS_CMD_SIGN_UPDATE);
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_VERIFY,
+					   SKS_FUNC_STEP_UPDATE);
 		break;
 	case SKS_CMD_SIGN_FINAL:
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_SIGN,
+					   SKS_FUNC_STEP_FINAL);
+		break;
 	case SKS_CMD_VERIFY_FINAL:
-		rc = entry_signverify_final(teesess, ctrl, in, out,
-						cmd == SKS_CMD_SIGN_FINAL);
+		rc = entry_processing_step(teesess, ctrl, p1_in, p2_out,
+					   SKS_FUNCTION_VERIFY,
+					   SKS_FUNC_STEP_FINAL);
 		break;
 
 	case SKS_CMD_FIND_OBJECTS_INIT:
-		rc = entry_find_objects_init(teesess, ctrl, in, out);
+		rc = entry_find_objects_init(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_FIND_OBJECTS:
-		rc = entry_find_objects(teesess, ctrl, in, out);
+		rc = entry_find_objects(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_FIND_OBJECTS_FINAL:
-		rc = entry_find_objects_final(teesess, ctrl, in, out);
+		rc = entry_find_objects_final(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	case SKS_CMD_INIT_PIN:
-		rc = entry_init_pin(teesess, ctrl, in, out);
+		rc = entry_init_pin(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_SET_PIN:
-		rc = entry_set_pin(teesess, ctrl, in, out);
+		rc = entry_set_pin(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_LOGIN:
-		rc = entry_login(teesess, ctrl, in, out);
+		rc = entry_login(teesess, ctrl, p1_in, p2_out);
 		break;
 	case SKS_CMD_LOGOUT:
-		rc = entry_logout(teesess, ctrl, in, out);
+		rc = entry_logout(teesess, ctrl, p1_in, p2_out);
 		break;
 
 	default:

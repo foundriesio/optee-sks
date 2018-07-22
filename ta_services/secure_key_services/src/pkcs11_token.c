@@ -11,6 +11,7 @@
 #include <tee_internal_api_extensions.h>
 #include <util.h>
 
+#include "attributes.h"
 #include "handle.h"
 #include "pkcs11_token.h"
 #include "pkcs11_attributes.h"
@@ -169,6 +170,29 @@ struct pkcs11_session *sks_handle2session(uint32_t handle,
 	return handle_lookup(&client->session_handle_db, (int)handle);
 }
 
+static void __set_processing_state(struct pkcs11_session *session,
+				   enum pkcs11_proc_state state,
+				   struct sks_object *obj1,
+				   struct sks_object *obj2)
+{
+	session->processing_relogged = false;
+	session->processing_updated = false;
+	session->processing_always_authen = false;
+
+	if (obj1 && get_bool(obj1->attributes, SKS_CKA_ALWAYS_AUTHENTICATE))
+		session->processing_always_authen = true;
+
+	if (obj2 && get_bool(obj2->attributes, SKS_CKA_ALWAYS_AUTHENTICATE))
+		session->processing_always_authen = true;
+
+	session->processing = state;
+}
+
+void reset_processing_state(struct pkcs11_session *session)
+{
+	__set_processing_state(session, PKCS11_SESSION_READY, NULL, NULL);
+}
+
 /*
  * PKCS#11 expects an session must finalize (or cancel) an operation
  * before starting a new one.
@@ -177,71 +201,92 @@ struct pkcs11_session *sks_handle2session(uint32_t handle,
  * PKCS#11 session.
  *
  * set_processing_state() changes the session operation state.
- *
- * check_processing_state() checks the session is in the expected
- * operation state.
  */
-int set_processing_state(struct pkcs11_session *pkcs_session,
-			 enum pkcs11_proc_state state)
+int set_processing_state(struct pkcs11_session *session,
+			 enum processing_func function,
+			 struct sks_object *obj1, struct sks_object *obj2)
 {
-	if (!pkcs_session)
+	if (!session)
 		return 1;
 
-	/*
-	 * Caller can move to any state from the ready state.
-	 * Caller can always return to the ready state.
-	 */
-	if (pkcs_session->processing == PKCS11_SESSION_READY ||
-	    state == PKCS11_SESSION_READY) {
-		pkcs_session->processing = state;
-		return 0;
-	}
-
-	/* Allowed transitions on dual disgest/cipher or authen/cipher */
-	switch (state) {
-	case PKCS11_SESSION_DIGESTING_ENCRYPTING:
-		if (pkcs_session->processing == PKCS11_SESSION_ENCRYPTING ||
-		    pkcs_session->processing == PKCS11_SESSION_DIGESTING) {
-			pkcs_session->processing = state;
+	switch (function) {
+	case SKS_FUNCTION_ENCRYPT:
+		switch (session->processing) {
+		case PKCS11_SESSION_READY:
+			__set_processing_state(session,
+						PKCS11_SESSION_ENCRYPTING,
+						obj1, obj2);
 			return 0;
+		case PKCS11_SESSION_ENCRYPTING:
+		case PKCS11_SESSION_DIGESTING_ENCRYPTING:
+		case PKCS11_SESSION_SIGNING_ENCRYPTING:
+			return 0;
+		default:
+			return -1;
 		}
 		break;
-	case PKCS11_SESSION_DECRYPTING_DIGESTING:
-		if (pkcs_session->processing == PKCS11_SESSION_DECRYPTING ||
-		    pkcs_session->processing == PKCS11_SESSION_DIGESTING) {
-			pkcs_session->processing = state;
+	case SKS_FUNCTION_DECRYPT:
+		switch (session->processing) {
+		case PKCS11_SESSION_READY:
+			__set_processing_state(session,
+						PKCS11_SESSION_DECRYPTING,
+						obj1, obj2);
 			return 0;
+		case PKCS11_SESSION_DECRYPTING:
+		case PKCS11_SESSION_DECRYPTING_DIGESTING:
+		case PKCS11_SESSION_DECRYPTING_VERIFYING:
+			return 0;
+		default:
+			return -1;
 		}
 		break;
-	case PKCS11_SESSION_SIGNING_ENCRYPTING:
-		if (pkcs_session->processing == PKCS11_SESSION_ENCRYPTING ||
-		    pkcs_session->processing == PKCS11_SESSION_SIGNING) {
-			pkcs_session->processing = state;
+	case SKS_FUNCTION_SIGN:
+		switch (session->processing) {
+		case PKCS11_SESSION_READY:
+			__set_processing_state(session,
+						PKCS11_SESSION_SIGNING,
+						obj1, obj2);
 			return 0;
+		case PKCS11_SESSION_SIGNING:
+		case PKCS11_SESSION_SIGNING_ENCRYPTING:
+			return 0;
+		default:
+			return -1;
 		}
 		break;
-	case PKCS11_SESSION_DECRYPTING_VERIFYING:
-		if (pkcs_session->processing == PKCS11_SESSION_DECRYPTING ||
-		    pkcs_session->processing == PKCS11_SESSION_VERIFYING) {
-			pkcs_session->processing = state;
+	case SKS_FUNCTION_VERIFY:
+		switch (session->processing) {
+		case PKCS11_SESSION_READY:
+			__set_processing_state(session,
+						PKCS11_SESSION_VERIFYING,
+						obj1, obj2);
 			return 0;
+		case PKCS11_SESSION_VERIFYING:
+		case PKCS11_SESSION_DECRYPTING_VERIFYING:
+			return 0;
+		default:
+			return -1;
+		}
+		break;
+	case SKS_FUNCTION_DIGEST:
+		switch (session->processing) {
+		case PKCS11_SESSION_READY:
+			__set_processing_state(session,
+						PKCS11_SESSION_DIGESTING,
+						obj1, obj2);
+			return 0;
+		case PKCS11_SESSION_DIGESTING:
+		case PKCS11_SESSION_DIGESTING_ENCRYPTING:
+		case PKCS11_SESSION_DECRYPTING_DIGESTING:
+			return 0;
+		default:
+			return -1;
 		}
 		break;
 	default:
-		break;
+		TEE_Panic(function);
+		return -1;
 	}
-
-	/* Transition not allowed */
-	return 1;
-}
-
-int check_processing_state(struct pkcs11_session *pkcs_session,
-			   enum pkcs11_proc_state state)
-{
-	if (!pkcs_session)
-		return 1;
-
-	return (pkcs_session->processing == state) ? 0 : 1;
 }
 
 static void cipher_pin(TEE_ObjectHandle key_handle, uint8_t *buf, size_t len)

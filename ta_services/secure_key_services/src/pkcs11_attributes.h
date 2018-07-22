@@ -100,11 +100,17 @@ enum processing_func {
 	SKS_FUNCTION_VERIFY,
 	SKS_FUNCTION_SIGN_RECOVER,
 	SKS_FUNCTION_VERIFY_RECOVER,
-	SKS_FUNCTION_UPDATE,
 	SKS_FUNCTION_IMPORT,
 	SKS_FUNCTION_COPY,
 	SKS_FUNCTION_MODIFY,
 	SKS_FUNCTION_DESTROY,
+};
+
+enum processing_step {
+	SKS_FUNC_STEP_INIT,
+	SKS_FUNC_STEP_ONESHOT,
+	SKS_FUNC_STEP_UPDATE,
+	SKS_FUNC_STEP_FINAL,
 };
 
 struct sks_attrs_head;
@@ -139,8 +145,10 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 					  struct sks_attrs_head *head);
 
-uint32_t check_mechanism_against_processing(uint32_t mechanism_type,
-					    enum processing_func function);
+uint32_t check_mechanism_against_processing(struct pkcs11_session *session,
+					    uint32_t mechanism_type,
+					    enum processing_func function,
+					    enum processing_step step);
 
 int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags);
 

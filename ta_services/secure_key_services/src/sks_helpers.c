@@ -9,6 +9,9 @@
 #include <string.h>
 #include <tee_internal_api.h>
 
+#include "attributes.h"
+#include "object.h"
+#include "pkcs11_attributes.h"
 #include "sks_helpers.h"
 
 static const char __maybe_unused unknown[] = "<unknown-identifier>";
@@ -170,6 +173,10 @@ static const struct string_id __maybe_unused string_cmd[] = {
 	SKS_ID(SKS_CMD_SET_PIN),
 	SKS_ID(SKS_CMD_LOGIN),
 	SKS_ID(SKS_CMD_LOGOUT),
+	SKS_ID(SKS_CMD_ENCRYPT_ONESHOT),
+	SKS_ID(SKS_CMD_DECRYPT_ONESHOT),
+	SKS_ID(SKS_CMD_SIGN_ONESHOT),
+	SKS_ID(SKS_CMD_VERIFY_ONESHOT),
 };
 
 static const struct string_id __maybe_unused string_rc[] = {
@@ -506,6 +513,45 @@ size_t get_supported_mechanisms(uint32_t *array, size_t array_count)
 	assert(m == count);
 
 	return m;
+}
+
+/* Initialize a TEE attribute for a target SKS attribute in an object */
+bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
+			struct sks_object *obj, uint32_t sks_id)
+{
+	void *a_ptr;
+	size_t a_size;
+
+	if (get_attribute_ptr(obj->attributes, sks_id, &a_ptr, &a_size))
+		return false;
+
+	TEE_InitRefAttribute(tee_ref, tee_id, a_ptr, a_size);
+
+	return true;
+}
+
+/* Easy conversion between SKS function of TEE crypto mode */
+void sks2tee_mode(uint32_t *tee_id, uint32_t function)
+{
+	switch (function) {
+	case SKS_FUNCTION_ENCRYPT:
+		*tee_id = TEE_MODE_ENCRYPT;
+		break;
+	case SKS_FUNCTION_DECRYPT:
+		*tee_id = TEE_MODE_DECRYPT;
+		break;
+	case SKS_FUNCTION_SIGN:
+		*tee_id = TEE_MODE_SIGN;
+		break;
+	case SKS_FUNCTION_VERIFY:
+		*tee_id = TEE_MODE_VERIFY;
+		break;
+	case SKS_FUNCTION_DERIVE:
+		*tee_id = TEE_MODE_DERIVE;
+		break;
+	default:
+		TEE_Panic(function);
+	}
 }
 
 #if CFG_TEE_TA_LOG_LEVEL > 0

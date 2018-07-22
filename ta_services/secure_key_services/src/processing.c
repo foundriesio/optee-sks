@@ -7,6 +7,7 @@
 #include <sks_internal_abi.h>
 #include <sks_ta.h>
 #include <string.h>
+#include <tee_api_defines.h>
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
 #include <util.h>
@@ -29,7 +30,7 @@ static uint32_t get_ready_session(struct pkcs11_session **sess,
 	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (check_processing_state(session, PKCS11_SESSION_READY))
+	if (session->processing != PKCS11_SESSION_READY)
 		return SKS_CKR_OPERATION_ACTIVE;
 
 	*sess = session;
@@ -39,19 +40,129 @@ static uint32_t get_ready_session(struct pkcs11_session **sess,
 static uint32_t get_active_session(struct pkcs11_session **sess,
 				  uint32_t session_handle,
 				  uintptr_t tee_session,
-				  uint32_t target_state)
+				  enum processing_func function)
 {
 	struct pkcs11_session *session;
+	uint32_t rv = SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	session = sks_handle2session(session_handle, tee_session);
 	if (!session)
 		return SKS_CKR_SESSION_HANDLE_INVALID;
 
-	if (check_processing_state(session, target_state))
-		return SKS_CKR_OPERATION_NOT_INITIALIZED;
+	switch (session->processing) {
+	case PKCS11_SESSION_READY:
+		break;
+	case PKCS11_SESSION_ENCRYPTING:
+		switch (function) {
+		case SKS_FUNCTION_ENCRYPT:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_DECRYPTING:
+		switch (function) {
+		case SKS_FUNCTION_DECRYPT:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_DIGESTING:
+		switch (function) {
+		case SKS_FUNCTION_DIGEST:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_DIGESTING_ENCRYPTING:
+		switch (function) {
+		case SKS_FUNCTION_DIGEST:
+		case SKS_FUNCTION_ENCRYPT:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_DECRYPTING_DIGESTING:
+		switch (function) {
+		case SKS_FUNCTION_DECRYPT:
+		case SKS_FUNCTION_DIGEST:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_SIGNING:
+		switch (function) {
+		case SKS_FUNCTION_SIGN:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_SIGNING_ENCRYPTING:
+		switch (function) {
+		case SKS_FUNCTION_SIGN:
+		case SKS_FUNCTION_ENCRYPT:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_VERIFYING:
+		switch (function) {
+		case SKS_FUNCTION_VERIFY:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_DECRYPTING_VERIFYING:
+		switch (function) {
+		case SKS_FUNCTION_DECRYPT:
+		case SKS_FUNCTION_VERIFY:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_SIGNING_RECOVER:
+		switch (function) {
+		case SKS_FUNCTION_SIGN_RECOVER:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	case PKCS11_SESSION_VERIFYING_RECOVER:
+		switch (function) {
+		case SKS_FUNCTION_VERIFY_RECOVER:
+			rv = SKS_OK;
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
 
-	*sess = session;
-	return SKS_OK;
+	if (rv == SKS_OK)
+		*sess = session;
+
+	return rv;
 }
 
 static void release_active_processing(struct pkcs11_session *session)
@@ -71,14 +182,16 @@ static void release_active_processing(struct pkcs11_session *session)
 	}
 
 	session->proc_id = SKS_UNDEFINED_ID;
+	session->processing_relogged = false;
+	session->processing_updated = false;
+	session->processing_always_authen = false;
 
 	if (session->tee_op_handle != TEE_HANDLE_NULL) {
 		TEE_FreeOperation(session->tee_op_handle);
 		session->tee_op_handle = TEE_HANDLE_NULL;
 	}
 
-	if (set_processing_state(session, PKCS11_SESSION_READY))
-		TEE_Panic(0);
+	reset_processing_state(session);
 }
 
 uint32_t entry_import_object(uintptr_t tee_session,
@@ -149,15 +262,8 @@ uint32_t entry_import_object(uintptr_t tee_session,
 		goto bail;
 
 	/*
-	 * Execute the target processing and add value as attribute SKS_CKA_VALUE.
-	 * Raw import => key value in clear already as attribute SKS_CKA_VALUE.
-	 *
-	 * Here we only check attribute that attribute SKS_CKA_VALUE is defined.
-	 * TODO: check value size? check SKS_CKA_VALUE_LEN? check SKS_CHECKSUM.
+	 * TODO: test object (will check all expected attributes are in place
 	 */
-	rv = get_attribute_ptr(head, SKS_CKA_VALUE, NULL, NULL);
-	if (rv)
-		goto bail;
 
 	/*
 	 * At this stage the object is almost created: all its attributes are
@@ -186,96 +292,14 @@ bail:
 	return rv;
 }
 
-/*
- * Get the GPD TEE cipher operation parameters (mode, key size, algo)
- * from and SKS cipher operation.
- */
-static uint32_t tee_operarion_params(struct pkcs11_session *session,
-					struct sks_attribute_head *proc_params,
-					struct sks_object *sks_key,
-					uint32_t function)
+size_t get_object_key_bit_size(struct sks_object *obj)
 {
-	uint32_t key_type;
-	uint32_t algo;
-	uint32_t mode;
-	uint32_t size;
-	TEE_Result res;
-	void *value;
-	size_t value_size;
+	void *a_ptr;
+	size_t a_size;
+	struct sks_attrs_head *attrs = obj->attributes;
 
-	if (get_attribute_ptr(sks_key->attributes, SKS_CKA_VALUE,
-				&value, &value_size))
-		TEE_Panic(0);
-
-	if (get_attribute(sks_key->attributes, SKS_CKA_KEY_TYPE,
-			  &key_type, NULL))
-		return SKS_ERROR;
-
-	switch (key_type) {
+	switch (get_type(attrs)) {
 	case SKS_CKK_AES:
-
-		if (function == SKS_FUNCTION_ENCRYPT ||
-		    function == SKS_FUNCTION_DECRYPT) {
-			mode = (function == SKS_FUNCTION_DECRYPT) ?
-					TEE_MODE_DECRYPT : TEE_MODE_ENCRYPT;
-			size = value_size * 8;
-
-			switch (proc_params->id) {
-			case SKS_CKM_AES_ECB:
-				algo = TEE_ALG_AES_ECB_NOPAD;
-				break;
-			case SKS_CKM_AES_CBC:
-				algo = TEE_ALG_AES_CBC_NOPAD;
-				break;
-			case SKS_CKM_AES_CTR:
-				algo = TEE_ALG_AES_CTR;
-				break;
-			case SKS_CKM_AES_CTS:
-				algo = TEE_ALG_AES_CTS;
-				break;
-			case SKS_CKM_AES_CCM:
-				algo = TEE_ALG_AES_CCM;
-				break;
-			case SKS_CKM_AES_GCM:
-				algo = TEE_ALG_AES_GCM;
-				break;
-			default:
-				EMSG("Operation not supported for process %s",
-					sks2str_proc(proc_params->id));
-				return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-			}
-			break;
-		}
-
-		if (function == SKS_FUNCTION_SIGN ||
-		    function == SKS_FUNCTION_VERIFY) {
-
-			switch (proc_params->id) {
-			case SKS_CKM_AES_CMAC:
-			case SKS_CKM_AES_CMAC_GENERAL:
-				algo = TEE_ALG_AES_CMAC;
-				mode = TEE_MODE_MAC;
-				size = value_size * 8;
-				break;
-
-			case SKS_CKM_AES_XCBC_MAC:
-				algo = TEE_ALG_AES_CBC_MAC_NOPAD;
-				mode = TEE_MODE_MAC;
-				size = value_size * 8;
-				break;
-
-			default:
-				EMSG("Operation not supported for process %s",
-					sks2str_proc(proc_params->id));
-				return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-			}
-			break;
-		}
-
-		EMSG("Operation not supported for object type %s",
-			sks2str_key_type(key_type));
-		return SKS_FAILED;
-
 	case SKS_CKK_GENERIC_SECRET:
 	case SKS_CKK_MD5_HMAC:
 	case SKS_CKK_SHA_1_HMAC:
@@ -283,501 +307,14 @@ static uint32_t tee_operarion_params(struct pkcs11_session *session,
 	case SKS_CKK_SHA256_HMAC:
 	case SKS_CKK_SHA384_HMAC:
 	case SKS_CKK_SHA512_HMAC:
-		if (function == SKS_FUNCTION_SIGN ||
-		    function == SKS_FUNCTION_VERIFY) {
+		if (get_attribute_ptr(attrs, SKS_CKA_VALUE, NULL, &a_size))
+			return 0;
 
-			mode = TEE_MODE_MAC;
-			size = value_size * 8;
-
-			switch (proc_params->id) {
-			case SKS_CKM_MD5_HMAC:
-				algo = TEE_ALG_HMAC_MD5;
-				if (key_type != SKS_CKK_GENERIC_SECRET &&
-				   key_type != SKS_CKK_MD5_HMAC)
-					return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-				break;
-			case SKS_CKM_SHA_1_HMAC:
-				algo = TEE_ALG_HMAC_SHA1;
-				if (key_type != SKS_CKK_GENERIC_SECRET &&
-				   key_type != SKS_CKK_SHA_1_HMAC)
-					return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-				break;
-			case SKS_CKM_SHA224_HMAC:
-				algo = TEE_ALG_HMAC_SHA224;
-				if (key_type != SKS_CKK_GENERIC_SECRET &&
-				   key_type != SKS_CKK_SHA224_HMAC)
-					return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-				break;
-			case SKS_CKM_SHA256_HMAC:
-				algo = TEE_ALG_HMAC_SHA256;
-				if (key_type != SKS_CKK_GENERIC_SECRET &&
-				   key_type != SKS_CKK_SHA256_HMAC)
-					return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-				break;
-			case SKS_CKM_SHA384_HMAC:
-				algo = TEE_ALG_HMAC_SHA384;
-				if (key_type != SKS_CKK_GENERIC_SECRET &&
-				   key_type != SKS_CKK_SHA384_HMAC)
-					return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-				break;
-			case SKS_CKM_SHA512_HMAC:
-				algo = TEE_ALG_HMAC_SHA512;
-				if (key_type != SKS_CKK_GENERIC_SECRET &&
-				   key_type != SKS_CKK_SHA512_HMAC)
-					return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-				break;
-			default:
-				EMSG("Operation not supported for process %s",
-					sks2str_proc(proc_params->id));
-				return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-			}
-			break;
-		}
-
-		EMSG("Operation not supported for object type %s",
-			sks2str_key_type(key_type));
-		return SKS_FAILED;
-
+		return a_size * 8;
 	default:
-		EMSG("Operation not supported for object type %s",
-			sks2str_key_type(key_type));
-		return SKS_FAILED;
-	}
-
-	if (session->tee_op_handle != TEE_HANDLE_NULL)
 		TEE_Panic(0);
-
-	res = TEE_AllocateOperation(&session->tee_op_handle, algo, mode, size);
-	if (res) {
-		EMSG("Failed to allocate operation");
-		return tee2sks_error(res);
+		return 0;
 	}
-
-	return SKS_OK;
-}
-
-/* Convert SKS_CKK_xxx into GPD TEE_ATTR_xxx */
-static uint32_t get_tee_object_info(uint32_t *type, uint32_t *attr,
-				    struct sks_attrs_head *head)
-{
-	//
-	// TODO: SKS_CKK_GENERIC_SECRET should be allowed to be used for HMAC_SHAx
-	//
-	switch (get_type(head)) {
-	case SKS_CKK_AES:
-		*type = TEE_TYPE_AES;
-		goto secret;
-	case SKS_CKK_GENERIC_SECRET:
-		*type = TEE_TYPE_GENERIC_SECRET;
-		goto secret;
-	case SKS_CKK_MD5_HMAC:
-		*type = TEE_TYPE_HMAC_MD5;
-		goto secret;
-	case SKS_CKK_SHA_1_HMAC:
-		*type = TEE_TYPE_HMAC_SHA1;
-		goto secret;
-	case SKS_CKK_SHA224_HMAC:
-		*type = TEE_TYPE_HMAC_SHA224;
-		goto secret;
-	case SKS_CKK_SHA256_HMAC:
-		*type = TEE_TYPE_HMAC_SHA256;
-		goto secret;
-	case SKS_CKK_SHA384_HMAC:
-		*type = TEE_TYPE_HMAC_SHA384;
-		goto secret;
-	case SKS_CKK_SHA512_HMAC:
-		*type = TEE_TYPE_HMAC_SHA512;
-		goto secret;
-	default:
-		EMSG("Operation not supported for object type %s",
-			sks2str_key_type(get_type(head)));
-		return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-	}
-
-secret:
-	*attr = TEE_ATTR_SECRET_VALUE;
-	return SKS_OK;
-}
-
-static uint32_t load_key(struct sks_object *obj)
-{
-	uint32_t tee_obj_type;
-	uint32_t tee_obj_attr;
-	TEE_Attribute tee_key_attr;
-	void *value;
-	size_t value_size;
-	uint32_t rv;
-	TEE_Result res;
-
-	/* Key already loaded, we have a handle */
-	if (obj->key_handle != TEE_HANDLE_NULL)
-		return SKS_OK;
-
-	rv = get_tee_object_info(&tee_obj_type, &tee_obj_attr,
-				 obj->attributes);
-	if (rv) {
-		EMSG("get_tee_object_info failed, %s", sks2str_rc(rv));
-		return rv;
-	}
-
-	if (get_attribute_ptr(obj->attributes, SKS_CKA_VALUE,
-			      &value, &value_size))
-		TEE_Panic(0);
-
-	res = TEE_AllocateTransientObject(tee_obj_type, value_size * 8,
-					  &obj->key_handle);
-	if (res) {
-		EMSG("TEE_AllocateTransientObject failed, %" PRIx32, res);
-		return rv;;
-	}
-
-	TEE_InitRefAttribute(&tee_key_attr, tee_obj_attr, value, value_size);
-
-	res = TEE_PopulateTransientObject(obj->key_handle, &tee_key_attr, 1);
-	if (res) {
-		EMSG("TEE_PopulateTransientObject failed, %" PRIx32, res);
-		TEE_FreeTransientObject(obj->key_handle);
-		obj->key_handle = TEE_HANDLE_NULL;
-		return tee2sks_error(res);
-	}
-
-	return rv;
-}
-
-/*
- * ctrl = [session-handle][key-handle][mechanism-parameters]
- * in = none
- * out = none
- */
-uint32_t entry_cipher_init(uintptr_t tee_session, TEE_Param *ctrl,
-			   TEE_Param *in, TEE_Param *out, int decrypt)
-{
-	uint32_t rv;
-	TEE_Result res;
-	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	uint32_t key_handle;
-	struct sks_attribute_head *proc_params = NULL;
-	struct sks_object *obj;
-	struct pkcs11_session *session = NULL;
-
-	if (!ctrl || in || out)
-		return SKS_BAD_PARAM;
-
-	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
-
-	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
-	if (rv)
-		return rv;
-
-	rv = serialargs_get(&ctrlargs, &key_handle, sizeof(uint32_t));
-	if (rv)
-		return rv;
-
-	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
-	if (rv)
-		return rv;
-
-	/*
-	 * Check PKCS session (arguments and session state)
-	 */
-	rv = get_ready_session(&session, session_handle, tee_session);
-	if (rv)
-		goto bail;
-
-	if (set_processing_state(session, decrypt ?
-				 PKCS11_SESSION_DECRYPTING :
-				 PKCS11_SESSION_ENCRYPTING)) {
-		rv = SKS_CKR_OPERATION_ACTIVE;
-		goto bail;
-	}
-
-	/*
-	 * Check parent key handle
-	 */
-	obj = sks_handle2object(key_handle, session);
-	if (!obj) {
-		rv = SKS_CKR_KEY_HANDLE_INVALID;
-		goto bail;
-	}
-
-	/*
-	 * Check processing against parent key and token state
-	 */
-	rv = check_mechanism_against_processing(proc_params->id,
-						decrypt ? SKS_FUNCTION_DECRYPT :
-						SKS_FUNCTION_ENCRYPT);
-	if (rv)
-		goto bail;
-
-	rv = check_parent_attrs_against_processing(proc_params->id, decrypt ?
-						   SKS_FUNCTION_DECRYPT :
-						   SKS_FUNCTION_ENCRYPT,
-						   obj->attributes);
-	if (rv)
-		goto bail;
-
-	rv = check_access_attrs_against_token(session, obj->attributes);
-	if (rv)
-		goto bail;
-
-	/*
-	 * Allocate a TEE operation for the target processing and
-	 * fill it with the expected operation parameters.
-	 */
-	rv = tee_operarion_params(session, proc_params, obj, decrypt ?
-				  SKS_FUNCTION_DECRYPT : SKS_FUNCTION_ENCRYPT);
-	if (rv)
-		goto bail;
-
-
-	/*
-	 * Create a TEE object from the target key, if not yet done
-	 */
-	switch (get_class(obj->attributes)) {
-	case SKS_CKO_SECRET_KEY:
-		rv = load_key(obj);
-		if (rv)
-			goto bail;
-
-		break;
-
-	default:
-		rv = SKS_FAILED;		// FIXME: errno
-		goto bail;
-	}
-
-	res = TEE_SetOperationKey(session->tee_op_handle, obj->key_handle);
-	if (res) {
-		EMSG("TEE_SetOperationKey failed %x", res);
-		rv = tee2sks_error(res);
-		goto bail;
-	}
-
-	/*
-	 * Specifc cipher initialization if any
-	 */
-	switch (proc_params->id) {
-	case SKS_CKM_AES_ECB:
-		if (proc_params->size) {
-			DMSG("Bad params for %s", sks2str_proc(proc_params->id));
-			rv = SKS_CKR_MECHANISM_PARAM_INVALID;
-			goto bail;
-		}
-
-		TEE_CipherInit(session->tee_op_handle, NULL, 0);
-		break;
-
-	case SKS_CKM_AES_CBC:
-	case SKS_CKM_AES_CBC_PAD:
-	case SKS_CKM_AES_CTS:
-		if (proc_params->size != 16) {
-			DMSG("Expects 16 byte IV, not %d", proc_params->size);
-			rv = SKS_CKR_MECHANISM_PARAM_INVALID;
-			goto bail;
-		}
-
-		TEE_CipherInit(session->tee_op_handle,
-				(void *)proc_params->data, 16);
-		break;
-
-	case SKS_CKM_AES_CTR:
-		rv = tee_init_ctr_operation(session,
-					    proc_params->data,
-					    proc_params->size);
-		if (rv)
-			goto bail;
-		break;
-
-	case SKS_CKM_AES_CCM:
-		rv = tee_init_ccm_operation(session,
-					    proc_params->data,
-					    proc_params->size);
-		if (rv)
-			goto bail;
-		break;
-
-	case SKS_CKM_AES_GCM:
-		rv = tee_init_gcm_operation(session,
-					    proc_params->data,
-					    proc_params->size);
-		if (rv)
-			goto bail;
-		break;
-
-	default:
-		TEE_Panic(TEE_ERROR_NOT_IMPLEMENTED);
-	}
-
-	session->proc_id = proc_params->id;
-	rv = SKS_OK;
-
-bail:
-	if (rv)
-		release_active_processing(session);
-
-	TEE_Free(proc_params);
-
-	return rv;
-}
-
-/*
- * ctrl = [session-handle]
- * in = data buffer
- * out = data buffer
- */
-uint32_t entry_cipher_update(uintptr_t tee_session, TEE_Param *ctrl,
-			     TEE_Param *in, TEE_Param *out, int decrypt)
-{
-	uint32_t rv;
-	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	TEE_Result res;
-	struct pkcs11_session *session;
-	size_t in_size = in ? in->memref.size : 0;
-	uint32_t out_size = out ? out->memref.size : 0;
-
-	if (!ctrl)
-		return SKS_BAD_PARAM;
-
-	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
-
-	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
-	if (rv)
-		return rv;
-
-	rv = get_active_session(&session, session_handle, tee_session,
-				decrypt ? PKCS11_SESSION_DECRYPTING :
-				PKCS11_SESSION_ENCRYPTING);
-	if (rv)
-		return rv;
-
-	rv = check_mechanism_against_processing(session->proc_id,
-						SKS_FUNCTION_UPDATE);
-	if (rv)
-		return rv;
-
-	switch (session->proc_id) {
-	case SKS_CKM_AES_CCM:
-	case SKS_CKM_AES_GCM:
-		if (decrypt) {
-			rv = tee_ae_decrypt_update(session, in ?
-						   in->memref.buffer :
-						   NULL, in_size);
-			/* Keep decrypted data in secure memory until final */
-			out_size = 0;
-			break;
-		}
-
-		res = TEE_AEUpdate(session->tee_op_handle,
-				   in ? in->memref.buffer : NULL, in_size,
-				   out ? out->memref.buffer : NULL,
-				   &out_size);
-
-		rv = tee2sks_error(res);
-		break;
-
-	default:
-		res = TEE_CipherUpdate(session->tee_op_handle,
-					in ? in->memref.buffer : NULL,
-					in_size,
-					out ? out->memref.buffer : NULL,
-					&out_size);
-
-		rv = tee2sks_error(res);
-		break;
-	}
-
-	if (!out && rv == SKS_SHORT_BUFFER)
-		rv = SKS_BAD_PARAM;
-
-	if (rv != SKS_OK && rv != SKS_SHORT_BUFFER)
-		release_active_processing(session);
-	else
-		if (out)
-			out->memref.size = out_size;
-
-	return rv;
-}
-
-/*
- * ctrl = [session-handle]
- * in = none
- * out = data buffer
- */
-uint32_t entry_cipher_final(uintptr_t tee_session, TEE_Param *ctrl,
-			    TEE_Param *in, TEE_Param *out, int decrypt)
-{
-	uint32_t rv;
-	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	TEE_Result res;
-	struct pkcs11_session *session;
-	size_t in_size = in ? in->memref.size : 0;
-	uint32_t out_size = out ? out->memref.size : 0;
-
-	/* May or may not provide input and/or output data */
-	if (!ctrl)
-		return SKS_BAD_PARAM;
-
-	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
-
-	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
-	if (rv)
-		return rv;
-
-	rv = get_active_session(&session, session_handle, tee_session,
-				decrypt ? PKCS11_SESSION_DECRYPTING :
-				PKCS11_SESSION_ENCRYPTING);
-	if (rv)
-		return rv;
-
-	switch (session->proc_id) {
-	case SKS_CKM_AES_CCM:
-	case SKS_CKM_AES_GCM:
-		if (in_size) {
-			/*
-			 * Pkcs11 EncryptFinal and DecryptFinal to do provide
-			 * input data reference, only an output buffer which
-			 * is mandatory to produce the tag (encryption) or
-			 * reveale the output data (decryption).
-			 */
-			rv = SKS_BAD_PARAM;
-			break;
-		}
-
-		if (decrypt)
-			rv = tee_ae_decrypt_final(session, out ?
-						  out->memref.buffer : NULL,
-						  &out_size);
-		else
-			rv = tee_ae_encrypt_final(session, out ?
-						  out->memref.buffer : NULL,
-						  &out_size);
-		break;
-
-	default:
-		res = TEE_CipherDoFinal(session->tee_op_handle,
-					in ? in->memref.buffer : NULL,
-					in_size,
-					out ? out->memref.buffer : NULL,
-					&out_size);
-
-		rv = tee2sks_error(res);
-		break;
-	}
-
-	if (!out && rv == SKS_SHORT_BUFFER)
-		rv = SKS_BAD_PARAM;
-
-	if (out && (rv == SKS_OK || rv == SKS_SHORT_BUFFER))
-		out->memref.size = out_size;
-
-	/* Only a short buffer error can leave the operation active */
-	if (rv != SKS_SHORT_BUFFER)
-		release_active_processing(session);
-
-	return rv;
 }
 
 static uint32_t generate_random_key_value(struct sks_attrs_head **head)
@@ -813,7 +350,7 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 	return rv;
 }
 
-uint32_t entry_generate_object(uintptr_t tee_session,
+uint32_t entry_generate_secret(uintptr_t tee_session,
 			       TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	uint32_t rv;
@@ -843,9 +380,13 @@ uint32_t entry_generate_object(uintptr_t tee_session,
 	if (rv)
 		return rv;
 
-	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
+	rv = get_ready_session(&session, session_handle, tee_session);
 	if (rv)
 		return rv;
+
+	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
+	if (rv)
+		goto bail;
 
 	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
 	if (rv)
@@ -853,15 +394,9 @@ uint32_t entry_generate_object(uintptr_t tee_session,
 
 	template_size = sizeof(*template) + template->attrs_size;
 
-	/*
-	 * Check arguments
-	 */
-	rv = get_ready_session(&session, session_handle, tee_session);
-	if (rv)
-		goto bail;
-
-	rv = check_mechanism_against_processing(proc_params->id,
-						SKS_FUNCTION_GENERATE);
+	rv = check_mechanism_against_processing(session, proc_params->id,
+						SKS_FUNCTION_GENERATE,
+						SKS_FUNC_STEP_INIT);
 	if (rv)
 		goto bail;
 
@@ -936,15 +471,21 @@ bail:
 }
 
 /*
- * ctrl = [session-handle][key-handle][mechanism-parameters]
- * in = none
- * out = none
+ * entry_processing_init - Generic entry for initializing a processing
+ *
+ * @ctrl = [session-handle]
+ * @in = input data or none
+ * @out = output data or none
+ * @function - encrypt, decrypt, sign, verify, disgest, ...
+ *
+ * The generic part come that all the commands uses the same
+ * input/output invocation parameters format (ctrl/in/out).
  */
-uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
-				TEE_Param *in, TEE_Param *out, int sign)
+uint32_t entry_processing_init(uintptr_t tee_session, TEE_Param *ctrl,
+				TEE_Param *in, TEE_Param *out,
+				enum processing_func function)
 {
 	uint32_t rv;
-	TEE_Result res;
 	struct serialargs ctrlargs;
 	uint32_t session_handle;
 	struct pkcs11_session *session = NULL;
@@ -961,46 +502,31 @@ uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
+	rv = get_ready_session(&session, session_handle, tee_session);
+	if (rv)
+		return rv;
+
 	rv = serialargs_get(&ctrlargs, &key_handle, sizeof(uint32_t));
 	if (rv)
 		return rv;
 
+	obj = sks_handle2object(key_handle, session);
+	if (!obj)
+		return SKS_CKR_KEY_HANDLE_INVALID;
+
+	if (set_processing_state(session, function, obj, NULL))
+		return SKS_CKR_OPERATION_ACTIVE;
+
 	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
 	if (rv)
-		return rv;
+		goto bail;
 
-	/*
-	 * Check arguments
-	 */
-
-	rv = get_ready_session(&session, session_handle, tee_session);
+	rv = check_mechanism_against_processing(session, proc_params->id,
+						function, SKS_FUNC_STEP_INIT);
 	if (rv)
 		goto bail;
 
-	if (set_processing_state(session, sign ? PKCS11_SESSION_SIGNING :
-						 PKCS11_SESSION_VERIFYING)) {
-		rv = SKS_CKR_OPERATION_ACTIVE;
-		goto bail;
-	}
-
-	obj = sks_handle2object(key_handle, session);
-	if (!obj) {
-		rv = SKS_CKR_KEY_HANDLE_INVALID;
-		goto bail;
-	}
-
-	/*
-	 * Check created object against processing and token state.
-	 */
-	rv = check_mechanism_against_processing(proc_params->id,
-						sign ? SKS_FUNCTION_SIGN :
-						SKS_FUNCTION_VERIFY);
-	if (rv)
-		goto bail;
-
-	rv = check_parent_attrs_against_processing(proc_params->id,
-						   sign ? SKS_FUNCTION_SIGN :
-						   SKS_FUNCTION_VERIFY,
+	rv = check_parent_attrs_against_processing(proc_params->id, function,
 						   obj->attributes);
 	if (rv)
 		goto bail;
@@ -1009,71 +535,14 @@ uint32_t entry_signverify_init(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		goto bail;
 
-	/*
-	 * Allocate a TEE operation for the target processing and
-	 * fill it with the expected operation parameters.
-	 */
-	rv = tee_operarion_params(session, proc_params, obj, sign ?
-				  SKS_FUNCTION_SIGN : SKS_FUNCTION_VERIFY);
-	if (rv)
-		goto bail;
-
-	/*
-	 * Execute target processing and add value as attribute SKS_CKA_VALUE.
-	 * Symm key generation: depens on target processing to be used.
-	 */
-	switch (proc_params->id) {
-	case SKS_CKM_AES_CMAC:
-	case SKS_CKM_AES_CMAC_GENERAL:
-	case SKS_CKM_MD5_HMAC:
-	case SKS_CKM_SHA_1_HMAC:
-	case SKS_CKM_SHA224_HMAC:
-	case SKS_CKM_SHA256_HMAC:
-	case SKS_CKM_SHA384_HMAC:
-	case SKS_CKM_SHA512_HMAC:
-	case SKS_CKM_AES_XCBC_MAC:
-		rv = load_key(obj);
-		if (rv)
-			goto bail;
-
-		break;
-
-	default:
-		rv = SKS_CKR_MECHANISM_INVALID;
-		goto bail;
+	rv = SKS_CKR_MECHANISM_INVALID;
+	if (processing_is_tee_symm(proc_params->id)) {
+		rv = init_symm_operation(session, function, proc_params, obj);
 	}
-
-	res = TEE_SetOperationKey(session->tee_op_handle, obj->key_handle);
-	if (res) {
-		EMSG("TEE_SetOperationKey failed %x", res);
-		rv = tee2sks_error(res);
-		goto bail;
+	if (rv == SKS_OK) {
+		session->processing_updated = false;
+		session->proc_id = proc_params->id;
 	}
-
-	/*
-	 * Specifc cipher initialization if any
-	 */
-	switch (proc_params->id) {
-	case SKS_CKM_AES_CMAC_GENERAL:
-	case SKS_CKM_AES_CMAC:
-	case SKS_CKM_MD5_HMAC:
-	case SKS_CKM_SHA_1_HMAC:
-	case SKS_CKM_SHA224_HMAC:
-	case SKS_CKM_SHA256_HMAC:
-	case SKS_CKM_SHA384_HMAC:
-	case SKS_CKM_SHA512_HMAC:
-	case SKS_CKM_AES_XCBC_MAC:
-		// TODO: get the desired output size
-		TEE_MACInit(session->tee_op_handle, NULL, 0);
-		break;
-
-	default:
-		rv = SKS_CKR_MECHANISM_INVALID;
-		goto bail;
-	}
-
-	session->proc_id = proc_params->id;
-	rv = SKS_OK;
 
 bail:
 	if (rv && session)
@@ -1085,19 +554,27 @@ bail:
 }
 
 /*
- * ctrl = [session-handle]
- * in = input data
- * out = none
+ * entry_processing_step - Generic entry on active processing
+ *
+ * @ctrl = [session-handle]
+ * @in = input data or none
+ * @out = output data or none
+ * @function - encrypt, decrypt, sign, verify, disgest, ...
+ * @step - update, oneshot, final
+ *
+ * The generic part come that all the commands uses the same
+ * input/output invocation parameters format (ctrl/in/out).
  */
-uint32_t entry_signverify_update(uintptr_t tee_session, TEE_Param *ctrl,
-				 TEE_Param *in, TEE_Param *out, int sign)
+uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
+				TEE_Param *in, TEE_Param *out,
+				enum processing_func function,
+				enum processing_step step)
 {
+	uint32_t rv;
 	struct serialargs ctrlargs;
 	uint32_t session_handle;
 	struct pkcs11_session *session;
-	uint32_t rv;
 
-	/* May or may not provide input and/or output data */
 	if (!ctrl)
 		return SKS_BAD_PARAM;
 
@@ -1108,63 +585,64 @@ uint32_t entry_signverify_update(uintptr_t tee_session, TEE_Param *ctrl,
 		return rv;
 
 	rv = get_active_session(&session, session_handle, tee_session,
-				sign ? PKCS11_SESSION_SIGNING :
-				PKCS11_SESSION_VERIFYING);
+				function);
+	if (rv)
+		return rv;
+
+	// TODO: check user authen and object activiation dates
+
+	rv = check_mechanism_against_processing(session, session->proc_id,
+						function, step);
 	if (rv)
 		goto bail;
 
-	rv = check_mechanism_against_processing(session->proc_id,
-						SKS_FUNCTION_UPDATE);
-	if (rv)
-		goto bail;
-
-	if (!in || out) {
-		rv = SKS_BAD_PARAM;
-		goto bail;
+	rv = SKS_CKR_MECHANISM_INVALID;
+	if (processing_is_tee_symm(session->proc_id)) {
+		rv = step_symm_operation(session, function, step, in, out);
 	}
-
-	switch (session->proc_id) {
-	case SKS_CKM_AES_CMAC_GENERAL:
-	case SKS_CKM_AES_CMAC:
-	case SKS_CKM_MD5_HMAC:
-	case SKS_CKM_SHA_1_HMAC:
-	case SKS_CKM_SHA224_HMAC:
-	case SKS_CKM_SHA256_HMAC:
-	case SKS_CKM_SHA384_HMAC:
-	case SKS_CKM_SHA512_HMAC:
-	case SKS_CKM_AES_XCBC_MAC:
-		TEE_MACUpdate(session->tee_op_handle,
-				in->memref.buffer, in->memref.size);
-		break;
-
-	default:
-		rv = SKS_CKR_MECHANISM_INVALID;
-		goto bail;
-	}
-
-	rv = SKS_OK;
+	if (rv == SKS_OK)
+		session->processing_updated = true;
 
 bail:
-	if (rv)
-		release_active_processing(session);
+	switch (step) {
+	case SKS_FUNC_STEP_UPDATE:
+		if (rv != SKS_OK && rv != SKS_SHORT_BUFFER)
+			release_active_processing(session);
+		break;
+	default:
+		/* ONESHOT and FINAL terminates procceesing on success */
+		if (rv != SKS_SHORT_BUFFER)
+			release_active_processing(session);
+		break;
+	}
 
 	return rv;
 }
 
 /*
- * ctrl = [session-handle]
- * in = none
- * out = data buffer
+ * entry_verify_oneshot - Generic entry on active processing
+ *
+ * @ctrl = [session-handle]
+ * @in = input data or none
+ * @out = output data or none
+ * @function - encrypt, decrypt, sign, verify, disgest, ...
+ * @step - update, oneshot, final
+ *
+ * The generic part come that all the commands uses the same
+ * input/output invocation parameters format (ctrl/in/out).
  */
-uint32_t entry_signverify_final(uintptr_t tee_session, TEE_Param *ctrl,
-				TEE_Param *in, TEE_Param *out, int sign)
+uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *in2,
+				  enum processing_func function,
+				  enum processing_step step)
+
 {
-	TEE_Result res;
 	uint32_t rv;
 	struct serialargs ctrlargs;
 	uint32_t session_handle;
 	struct pkcs11_session *session;
-	uint32_t out_size = out ? out->memref.size : 0;
+
+	assert(function == SKS_FUNCTION_VERIFY);
 
 	if (!ctrl)
 		return SKS_BAD_PARAM;
@@ -1176,47 +654,22 @@ uint32_t entry_signverify_final(uintptr_t tee_session, TEE_Param *ctrl,
 		return rv;
 
 	rv = get_active_session(&session, session_handle, tee_session,
-				sign ? PKCS11_SESSION_SIGNING :
-				PKCS11_SESSION_VERIFYING);
+				function);
+	if (rv)
+		return rv;
+
+	// TODO: check user authen and object activiation dates
+
+	rv = check_mechanism_against_processing(session, session->proc_id,
+						function, step);
 	if (rv)
 		goto bail;
 
-	if (in || !out) {
-		rv = SKS_BAD_PARAM;
-		goto bail;
+	rv = SKS_CKR_MECHANISM_INVALID;
+	if (processing_is_tee_symm(session->proc_id)) {
+		rv = step_symm_operation(session, function, step, in, in2);
 	}
-
-	switch (session->proc_id) {
-	case SKS_CKM_AES_CMAC_GENERAL:
-	case SKS_CKM_AES_CMAC:
-	case SKS_CKM_MD5_HMAC:
-	case SKS_CKM_SHA_1_HMAC:
-	case SKS_CKM_SHA224_HMAC:
-	case SKS_CKM_SHA256_HMAC:
-	case SKS_CKM_SHA384_HMAC:
-	case SKS_CKM_SHA512_HMAC:
-	case SKS_CKM_AES_XCBC_MAC:
-		if (sign)
-			res = TEE_MACComputeFinal(session->tee_op_handle,
-						  NULL, 0, out->memref.buffer,
-						  &out_size);
-		else
-			res = TEE_MACCompareFinal(session->tee_op_handle,
-						  NULL, 0, out->memref.buffer,
-						  out_size);
-
-		rv = tee2sks_error(res);
-		break;
-
-	default:
-		rv = SKS_CKR_MECHANISM_INVALID;
-		goto bail;
-	}
-
 bail:
-	if (sign && (rv == SKS_OK || rv == SKS_SHORT_BUFFER))
-		out->memref.size = out_size;
-
 	if (rv != SKS_SHORT_BUFFER)
 		release_active_processing(session);
 
