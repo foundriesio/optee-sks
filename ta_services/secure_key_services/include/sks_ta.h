@@ -183,6 +183,12 @@ struct sks_mechanism_info {
 #define SKS_CKFM_WRAP			(1U << 17)
 #define SKS_CKFM_UNWRAP			(1U << 18)
 #define SKS_CKFM_DERIVE			(1U << 19)
+#define SKS_CKFM_EC_F_P			(1U << 20)
+#define SKS_CKFM_EC_F_2M		(1U << 21)
+#define SKS_CKFM_EC_ECPARAMETERS	(1U << 22)
+#define SKS_CKFM_EC_NAMEDCURVE		(1U << 23)
+#define SKS_CKFM_EC_UNCOMPRESS		(1U << 24)
+#define SKS_CKFM_EC_COMPRESS		(1U << 25)
 
 /*
  * SKS_CMD_CK_INIT_TOKEN - Initialize PKCS#11 token
@@ -762,6 +768,23 @@ struct sks_attribute_head {
 #define SKS_CKA_ALLOWED_MECHANISMS		0x0000004c
 #define SKS_CKA_CLASS				0x0000004d
 #define SKS_CKA_KEY_TYPE			0x0000004e
+#define SKS_CKA_EC_POINT			0x0000004f
+#define SKS_CKA_EC_PARAMS			0x00000050
+#define SKS_CKA_MODULUS				0x00000051
+#define SKS_CKA_MODULUS_BITS			0x00000052
+#define SKS_CKA_PUBLIC_EXPONENT			0x00000053
+#define SKS_CKA_PRIVATE_EXPONENT		0x00000054
+#define SKS_CKA_PRIME_1				0x00000055
+#define SKS_CKA_PRIME_2				0x00000056
+#define SKS_CKA_EXPONENT_1			0x00000057
+#define SKS_CKA_EXPONENT_2			0x00000058
+#define SKS_CKA_COEFFICIENT			0x00000059
+#define SKS_CKA_SUBJECT				0x0000005a
+#define SKS_CKA_PUBLIC_KEY_INFO			0x0000005b
+
+// Temporary storage until DER/BigInt conversion is available
+#define SKS_CKA_EC_POINT_X			0x88800001
+#define SKS_CKA_EC_POINT_Y			0x88800002
 
 /*
  * Valid values for attribute SKS_CKA_CLASS
@@ -789,6 +812,8 @@ struct sks_attribute_head {
 #define SKS_CKK_SHA256_HMAC			0x005
 #define SKS_CKK_SHA384_HMAC			0x006
 #define SKS_CKK_SHA512_HMAC			0x007
+#define SKS_CKK_EC				0x008
+#define SKS_CKK_RSA				0x009
 
 /*
  * Valid values for attribute SKS_CKA_MECHANISM_TYPE
@@ -815,9 +840,74 @@ struct sks_attribute_head {
 #define SKS_CKM_SHA384_HMAC			0x012
 #define SKS_CKM_SHA512_HMAC			0x013
 #define SKS_CKM_AES_XCBC_MAC			0x014
+#define SKS_CKM_EC_KEY_PAIR_GEN			0x015
+#define SKS_CKM_ECDSA				0x016
+#define SKS_CKM_ECDSA_SHA1			0x017
+#define SKS_CKM_ECDSA_SHA224			0x018	/* /!\ CK !PKCS#11 */
+#define SKS_CKM_ECDSA_SHA256			0x019	/* /!\ CK !PKCS#11 */
+#define SKS_CKM_ECDSA_SHA384			0x01a	/* /!\ CK !PKCS#11 */
+#define SKS_CKM_ECDSA_SHA512			0x01b	/* /!\ CK !PKCS#11 */
+#define SKS_CKM_ECDH1_DERIVE			0x01c
+#define SKS_CKM_ECDH1_COFACTOR_DERIVE		0x01d
+#define SKS_CKM_ECMQV_DERIVE			0x01e
+#define SKS_CKM_ECDH_AES_KEY_WRAP		0x01f
+#define SKS_CKM_RSA_PKCS_KEY_PAIR_GEN		0x020
+#define SKS_CKM_RSA_PKCS			0x021
+#define SKS_CKM_RSA_9796			0x022
+#define SKS_CKM_RSA_X_509			0x023
+#define SKS_CKM_SHA1_RSA_PKCS			0x024
+#define SKS_CKM_RSA_PKCS_OAEP			0x025
+#define SKS_CKM_SHA1_RSA_PKCS_PSS		0x026
+#define SKS_CKM_SHA256_RSA_PKCS			0x027
+#define SKS_CKM_SHA384_RSA_PKCS			0x028
+#define SKS_CKM_SHA512_RSA_PKCS			0x029
+#define SKS_CKM_SHA256_RSA_PKCS_PSS		0x02a
+#define SKS_CKM_SHA384_RSA_PKCS_PSS		0x02b
+#define SKS_CKM_SHA512_RSA_PKCS_PSS		0x02c
+#define SKS_CKM_SHA224_RSA_PKCS			0x02d
+#define SKS_CKM_SHA224_RSA_PKCS_PSS		0x02e
+#define SKS_CKM_RSA_AES_KEY_WRAP		0x02f
+#define SKS_CKM_RSA_PKCS_PSS			0x030
+#define SKS_CKM_MD5				0x031
+#define SKS_CKM_SHA_1				0x032
+#define SKS_CKM_SHA224				0x033
+#define SKS_CKM_SHA256				0x034
+#define SKS_CKM_SHA384				0x035
+#define SKS_CKM_SHA512				0x036
+
 /* SKS added IDs for operation without cryptoki mechanism ID defined */
 #define SKS_PROCESSING_IMPORT			0x1000
 #define SKS_PROCESSING_COPY			0x1001
+
+/*
+ * Valid values key differentiation function identifiers
+ * SKS_CKD_<x> reltaes to cryptoki CKD_<x>.
+ */
+#define SKS_CKD_NULL				0x0000UL
+#define SKS_CKD_SHA1_KDF			0x0001UL
+#define SKS_CKD_SHA1_KDF_ASN1			0x0002UL
+#define SKS_CKD_SHA1_KDF_CONCATENATE		0x0003UL
+#define SKS_CKD_SHA224_KDF			0x0004UL
+#define SKS_CKD_SHA256_KDF			0x0005UL
+#define SKS_CKD_SHA384_KDF			0x0006UL
+#define SKS_CKD_SHA512_KDF			0x0007UL
+#define SKS_CKD_CPDIVERSIFY_KDF			0x0008UL
+
+/*
+ * Valid values MG function identifiers
+ * SKS_CKG_<x> reltaes to cryptoki CKG_<x>.
+ */
+#define SKS_CKG_MGF1_SHA1			0x0001UL
+#define SKS_CKG_MGF1_SHA224			0x0005UL
+#define SKS_CKG_MGF1_SHA256			0x0002UL
+#define SKS_CKG_MGF1_SHA384			0x0003UL
+#define SKS_CKG_MGF1_SHA512			0x0004UL
+
+/*
+ * Valid values for RSA PKCS/OAEP source type identifier
+ * SKS_CKZ_<x> reltaes to cryptoki CKZ_<x>.
+ */
+#define SKS_CKZ_DATA_SPECIFIED			0x0001UL
 
 /*
  * Processing parameters
@@ -902,6 +992,53 @@ struct sks_attribute_head {
  *   head:	32bit type = SKS_CKM_AES_KEY_GEN
  *			  or SKS_CKM_GENERIC_SECRET_KEY_GEN
  *		32bit size = 0
+ *
+ * ECDH, params relates to struct CK_ECDH1_DERIVE_PARAMS.
+ *   head:	32bit: type = SKS_CKM_ECDH1_DERIVE
+ *			   or SKS_CKM_ECDH1_COFACTOR_DERIVE
+ *		32bit: params byte size
+ *  params:	32bit: key derivation function (SKS_CKD_xxx)
+ *		32bit: byte size of the shared data
+ *		byte array: shared data
+ *		32bit: byte: size of the public data
+ *		byte array: public data
+ *
+ * AES key wrap by ECDH, params relates to struct CK_ECDH_AES_KEY_WRAP_PARAMS.
+ *   head:	32bit: type = SKS_CKM_ECDH_AES_KEY_WRAP
+ *		32bit: params byte size
+ *  params:	32bit: bit size of the AES key
+ *		32bit: key derivation function (SKS_CKD_xxx)
+ *		32bit: byte size of the shared data
+ *		byte array: shared data
+ *
+ * RSA PKCS OAEP, params relates to struct CK_RSA_PKCS_OAEP_PARAMS.
+ *   head:	32bit: type = SKS_CKM_RSA_PKCS_OAEP
+ *		32bit: params byte size
+ *  params:	32bit: hash algorithm identifier (SKS_CK_M_xxx)
+ *		32bit: CK_RSA_PKCS_MGF_TYPE
+ *		32bit: CK_RSA_PKCS_OAEP_SOURCE_TYPE
+ *		32bit: byte size of the source data
+ *		byte array: source data
+ *
+ * RSA PKCS PSS, params relates to struct CK_RSA_PKCS_PSS_PARAMS.
+ *   head:	32bit: type = SKS_CKM_RSA_PKCS_PSS
+ *			   or SKS_CKM_SHA256_RSA_PKCS_PSS
+ *			   or SKS_CKM_SHA384_RSA_PKCS_PSS
+ *			   or SKS_CKM_SHA512_RSA_PKCS_PSS
+ *		32bit: params byte size
+ *  params:	32bit: hash algorithm identifier (SKS_CK_M_xxx)
+ *		32bit: CK_RSA_PKCS_MGF_TYPE
+ *		32bit: byte size of the salt in the PSS encoding
+ *
+ * AES key wrapping by RSA, params relates to struct CK_RSA_AES_KEY_WRAP_PARAMS.
+ *   head:	32bit: type = CKM_RSA_AES_KEY_WRAP
+ *		32bit: params byte size
+ *  params:	32bit: bit size of the AES key
+ *		32bit: hash algorithm identifier (SKS_CK_M_xxx)
+ *		32bit: CK_RSA_PKCS_MGF_TYPE
+ *		32bit: CK_RSA_PKCS_OAEP_SOURCE_TYPE
+ *		32bit: byte size of the source data
+ *		byte array: source data
  */
 
 #endif /*__SKS_TA_H__*/

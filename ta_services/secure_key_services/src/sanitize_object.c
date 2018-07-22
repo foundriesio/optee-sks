@@ -37,6 +37,7 @@ bool sanitize_consistent_class_and_type(struct sks_attrs_head *attrs)
 		return mechanism_is_valid(type);
 	case SKS_CKO_PUBLIC_KEY:
 	case SKS_CKO_PRIVATE_KEY:
+		return key_type_is_asymm_key(type);
 	case SKS_CKO_OTP_KEY:
 	case SKS_CKO_CERTIFICATE:
 	case SKS_CKO_DOMAIN_PARAMETERS:

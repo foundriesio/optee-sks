@@ -34,6 +34,7 @@ bool sks_attr_class_is_key(uint32_t class);
 int sks_attr2boolprop_shift(uint32_t attr);
 
 bool key_type_is_symm_key(uint32_t id);
+bool key_type_is_asymm_key(uint32_t id);
 bool mechanism_is_valid(uint32_t id);
 size_t get_supported_mechanisms(uint32_t *array, size_t array_count);
 bool mechanism_is_supported(uint32_t id);
