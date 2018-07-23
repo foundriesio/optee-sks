@@ -105,6 +105,13 @@ void release_active_processing(struct pkcs11_session *session)
 	case SKS_CKM_AES_CCM:
 		tee_release_ccm_operation(session->processing);
 		break;
+	case SKS_CKM_SHA1_RSA_PKCS_PSS:
+	case SKS_CKM_SHA256_RSA_PKCS_PSS:
+	case SKS_CKM_SHA384_RSA_PKCS_PSS:
+	case SKS_CKM_SHA512_RSA_PKCS_PSS:
+	case SKS_CKM_SHA224_RSA_PKCS_PSS:
+		tee_release_rsa_pss_operation(session->processing);
+		break;
 	default:
 		break;
 	}
@@ -218,6 +225,7 @@ bail:
 
 size_t get_object_key_bit_size(struct sks_object *obj)
 {
+	void *a_ptr;
 	size_t a_size;
 	struct sks_attrs_head *attrs = obj->attributes;
 
@@ -234,6 +242,20 @@ size_t get_object_key_bit_size(struct sks_object *obj)
 			return 0;
 
 		return a_size * 8;
+
+	case SKS_CKK_RSA:
+		if (get_attribute_ptr(attrs, SKS_CKA_MODULUS, NULL, &a_size))
+			return 0;
+
+		return a_size * 8;
+
+	case SKS_CKK_EC:
+		if (get_attribute_ptr(attrs, SKS_CKA_EC_PARAMS,
+					&a_ptr, &a_size))
+			return 0;
+
+		return ec_params2tee_keysize(a_ptr, a_size);
+
 	default:
 		TEE_Panic(0);
 		return 0;
@@ -395,6 +417,201 @@ bail:
 	return rv;
 }
 
+uint32_t alloc_get_tee_attribute_data(TEE_ObjectHandle tee_obj,
+					     uint32_t attribute,
+					     void **data, size_t *size)
+{
+	TEE_Result res;
+	void *ptr;
+	size_t sz = 0;
+
+	res = TEE_GetObjectBufferAttribute(tee_obj, attribute, NULL, &sz);
+	if (res != TEE_ERROR_SHORT_BUFFER)
+		return SKS_FAILED;
+
+	ptr = TEE_Malloc(sz, TEE_USER_MEM_HINT_NO_FILL_ZERO);
+	if (!ptr)
+		return SKS_MEMORY;
+
+	res = TEE_GetObjectBufferAttribute(tee_obj, attribute, ptr, &sz);
+	if (res) {
+		TEE_Free(ptr);
+	} else {
+		*data = ptr;
+		*size = sz;
+	}
+
+	return tee2sks_error(res);
+}
+
+uint32_t tee2sks_add_attribute(struct sks_attrs_head **head, uint32_t sks_id,
+				TEE_ObjectHandle tee_obj, uint32_t tee_id)
+{
+	uint32_t rv;
+	void *a_ptr = NULL;
+	size_t a_size = 0;
+
+	rv = alloc_get_tee_attribute_data(tee_obj, tee_id, &a_ptr, &a_size);
+	if (rv)
+		goto bail;
+
+	rv = add_attribute(head, sks_id, a_ptr, a_size);
+
+	TEE_Free(a_ptr);
+
+bail:
+	if (rv)
+		EMSG("Failed TEE attribute 0x%" PRIx32 "for %s (0x%" PRIx32 ")",
+				tee_id, sks2str_attr(sks_id), sks_id);
+	return rv;
+}
+
+uint32_t entry_generate_key_pair(uintptr_t teesess,
+				 TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
+{
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t session_handle;
+	struct pkcs11_session *session;
+	struct sks_attribute_head *proc_params = NULL;
+	struct sks_attrs_head *pub_head = NULL;
+	struct sks_attrs_head *priv_head = NULL;
+	struct sks_object_head *template = NULL;
+	size_t template_size;
+	uint32_t pubkey_handle;
+	uint32_t privkey_handle;
+	uint32_t *hdl_ptr;
+
+	if (!ctrl || in || !out)
+		return SKS_BAD_PARAM;
+
+	if (out->memref.size < 2 * sizeof(uint32_t))
+		return SKS_SHORT_BUFFER;
+
+	// FIXME: cleaner way to test alignment of out buffer
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
+
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	rv = get_ready_session(&session, session_handle, teesess);
+	if (rv)
+		return rv;
+
+	/* Get mechanism parameters */
+	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
+	if (rv)
+		goto bail;
+
+	rv = check_mechanism_against_processing(session, proc_params->id,
+						SKS_FUNCTION_GENERATE_PAIR,
+						SKS_FUNC_STEP_INIT);
+	if (rv)
+		goto bail;
+
+	/* Get and check public key attributes */
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
+	if (rv)
+		goto bail;
+
+	template_size = sizeof(*template) + template->attrs_size;
+
+	rv = create_attributes_from_template(&pub_head, template, template_size,
+					     NULL, SKS_FUNCTION_GENERATE_PAIR);
+	if (rv)
+		goto bail;
+
+	TEE_Free(template);
+	template = NULL;
+
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
+	if (rv)
+		goto bail;
+
+	template_size = sizeof(*template) + template->attrs_size;
+
+	rv = create_attributes_from_template(&priv_head, template, template_size,
+					     NULL, SKS_FUNCTION_GENERATE_PAIR);
+	if (rv)
+		goto bail;
+
+	TEE_Free(template);
+	template = NULL;
+
+	/* Check created object against processing and token state */
+	rv = check_created_attrs_against_processing(proc_params->id, pub_head);
+	if (rv)
+		goto bail;
+
+	rv = check_created_attrs_against_processing(proc_params->id, priv_head);
+	if (rv)
+		goto bail;
+
+	rv = check_created_attrs_against_token(session, pub_head);
+	if (rv)
+		goto bail;
+
+	rv = check_created_attrs_against_token(session, priv_head);
+	if (rv)
+		goto bail;
+
+	/* Generate key pair */
+	switch (proc_params->id) {
+	case SKS_CKM_EC_KEY_PAIR_GEN:
+		rv = generate_ec_keys(proc_params, &pub_head, &priv_head);
+		break;
+
+	case SKS_CKM_RSA_PKCS_KEY_PAIR_GEN:
+		rv = generate_rsa_keys(proc_params, &pub_head, &priv_head);
+		break;
+	default:
+		rv = SKS_CKR_MECHANISM_INVALID;
+		break;
+	}
+	if (rv)
+		goto bail;
+
+	TEE_Free(proc_params);
+	proc_params = NULL;
+
+	/*
+	 * Object is ready, register it and return a handle.
+	 */
+	rv = create_object(session, pub_head, &pubkey_handle);
+	if (rv)
+		goto bail;
+
+	rv = create_object(session, priv_head, &privkey_handle);
+	if (rv)
+		goto bail;
+
+	/*
+	 * Now obj_handle (through the related struct sks_object instance)
+	 * owns the serialized buffer that holds the object attributes.
+	 * We reset attrs->buffer to NULL as serializer object is no more
+	 * the attributes buffer owner.
+	 */
+	pub_head = NULL;
+	priv_head = NULL;
+	hdl_ptr = (uint32_t *)out->memref.buffer;
+
+	TEE_MemMove(hdl_ptr, &pubkey_handle, sizeof(uint32_t));
+	TEE_MemMove(hdl_ptr + 1, &privkey_handle, sizeof(uint32_t));
+	out->memref.size = 2 * sizeof(uint32_t);
+
+bail:
+	TEE_Free(proc_params);
+	TEE_Free(template);
+	TEE_Free(pub_head);
+	TEE_Free(priv_head);
+
+	return rv;
+}
+
 /*
  * entry_processing_init - Generic entry for initializing a processing
  *
@@ -465,6 +682,9 @@ uint32_t entry_processing_init(uintptr_t tee_session, TEE_Param *ctrl,
 	if (processing_is_tee_symm(proc_params->id)) {
 		rv = init_symm_operation(session, function, proc_params, obj);
 	}
+	if (processing_is_tee_asymm(proc_params->id)) {
+		rv = init_asymm_operation(session, function, proc_params, obj);
+	}
 	if (rv == SKS_OK) {
 		session->processing->mecha_type = proc_params->id;
 	}
@@ -525,6 +745,9 @@ uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
 	rv = SKS_CKR_MECHANISM_INVALID;
 	if (processing_is_tee_symm(mecha_type)) {
 		rv = step_symm_operation(session, function, step, in, out);
+	}
+	if (processing_is_tee_asymm(mecha_type)) {
+		rv = step_asymm_operation(session, function, step, in, out);
 	}
 	if (rv == SKS_OK)
 		session->processing->updated = true;
@@ -595,6 +818,9 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 	rv = SKS_CKR_MECHANISM_INVALID;
 	if (processing_is_tee_symm(mecha_type)) {
 		rv = step_symm_operation(session, function, step, in, in2);
+	}
+	if (processing_is_tee_asymm(mecha_type)) {
+		rv = step_asymm_operation(session, function, step, in, in2);
 	}
 bail:
 	if (rv != SKS_SHORT_BUFFER)

@@ -17,6 +17,7 @@ struct sks_object {
 	/* pointer to the serialized object attributes */
 	void *attributes;
 	TEE_ObjectHandle key_handle;	/* Valid handle for TEE operations */
+	uint32_t key_type;		/* TEE type of key_handle */
 
 	/* These are for persistent/token objects */
 	TEE_UUID *uuid;

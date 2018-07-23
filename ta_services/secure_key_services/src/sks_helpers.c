@@ -220,6 +220,7 @@ static const struct string_id __maybe_unused string_cmd[] = {
 	SKS_ID(SKS_CMD_SET_PIN),
 	SKS_ID(SKS_CMD_LOGIN),
 	SKS_ID(SKS_CMD_LOGOUT),
+	SKS_ID(SKS_CMD_GENERATE_KEY_PAIR),
 	SKS_ID(SKS_CMD_ENCRYPT_ONESHOT),
 	SKS_ID(SKS_CMD_DECRYPT_ONESHOT),
 	SKS_ID(SKS_CMD_SIGN_ONESHOT),
@@ -587,6 +588,28 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 {
 	void *a_ptr;
 	size_t a_size;
+	uint32_t data32;
+
+	switch (tee_id) {
+	case TEE_ATTR_ECC_PUBLIC_VALUE_X:
+	case TEE_ATTR_ECC_PUBLIC_VALUE_Y:
+		// FIXME: workaround until we get parse DER data
+		break;
+	case TEE_ATTR_ECC_CURVE:
+		if (get_attribute_ptr(obj->attributes, SKS_CKA_EC_PARAMS,
+					&a_ptr, &a_size)) {
+			EMSG("Missing EC_PARAMS attribute");
+			return false;
+		}
+
+		data32 = ec_params2tee_curve(a_ptr, a_size);
+
+		TEE_InitValueAttribute(tee_ref, TEE_ATTR_ECC_CURVE, data32, 0);
+		return true;
+
+	default:
+		break;
+	}
 
 	if (get_attribute_ptr(obj->attributes, sks_id, &a_ptr, &a_size))
 		return false;

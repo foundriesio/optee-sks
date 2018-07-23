@@ -708,6 +708,7 @@ struct sks_attribute_head {
 #define SKS_CKR_USER_TOO_MANY_TYPES		0x00000029
 #define SKS_CKR_USER_TYPE_INVALID		0x0000002a
 #define SKS_CKR_SESSION_READ_ONLY_EXISTS	0x0000002b
+#define SKS_CKR_KEY_SIZE_RANGE			0x0000002c
 
 /* Status without strict equivalence in Cryptoki API */
 #define SKS_NOT_FOUND				0x00001000
@@ -814,6 +815,8 @@ struct sks_attribute_head {
 #define SKS_CKK_SHA512_HMAC			0x007
 #define SKS_CKK_EC				0x008
 #define SKS_CKK_RSA				0x009
+#define SKS_CKK_DSA				0x00a
+#define SKS_CKK_DH				0x00b
 
 /*
  * Valid values for attribute SKS_CKA_MECHANISM_TYPE
@@ -874,6 +877,7 @@ struct sks_attribute_head {
 #define SKS_CKM_SHA256				0x034
 #define SKS_CKM_SHA384				0x035
 #define SKS_CKM_SHA512				0x036
+#define SKS_CKM_DH_PKCS_DERIVE			0x037
 
 /* SKS added IDs for operation without cryptoki mechanism ID defined */
 #define SKS_PROCESSING_IMPORT			0x1000

@@ -96,6 +96,18 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 			void *attr, size_t *attr_size);
 
+static inline uint32_t get_u32_attribute(struct sks_attrs_head *head,
+					 uint32_t attribute, uint32_t *attr)
+{
+	size_t size = sizeof(uint32_t);
+	uint32_t rv = get_attribute(head, attribute, attr, &size);
+
+	if (size != sizeof(uint32_t))
+		return SKS_ERROR;
+
+	return rv;
+}
+
 /*
  * Return true all attributes from the reference are found and match value
  * in the candidate attribute list.
