@@ -609,11 +609,7 @@ static CK_RV serialize_mecha_aes_ccm(struct serializer *obj,
 	if (rv)
 		return rv;
 
-	rv = serialize_ck_ulong(obj, param->ulMACLen);
-	if (rv)
-		return rv;
-
-	return rv;
+	return serialize_ck_ulong(obj, param->ulMACLen);
 }
 
 static CK_RV serialize_mecha_aes_iv(struct serializer *obj,
