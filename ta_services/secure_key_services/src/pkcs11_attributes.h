@@ -138,6 +138,9 @@ uint32_t check_created_attrs_against_parent_key(uint32_t proc_id,
 uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 						struct sks_attrs_head *head);
 
+uint32_t check_created_attrs(struct sks_attrs_head *key1,
+			     struct sks_attrs_head *key2);
+
 uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 					       enum processing_func func,
 					       struct sks_attrs_head *head);
@@ -153,5 +156,8 @@ uint32_t check_mechanism_against_processing(struct pkcs11_session *session,
 int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags);
 
 bool object_is_private(struct sks_attrs_head *head);
+
+void pkcs11_max_min_key_size(uint32_t key_type, uint32_t *max_key_size,
+			     uint32_t *min_key_size, bool bit_size_only);
 
 #endif /*__PKCS11_ATTRIBUTE_H*/

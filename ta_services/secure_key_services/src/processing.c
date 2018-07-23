@@ -359,9 +359,10 @@ uint32_t entry_generate_secret(uintptr_t tee_session,
 	TEE_Free(template);
 	template = NULL;
 
-	/*
-	 * Check created object against processing and token state.
-	 */
+	rv = check_created_attrs(head, NULL);
+	if (rv)
+		goto bail;
+
 	rv = check_created_attrs_against_processing(proc_params->id, head);
 	if (rv)
 		goto bail;
@@ -543,6 +544,10 @@ uint32_t entry_generate_key_pair(uintptr_t teesess,
 	template = NULL;
 
 	/* Check created object against processing and token state */
+	rv = check_created_attrs(pub_head, priv_head);
+	if (rv)
+		goto bail;
+
 	rv = check_created_attrs_against_processing(proc_params->id, pub_head);
 	if (rv)
 		goto bail;
@@ -904,6 +909,10 @@ uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
 
 	TEE_Free(template);
 	template = NULL;
+
+	rv = check_created_attrs(head, NULL);
+	if (rv)
+		goto bail;
 
 	rv = check_created_attrs_against_processing(proc_params->id, head);
 	if (rv)

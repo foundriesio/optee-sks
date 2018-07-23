@@ -1091,6 +1091,188 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 	return SKS_OK;
 }
 
+void pkcs11_max_min_key_size(uint32_t key_type, uint32_t *max_key_size,
+			     uint32_t *min_key_size, bool bit_size_only)
+{
+	uint32_t mult = bit_size_only ? 8 : 1;
+
+	switch (key_type) {
+	case SKS_CKK_GENERIC_SECRET:
+		*min_key_size = 1;	/* in bits */
+		*max_key_size = 4096;	/* in bits */
+		break;
+	case SKS_CKK_MD5_HMAC:
+		*min_key_size = 16 * mult;
+		*max_key_size = 16 * mult;
+		break;
+	case SKS_CKK_SHA_1_HMAC:
+		*min_key_size = 20 * mult;
+		*max_key_size = 20 * mult;
+		break;
+	case SKS_CKK_SHA224_HMAC:
+		*min_key_size = 28 * mult;
+		*max_key_size = 28 * mult;
+		break;
+	case SKS_CKK_SHA256_HMAC:
+		*min_key_size = 32 * mult;
+		*max_key_size = 32 * mult;
+		break;
+	case SKS_CKK_SHA384_HMAC:
+		*min_key_size = 48 * mult;
+		*max_key_size = 48 * mult;
+		break;
+	case SKS_CKK_SHA512_HMAC:
+		*min_key_size = 64 * mult;
+		*max_key_size = 64 * mult;
+		break;
+	case SKS_CKK_AES:
+		*min_key_size = 16 * mult;
+		*max_key_size = 32 * mult;
+		break;
+	case SKS_CKK_EC:
+		*min_key_size = 192;	/* in bits */
+		*max_key_size = 521;	/* in bits */
+	case SKS_CKK_RSA:
+	case SKS_CKK_DSA:
+	case SKS_CKK_DH:
+		*min_key_size = 256;	/* in bits */
+		*max_key_size = 4096;	/* in bits */
+		break;
+	default:
+		TEE_Panic(key_type);
+		break;
+	}
+}
+
+uint32_t check_created_attrs(struct sks_attrs_head *key1,
+			     struct sks_attrs_head *key2)
+{
+	struct sks_attrs_head *secret = NULL;
+	struct sks_attrs_head *private = NULL;
+	struct sks_attrs_head *public = NULL;
+	uint32_t max_key_size;
+	uint32_t min_key_size;
+	uint32_t key_length = 0;
+	uint32_t rv;
+
+	switch (get_class(key1)) {
+	case SKS_CKO_SECRET_KEY:
+		secret = key1;
+		break;
+	case SKS_CKO_PUBLIC_KEY:
+		public = key1;
+		break;
+	case SKS_CKO_PRIVATE_KEY:
+		private = key1;
+		break;
+	default:
+		return SKS_CKR_ATTRIBUTE_VALUE_INVALID;
+	}
+
+	if (key2) {
+		switch (get_class(key2)) {
+		case SKS_CKO_PUBLIC_KEY:
+			public = key2;
+			if (private == key1)
+				break;
+
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		case SKS_CKO_PRIVATE_KEY:
+			private = key2;
+			if (public == key1)
+				break;
+
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		default:
+			return SKS_CKR_ATTRIBUTE_VALUE_INVALID;
+		}
+
+		if (get_type(private) != get_type(public))
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+	}
+
+	if (secret) {
+		switch (get_type(secret)) {
+		case SKS_CKK_AES:
+		case SKS_CKK_GENERIC_SECRET:
+		case SKS_CKK_MD5_HMAC:
+		case SKS_CKK_SHA_1_HMAC:
+		case SKS_CKK_SHA224_HMAC:
+		case SKS_CKK_SHA256_HMAC:
+		case SKS_CKK_SHA384_HMAC:
+		case SKS_CKK_SHA512_HMAC:
+			break;
+		default:
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		}
+
+		/* Get key size */
+		rv = get_u32_attribute(secret, SKS_CKA_VALUE_LEN, &key_length);
+		if (rv)
+			return rv;
+	}
+	if (public) {
+		switch (get_type(public)) {
+		case SKS_CKK_RSA:
+		case SKS_CKK_DSA:
+		case SKS_CKK_DH:
+			/* Get key size */
+			rv = get_u32_attribute(public, SKS_CKA_MODULUS_BITS,
+						&key_length);
+			if (rv)
+				return rv;
+			break;
+		case SKS_CKK_EC:
+			break;
+		default:
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		}
+	}
+	if (private) {
+		switch (get_type(private)) {
+		case SKS_CKK_RSA:
+		case SKS_CKK_DSA:
+		case SKS_CKK_DH:
+			/* Get key size, if key pair public carries bit size */
+			if (public)
+				break;
+
+			rv = get_u32_attribute(private, SKS_CKA_MODULUS_BITS,
+						&key_length);
+			if (rv)
+				return rv;
+			break;
+		case SKS_CKK_EC:
+			/* No need to get key size */
+			break;
+		default:
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		}
+	}
+
+	/*
+	 * Check key size for symmetric keys and RSA keys
+	 * EC is bound to domains, no need to chekc here.
+	 */
+	switch (get_type(key1)) {
+	case SKS_CKK_EC:
+		return SKS_OK;
+	default:
+		break;
+	}
+
+	pkcs11_max_min_key_size(get_type(key1),
+				&max_key_size, &min_key_size, false);
+
+	if (key_length < min_key_size || key_length > max_key_size) {
+		EMSG("Length %" PRIu32 " vs range [%" PRIu32 " %" PRIu32 "]",
+			key_length, min_key_size, max_key_size);
+		return SKS_CKR_KEY_SIZE_RANGE;
+	}
+
+	return SKS_OK;
+}
+
 /* Check processing ID against attributre ALLOWED_PROCESSINGS if any */
 static bool parent_key_complies_allowed_processings(uint32_t proc_id,
 						    struct sks_attrs_head *head)
