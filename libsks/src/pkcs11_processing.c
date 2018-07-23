@@ -547,3 +547,58 @@ CK_RV ck_find_objects_final(CK_SESSION_HANDLE session)
 
 	return rv;
 }
+
+CK_RV ck_derive_key(CK_SESSION_HANDLE session,
+		    CK_MECHANISM_PTR mechanism,
+		    CK_OBJECT_HANDLE parent_handle,
+		    CK_ATTRIBUTE_PTR attribs,
+		    CK_ULONG count,
+		    CK_OBJECT_HANDLE_PTR out_handle)
+{
+	CK_RV rv;
+	struct serializer smecha;
+	struct serializer sattr;
+	uint32_t session_handle = session;
+	char *ctrl = NULL;
+	size_t ctrl_size;
+	uint32_t parent_key_handle = parent_handle;
+	uint32_t key_handle;
+	size_t key_handle_size = sizeof(key_handle);
+
+	rv = serialize_ck_mecha_params(&smecha, mechanism);
+	if (rv)
+		return rv;
+
+	rv = serialize_ck_attributes(&sattr, attribs, count);
+	if (rv)
+		goto bail;
+
+	/* ctrl = [session][serialized-mecha][parent-key][key-attributes] */
+	ctrl_size = 2 * sizeof(uint32_t) + smecha.size + sattr.size;
+	ctrl = malloc(ctrl_size);
+	if (!ctrl) {
+		rv = CKR_HOST_MEMORY;
+		goto bail;
+	}
+
+	memcpy(ctrl, &session_handle, sizeof(uint32_t));
+	memcpy(ctrl + sizeof(uint32_t), smecha.buffer, smecha.size);
+	memcpy(ctrl + sizeof(uint32_t) + smecha.size,
+			&parent_key_handle, sizeof(uint32_t));
+	memcpy(ctrl + sizeof(uint32_t) + smecha.size + sizeof(uint32_t),
+			sattr.buffer, sattr.size);
+
+	rv = ck_invoke_ta_in_out(ck_session2sks_ctx(session),
+				 SKS_CMD_DERIVE_KEY, ctrl, ctrl_size,
+				 NULL, 0, &key_handle, &key_handle_size);
+	if (rv)
+		goto bail;
+
+	*out_handle = key_handle;
+
+bail:
+	free(ctrl);
+	release_serial_object(&smecha);
+	release_serial_object(&sattr);
+	return rv;
+}

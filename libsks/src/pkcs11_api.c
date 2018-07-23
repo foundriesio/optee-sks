@@ -1833,19 +1833,52 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE session,
 		  CK_OBJECT_HANDLE derived_key,
 		  CK_ATTRIBUTE_PTR attribs,
 		  CK_ULONG count,
-		  CK_OBJECT_HANDLE_PTR new_key)
+		  CK_OBJECT_HANDLE_PTR key_handle)
 {
-	(void)session;
-	(void)mechanism;
-	(void)derived_key;
-	(void)attribs;
-	(void)count;
-	(void)new_key;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = ck_derive_key(session, mechanism, derived_key, attribs, count,
+			   key_handle);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_ATTRIBUTE_READ_ONLY:
+	case CKR_ATTRIBUTE_TYPE_INVALID:
+	case CKR_ATTRIBUTE_VALUE_INVALID:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_CURVE_NOT_SUPPORTED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_DOMAIN_PARAMS_INVALID:
+	case CKR_FUNCTION_CANCELED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_KEY_HANDLE_INVALID:
+	case CKR_KEY_SIZE_RANGE:
+	case CKR_KEY_TYPE_INCONSISTENT:
+	case CKR_MECHANISM_INVALID:
+	case CKR_MECHANISM_PARAM_INVALID:
+	case CKR_OK:
+	case CKR_OPERATION_ACTIVE:
+	case CKR_PIN_EXPIRED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+	case CKR_SESSION_READ_ONLY:
+	case CKR_TEMPLATE_INCOMPLETE:
+	case CKR_TEMPLATE_INCONSISTENT:
+	case CKR_TOKEN_WRITE_PROTECTED:
+	case CKR_USER_NOT_LOGGED_IN:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_SeedRandom(CK_SESSION_HANDLE session,

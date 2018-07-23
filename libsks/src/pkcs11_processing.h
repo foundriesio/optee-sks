@@ -89,4 +89,11 @@ CK_RV ck_generate_key_pair(CK_SESSION_HANDLE session,
 			   CK_OBJECT_HANDLE_PTR pub_key,
 			   CK_OBJECT_HANDLE_PTR priv_key);
 
+CK_RV ck_derive_key(CK_SESSION_HANDLE session,
+		    CK_MECHANISM_PTR mechanism,
+		    CK_OBJECT_HANDLE parent_handle,
+		    CK_ATTRIBUTE_PTR attribs,
+		    CK_ULONG count,
+		    CK_OBJECT_HANDLE_PTR key_handle);
+
 #endif /*__PKCS11_PROCESSING_H*/
