@@ -650,6 +650,177 @@ static CK_RV serialize_mecha_ulong_param(struct serializer *obj,
 	return serialize_32b(obj, sks_data);
 }
 
+static CK_RV serialize_mecha_ecdh1_derive_param(struct serializer *obj,
+						CK_MECHANISM_PTR mecha)
+{
+	CK_ECDH1_DERIVE_PARAMS *params = mecha->pParameter;
+	CK_RV rv;
+	size_t params_size = 3 * sizeof(uint32_t) + params->ulSharedDataLen +
+				params->ulPublicDataLen;
+
+	rv = serialize_32b(obj, obj->type);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params_size);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_ec_kdf_type(params->kdf));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params->ulSharedDataLen);
+	if (rv)
+		return rv;
+
+	rv = serialize_buffer(obj, params->pSharedData,
+				params->ulSharedDataLen);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params->ulPublicDataLen);
+	if (rv)
+		return rv;
+
+	return serialize_buffer(obj, params->pPublicData,
+				params->ulPublicDataLen);
+}
+
+static CK_RV serialize_mecha_ecdh_aes_key_wrap_param(struct serializer *obj,
+						     CK_MECHANISM_PTR mecha)
+{
+	CK_ECDH_AES_KEY_WRAP_PARAMS *params = mecha->pParameter;
+	CK_RV rv;
+	size_t params_size = 3 * sizeof(uint32_t) + params->ulSharedDataLen;
+
+	rv = serialize_32b(obj, obj->type);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params_size);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params->ulAESKeyBits);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_ec_kdf_type(params->kdf));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params->ulSharedDataLen);
+	if (rv)
+		return rv;
+
+	return serialize_buffer(obj, params->pSharedData,
+				params->ulSharedDataLen);
+}
+
+static CK_RV serialize_mecha_rsa_oaep_param(struct serializer *obj,
+					    CK_MECHANISM_PTR mecha)
+{
+	CK_RSA_PKCS_OAEP_PARAMS *params = mecha->pParameter;
+	CK_RV rv;
+	size_t params_size = 4 * sizeof(uint32_t) + params->ulSourceDataLen;
+
+	rv = serialize_32b(obj, obj->type);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params_size);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_mechanism_type(params->hashAlg));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_rsa_pkcs_mgf_type(params->mgf));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj,
+			   ck2sks_rsa_pkcs_oaep_source_type(params->source));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params->ulSourceDataLen);
+	if (rv)
+		return rv;
+
+	return serialize_buffer(obj, params->pSourceData,
+				params->ulSourceDataLen);
+}
+
+static CK_RV serialize_mecha_rsa_pss_param(struct serializer *obj,
+					   CK_MECHANISM_PTR mecha)
+{
+	CK_RSA_PKCS_PSS_PARAMS *params = mecha->pParameter;
+	CK_RV rv;
+	size_t params_size = 3 * sizeof(uint32_t);
+
+	rv = serialize_32b(obj, obj->type);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params_size);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_mechanism_type(params->hashAlg));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_rsa_pkcs_mgf_type(params->mgf));
+	if (rv)
+		return rv;
+
+	return serialize_32b(obj, params->sLen);
+}
+
+static CK_RV serialize_mecha_rsa_aes_key_wrap_param(struct serializer *obj,
+						    CK_MECHANISM_PTR mecha)
+{
+	CK_RSA_AES_KEY_WRAP_PARAMS *params = mecha->pParameter;
+	CK_RSA_PKCS_OAEP_PARAMS *oaep_p = params->pOAEPParams;
+	CK_RV rv;
+	size_t params_size = 5 * sizeof(uint32_t) + params->pOAEPParams->ulSourceDataLen;
+
+	rv = serialize_32b(obj, obj->type);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params_size);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, params->ulAESKeyBits);
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_mechanism_type(oaep_p->hashAlg));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, ck2sks_rsa_pkcs_mgf_type(oaep_p->mgf));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj,
+			   ck2sks_rsa_pkcs_oaep_source_type(oaep_p->source));
+	if (rv)
+		return rv;
+
+	rv = serialize_32b(obj, oaep_p->ulSourceDataLen);
+	if (rv)
+		return rv;
+
+	return serialize_buffer(obj, oaep_p->pSourceData,
+				oaep_p->ulSourceDataLen);
+}
+
 /**
  * serialize_ck_mecha_params - serialize a mechanism type & params
  *
@@ -690,6 +861,22 @@ CK_RV serialize_ck_mecha_params(struct serializer *obj,
 	case CKM_SHA512_HMAC:
 	case CKM_AES_XCBC_MAC:
 	case CKM_AES_XCBC_MAC_96:
+	case CKM_EC_KEY_PAIR_GEN:
+	case CKM_RSA_PKCS_KEY_PAIR_GEN:
+	case CKM_ECDSA:
+	case CKM_ECDSA_SHA1:
+	case CKM_ECDSA_SHA224:
+	case CKM_ECDSA_SHA256:
+	case CKM_ECDSA_SHA384:
+	case CKM_ECDSA_SHA512:
+	case CKM_RSA_PKCS:
+	case CKM_RSA_9796:
+	case CKM_RSA_X_509:
+	case CKM_SHA1_RSA_PKCS:
+	case CKM_SHA256_RSA_PKCS:
+	case CKM_SHA384_RSA_PKCS:
+	case CKM_SHA512_RSA_PKCS:
+	case CKM_SHA224_RSA_PKCS:
 		/* No parameter expected, size shall be 0 */
 		if (mechanism->ulParameterLen)
 			return CKR_MECHANISM_PARAM_INVALID;
@@ -714,6 +901,27 @@ CK_RV serialize_ck_mecha_params(struct serializer *obj,
 		return serialize_mecha_aes_ccm(obj, &mecha);
 	case CKM_AES_GCM:
 		return serialize_mecha_aes_gcm(obj, &mecha);
+
+	case CKM_ECDH1_DERIVE:
+	case CKM_ECDH1_COFACTOR_DERIVE:
+		return serialize_mecha_ecdh1_derive_param(obj, &mecha);
+
+	case CKM_ECDH_AES_KEY_WRAP:
+		return serialize_mecha_ecdh_aes_key_wrap_param(obj, &mecha);
+
+	case CKM_RSA_PKCS_OAEP:
+		return serialize_mecha_rsa_oaep_param(obj, &mecha);
+
+	case CKM_RSA_PKCS_PSS:
+	case CKM_SHA1_RSA_PKCS_PSS:
+	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SHA384_RSA_PKCS_PSS:
+	case CKM_SHA512_RSA_PKCS_PSS:
+	case CKM_SHA224_RSA_PKCS_PSS:
+		return serialize_mecha_rsa_pss_param(obj, &mecha);
+
+	case CKM_RSA_AES_KEY_WRAP:
+		return serialize_mecha_rsa_aes_key_wrap_param(obj, &mecha);
 
 	default:
 		return CKR_MECHANISM_INVALID;
