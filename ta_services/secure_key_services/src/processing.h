@@ -127,6 +127,13 @@ size_t ec_params2tee_keysize(void *attr, size_t size);
 
 uint32_t ec_params2tee_curve(void *attr, size_t size);
 
+uint32_t sks2tee_algo_ecdh(uint32_t *tee_id,
+			   struct sks_attribute_head *proc_params,
+			   struct sks_object *obj);
+
+uint32_t sks2tee_ecdh_param_pub(struct sks_attribute_head *proc_params,
+			        void **pub_data, size_t *pub_size);
+
 uint32_t sks2tee_algo_ecdsa(uint32_t *tee_id,
 			   struct sks_attribute_head *proc_params,
 			   struct sks_object *obj);

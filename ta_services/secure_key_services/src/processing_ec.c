@@ -1015,6 +1015,78 @@ uint32_t load_tee_ec_key_attrs(TEE_Attribute **tee_attrs, size_t *tee_count,
 	return rv;
 }
 
+uint32_t sks2tee_algo_ecdh(uint32_t *tee_id,
+			   struct sks_attribute_head *proc_params,
+			   struct sks_object *obj)
+{
+	struct serialargs args;
+	uint32_t rv;
+	uint32_t kdf;
+
+	serialargs_init(&args, proc_params->data, proc_params->size);
+
+	rv = serialargs_get(&args, &kdf, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	if (kdf != SKS_CKD_NULL) {
+		EMSG("Currently no support for hashed shared data");
+		return SKS_CKR_MECHANISM_PARAM_INVALID;
+	}
+
+	switch (get_object_key_bit_size(obj)) {
+	case 192:
+		*tee_id = TEE_ALG_ECDH_P192;
+		break;
+	case 224:
+		*tee_id = TEE_ALG_ECDH_P224;
+		break;
+	case 256:
+		*tee_id = TEE_ALG_ECDH_P256;
+		break;
+	case 384:
+		*tee_id = TEE_ALG_ECDH_P384;
+		break;
+	case 521:
+		*tee_id = TEE_ALG_ECDH_P521;
+		break;
+	default:
+		TEE_Panic(0);
+		break;
+	}
+
+	return SKS_OK;
+}
+
+uint32_t sks2tee_ecdh_param_pub(struct sks_attribute_head *proc_params,
+			        void **pub_data, size_t *pub_size)
+{
+	struct serialargs args;
+	uint32_t rv;
+	uint32_t temp;
+
+	serialargs_init(&args, proc_params->data, proc_params->size);
+
+	/* Skip KDF */
+	rv = serialargs_get(&args, &temp, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	/* Shared data size, shall be 0 */
+	rv = serialargs_get(&args, &temp, sizeof(uint32_t));
+	if (rv || temp)
+		return rv;
+
+	/* Public data size and content */
+	rv = serialargs_get(&args, &temp, sizeof(uint32_t));
+	if (rv || !temp)
+		return rv;
+
+	*pub_size = temp;
+
+	return serialargs_get_ptr(&args, pub_data, temp);
+}
+
 uint32_t sks2tee_algo_ecdsa(uint32_t *tee_id,
 			   struct sks_attribute_head *proc_params,
 			   struct sks_object *obj)

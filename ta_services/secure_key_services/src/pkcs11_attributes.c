@@ -1077,6 +1077,13 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 		if (get_type(head) != SKS_CKK_RSA)
 			return SKS_CKR_TEMPLATE_INCONSISTENT;
 		break;
+	case SKS_CKM_ECDH1_DERIVE:
+	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
+	case SKS_CKM_DH_PKCS_DERIVE:
+		if (get_class(head) != SKS_CKO_SECRET_KEY)
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
+		break;
+	case SKS_PROCESSING_IMPORT:
 	default:
 		break;
 	}

@@ -39,6 +39,8 @@ bool processing_is_tee_asymm(uint32_t proc_id)
 	case SKS_CKM_ECDSA_SHA256:
 	case SKS_CKM_ECDSA_SHA384:
 	case SKS_CKM_ECDSA_SHA512:
+	case SKS_CKM_ECDH1_DERIVE:
+	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
 		return true;
 	default:
 		return false;
@@ -72,15 +74,15 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 		//{ SKS_CKM_RSA_X_509, TEE_ALG_ }
 		//{ SKS_CKM_RSA_9796, TEE_ALG_ }
 		//{ SKS_CKM_RSA_PKCS_PSS, TEE_ALG_ }
-		/* EC flavors */
-		{ SKS_CKM_ECDSA, 1 }, // Must find key size from object
-		{ SKS_CKM_ECDSA_SHA1, 1 }, // Must find key size from object
-		{ SKS_CKM_ECDSA_SHA224, 1 }, // Must find key size from object
-		{ SKS_CKM_ECDSA_SHA256, 1 }, // Must find key size from object
-		{ SKS_CKM_ECDSA_SHA384, 1 }, // Must find key size from object
-		{ SKS_CKM_ECDSA_SHA512, 1 }, // Must find key size from object
-		//{ SKS_, TEE_ALG_ED25519
-		//{ SKS_, TEE_ALG_X25519
+		/* EC flavors (Must find key size from the object) */
+		{ SKS_CKM_ECDSA, 1 },
+		{ SKS_CKM_ECDSA_SHA1, 1 },
+		{ SKS_CKM_ECDSA_SHA224, 1 },
+		{ SKS_CKM_ECDSA_SHA256, 1 },
+		{ SKS_CKM_ECDSA_SHA384, 1 },
+		{ SKS_CKM_ECDSA_SHA512, 1 },
+		{ SKS_CKM_ECDH1_DERIVE, 1 },
+		{ SKS_CKM_ECDH1_COFACTOR_DERIVE, 1 },
 	};
 	size_t end = sizeof(sks2tee_algo) / (2 * sizeof(uint32_t));
 	size_t n;
@@ -118,6 +120,11 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 	case SKS_CKM_RSA_PKCS_OAEP:
 		rv = sks2tee_algo_rsa_oaep(tee_id, proc_params);
 		break;
+	case SKS_CKM_ECDH1_DERIVE:
+		rv = sks2tee_algo_ecdh(tee_id, proc_params, obj);
+		break;
+	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
+		return SKS_NOT_IMPLEMENTED;
 	case SKS_CKM_ECDSA:
 	case SKS_CKM_ECDSA_SHA1:
 	case SKS_CKM_ECDSA_SHA224:
@@ -555,9 +562,84 @@ bail:
 	return rv;
 }
 
-uint32_t do_asymm_derivation(struct pkcs11_session *session __unused,
-			     struct sks_attribute_head *proc_params __unused,
-			     struct sks_attrs_head **head __unused)
+uint32_t do_asymm_derivation(struct pkcs11_session *session,
+			     struct sks_attribute_head *proc_params,
+			     struct sks_attrs_head **head)
 {
-	return SKS_ERROR;
+	uint32_t rv = SKS_ERROR;
+	TEE_Result res;
+	TEE_Attribute tee_attrs[2];
+	size_t tee_attrs_count = 0;
+	TEE_ObjectHandle out_handle = TEE_HANDLE_NULL;
+	void *a_ptr = NULL;
+	size_t a_size;
+	uint32_t key_bit_size;
+	uint32_t key_byte_size;
+
+	rv = get_u32_attribute(*head, SKS_CKA_VALUE_LEN, &key_bit_size);
+	if (rv)
+		return rv;
+
+	if (get_type(*head) != SKS_CKK_GENERIC_SECRET)
+		key_bit_size *= 8;
+
+	key_byte_size = (key_bit_size + 7) / 8;
+
+	res = TEE_AllocateTransientObject(TEE_TYPE_GENERIC_SECRET,
+					  key_byte_size * 8, &out_handle);
+	if (res) {
+		DMSG("TEE_AllocateTransientObject failed, 0x%" PRIx32, res);
+		return tee2sks_error(res);
+	}
+
+	switch (proc_params->id) {
+	case SKS_CKM_ECDH1_DERIVE:
+	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
+		rv = sks2tee_ecdh_param_pub(proc_params, &a_ptr, &a_size);
+		if (rv)
+			goto bail;
+
+		// TODO: chekc size is the expected one (active proc key)
+		TEE_InitRefAttribute(&tee_attrs[tee_attrs_count],
+						TEE_ATTR_ECC_PUBLIC_VALUE_X,
+						a_ptr, a_size / 2);
+		tee_attrs_count++;
+
+		TEE_InitRefAttribute(&tee_attrs[tee_attrs_count],
+						TEE_ATTR_ECC_PUBLIC_VALUE_Y,
+						(char *)a_ptr + a_size / 2,
+						a_size / 2);
+		tee_attrs_count++;
+		break;
+	case SKS_CKM_DH_PKCS_DERIVE:
+		TEE_InitRefAttribute(&tee_attrs[tee_attrs_count],
+						TEE_ATTR_DH_PUBLIC_VALUE,
+						proc_params->data,
+						proc_params->size);
+		tee_attrs_count++;
+		break;
+	default:
+		TEE_Panic(proc_params->id);
+		break;
+	}
+
+	TEE_DeriveKey(session->processing->tee_op_handle,
+			&tee_attrs[0], tee_attrs_count, out_handle);
+
+	rv = alloc_get_tee_attribute_data(out_handle, TEE_ATTR_SECRET_VALUE,
+					  &a_ptr, &a_size);
+	if (rv)
+		goto bail;
+
+	if (a_size * 8 < key_bit_size) {
+		rv = SKS_CKR_KEY_SIZE_RANGE;
+	} else {
+		rv = add_attribute(head, SKS_CKA_VALUE, a_ptr, key_byte_size);
+	}
+
+	TEE_Free(a_ptr);
+bail:
+	release_active_processing(session);
+	TEE_FreeTransientObject(out_handle);
+	return rv;
 }
