@@ -85,6 +85,8 @@ static const struct attr_size attr_ids[] = {
 	SKS_ID_SZ(SKS_CKA_WRAP_WITH_TRUSTED, 1),
 	/* Specific SKS attribute IDs */
 	SKS_ID_SZ(SKS_UNDEFINED_ID, 0),
+	SKS_ID_SZ(SKS_CKA_EC_POINT_X, 0),
+	SKS_ID_SZ(SKS_CKA_EC_POINT_Y, 0),
 };
 
 struct processing_id {
