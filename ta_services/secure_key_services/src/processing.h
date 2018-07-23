@@ -41,6 +41,9 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 				  enum processing_func function,
 				  enum processing_step step);
 
+uint32_t entry_derive_key(uintptr_t teesess, TEE_Param *ctrl,
+			  TEE_Param *in, TEE_Param *out);
+
 /*
  * Util
  */
@@ -99,10 +102,20 @@ uint32_t init_asymm_operation(struct pkcs11_session *session,
 				struct sks_attribute_head *proc_params,
 				struct sks_object *obj);
 
+uint32_t do_symm_derivation(struct pkcs11_session *session,
+			     struct sks_attribute_head *proc_params,
+			     struct sks_object *parent_key,
+			     struct sks_attrs_head **head);
+
 uint32_t step_asymm_operation(struct pkcs11_session *session,
 			      enum processing_func function,
 			      enum processing_step step,
 			      TEE_Param *io1, TEE_Param *io2);
+
+uint32_t do_asymm_derivation(struct pkcs11_session *session,
+			     struct sks_attribute_head *proc_params,
+			     struct sks_attrs_head **head);
+
 
 /*
  * Elliptic curve crypto algorithm specific functions

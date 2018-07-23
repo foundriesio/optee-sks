@@ -520,3 +520,12 @@ bail:
 
 	return rv;
 }
+
+uint32_t do_symm_derivation(struct pkcs11_session *session __unused,
+			     struct sks_attribute_head *proc_params __unused,
+			     struct sks_object *parent_key __unused,
+			     struct sks_attrs_head **head __unused)
+{
+	EMSG("Symm key derivation not yet supported");
+	return SKS_ERROR;
+}

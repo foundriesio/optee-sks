@@ -783,6 +783,9 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	case SKS_FUNCTION_GENERATE_PAIR:
 	case SKS_FUNCTION_IMPORT:
 		break;
+	case SKS_FUNCTION_DERIVE:
+		trace_attributes("parent", parent);
+		break;
 	default:
 		TEE_Panic(TEE_ERROR_NOT_SUPPORTED);
 	}
@@ -820,10 +823,9 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	if (rv)
 		goto bail;
 
-#ifdef DEBUG
 	assert(get_attribute(attrs, SKS_CKA_LOCAL, NULL, NULL) ==
 		SKS_NOT_FOUND);
-#endif
+
 	switch (function) {
 	case SKS_FUNCTION_GENERATE:
 	case SKS_FUNCTION_GENERATE_PAIR:
@@ -832,6 +834,7 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	case SKS_FUNCTION_COPY:
 		local = get_bool(parent, SKS_CKA_LOCAL);
 		break;
+	case SKS_FUNCTION_DERIVE:
 	default:
 		local = SKS_FALSE;
 		break;
@@ -1025,10 +1028,17 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 
 	/*
 	 * Processings that do not create secrets are not expected to call
-	 * this function which would return SKS_CKR_MECHANISM_INVALID.
+	 * this function which would panic.
+	 */
+	/*
+	 * FIXME: rellay need to check LOCAL here, it was safely set from
+	 * create_attributes_from_template().
 	 */
 	switch (proc_id) {
 	case SKS_PROCESSING_IMPORT:
+	case SKS_CKM_ECDH1_DERIVE:
+	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
+	case SKS_CKM_DH_PKCS_DERIVE:
 		if (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
 		    bbool) {
 			DMSG_BAD_BBOOL(SKS_CKA_LOCAL, proc_id, head);

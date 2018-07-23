@@ -554,3 +554,10 @@ bail:
 
 	return rv;
 }
+
+uint32_t do_asymm_derivation(struct pkcs11_session *session __unused,
+			     struct sks_attribute_head *proc_params __unused,
+			     struct sks_attrs_head **head __unused)
+{
+	return SKS_ERROR;
+}

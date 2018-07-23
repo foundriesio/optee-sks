@@ -200,6 +200,9 @@ int set_processing_state(struct pkcs11_session *session,
 	case SKS_FUNCTION_DIGEST:
 		state = PKCS11_SESSION_DIGESTING;
 		break;
+	case SKS_FUNCTION_DERIVE:
+		state = PKCS11_SESSION_READY;
+		break;
 	default:
 		TEE_Panic(function);
 		return -1;

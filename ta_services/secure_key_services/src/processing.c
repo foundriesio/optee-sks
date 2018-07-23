@@ -828,3 +828,167 @@ bail:
 
 	return rv;
 }
+
+uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
+			  TEE_Param *in, TEE_Param *out)
+{
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t session_handle;
+	struct pkcs11_session *session;
+	struct sks_attribute_head *proc_params = NULL;
+	uint32_t parent_handle;
+	struct sks_object *parent_obj;
+	struct sks_attrs_head *head = NULL;
+	struct sks_object_head *template = NULL;
+	size_t template_size;
+	uint32_t out_handle;
+
+	if (!ctrl || in || !out)
+		return SKS_BAD_PARAM;
+
+	if (out->memref.size < sizeof(uint32_t)) {
+		out->memref.size = sizeof(uint32_t);
+		return SKS_SHORT_BUFFER;
+	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
+
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	rv = get_ready_session(&session, session_handle, tee_session);
+	if (rv)
+		return rv;
+
+	rv = serialargs_alloc_get_one_attribute(&ctrlargs, &proc_params);
+	if (rv)
+		goto bail;
+
+	rv = serialargs_get(&ctrlargs, &parent_handle, sizeof(uint32_t));
+	if (rv)
+		goto bail;
+
+	parent_obj = sks_handle2object(parent_handle, session);
+	if (!parent_obj) {
+		rv = SKS_CKR_KEY_HANDLE_INVALID;
+		goto bail;
+	}
+
+	rv = set_processing_state(session, SKS_FUNCTION_DERIVE,
+				  parent_obj, NULL);
+	if (rv)
+		goto bail;
+
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
+	if (rv)
+		goto bail;
+
+	template_size = sizeof(*template) + template->attrs_size;
+
+	rv = check_mechanism_against_processing(session, proc_params->id,
+						SKS_FUNCTION_DERIVE,
+						SKS_FUNC_STEP_INIT);
+	if (rv)
+		goto bail;
+
+	rv = create_attributes_from_template(&head, template, template_size,
+					     parent_obj->attributes,
+					     SKS_FUNCTION_DERIVE);
+	if (rv)
+		goto bail;
+
+	TEE_Free(template);
+	template = NULL;
+
+	rv = check_created_attrs_against_processing(proc_params->id, head);
+	if (rv)
+		goto bail;
+
+	rv = check_created_attrs_against_token(session, head);
+	if (rv)
+		goto bail;
+
+	// TODO: check_created_against_parent(session, parent, child);
+	// This can handle DERVIE_TEMPLATE attributes from the parent key.
+
+	rv = SKS_CKR_MECHANISM_INVALID;
+	if (processing_is_tee_symm(proc_params->id)) {
+		rv = init_symm_operation(session, SKS_FUNCTION_DERIVE,
+					 proc_params, parent_obj);
+		if (rv)
+			goto bail;
+
+		rv = do_symm_derivation(session, proc_params,
+					parent_obj, &head);
+	}
+	if (processing_is_tee_asymm(proc_params->id)) {
+		rv = init_asymm_operation(session, SKS_FUNCTION_DERIVE,
+					  proc_params, parent_obj);
+		if (rv)
+			goto bail;
+
+		rv = do_asymm_derivation(session, proc_params, &head);
+	}
+	if (rv)
+		goto bail;
+
+#if 0
+	/* Exaustive list */
+	switch (proc_params->id) {
+	case SKS_CKM_ECDH1_DERIVE:	<--------------------------- TODO
+	//case SKS_CKM_ECDH1_COFACTOR_DERIVE:
+	case SKS_CKM_DH_PKCS_DERIVE:	<--------------------------- TODO
+	case SKS_CKM_X9_42_DH_DERIVE:
+	case SKS_CKM_X9_42_DH_HYBRID_DERIVE:
+	case SKS_CKM_X9_42_MQV_DERIVE:
+	case SKS_CKM_AES_GMAC
+	case SKS_CKM_AES_ECB_ENCRYPT_DATA	<------------------- TODO
+	case SKS_CKM_AES_CBC_ENCRYPT_DATA	<------------------- TODO
+	case SKS_CKM_SHA1_KEY_DERIVATION
+	case SKS_CKM_SHA224_KEY_DERIVATION
+	case SKS_CKM_SHA256_KEY_DERIVATION
+	case SKS_CKM_SHA384_KEY_DERIVATION
+	case SKS_CKM_SHA512_KEY_DERIVATION
+	case SKS_CKM_SHA512_224_KEY_DERIVATION
+	case SKS_CKM_SHA512_256_KEY_DERIVATION
+	case SKS_CKM_SHA512_T_KEY_DERIVATION
+	// Exhaustive list is made of Camelia, Aria, Seed, KIP, GOSTR3410,
+	// DES, 3DES, SSL3, TLS12, TLS-KDF, WTLS and concatenate  mechanisms.
+	case SKS_CKM_ECMQV_DERIVE:
+	}
+#endif
+
+	TEE_Free(proc_params);
+	proc_params = NULL;
+
+	/*
+	 * Object is ready, register it and return a handle.
+	 */
+	rv = create_object(session, head, &out_handle);
+	if (rv)
+		goto bail;
+
+	/*
+	 * Now out_handle (through the related struct sks_object instance)
+	 * owns the serialized buffer that holds the object attributes.
+	 * We reset attrs->buffer to NULL as serializer object is no more
+	 * the attributes buffer owner.
+	 */
+	head = NULL;
+
+	TEE_MemMove(out->memref.buffer, &out_handle, sizeof(uint32_t));
+	out->memref.size = sizeof(uint32_t);
+
+bail:
+	release_active_processing(session);
+	TEE_Free(proc_params);
+	TEE_Free(template);
+	TEE_Free(head);
+
+	return rv;
+}
