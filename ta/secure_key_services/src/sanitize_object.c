@@ -60,7 +60,7 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 	uint32_t class_found;
 	uint32_t type_found;
 	struct sks_attribute_head cli_ref;
-	uint32_t __maybe_unused rc;
+	uint32_t __maybe_unused rc = SKS_OK;
 	size_t __maybe_unused src_size;
 
 	TEE_MemMove(&head, src, sizeof(struct sks_object_head));
