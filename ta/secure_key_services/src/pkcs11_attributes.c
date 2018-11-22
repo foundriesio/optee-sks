@@ -1132,6 +1132,7 @@ void pkcs11_max_min_key_size(uint32_t key_type, uint32_t *max_key_size,
 	case SKS_CKK_EC:
 		*min_key_size = 192;	/* in bits */
 		*max_key_size = 521;	/* in bits */
+		break;
 	case SKS_CKK_RSA:
 	case SKS_CKK_DSA:
 	case SKS_CKK_DH:

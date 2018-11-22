@@ -250,6 +250,7 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 				assert(0);
 				break;
 			}
+			break;
 		default:
 			assert(0);
 			break;
