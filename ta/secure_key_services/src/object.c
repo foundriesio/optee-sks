@@ -555,6 +555,9 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 		find_ctx->count++;
 	}
 
+	if (rv == SKS_NOT_FOUND)
+		rv = SKS_OK;
+
 	/* Save target attributes to search (if needed later) */
 	find_ctx->attributes = req_attrs;
 	req_attrs = NULL;
