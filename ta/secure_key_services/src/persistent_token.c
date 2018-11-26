@@ -372,7 +372,8 @@ struct ck_token *init_token_db(unsigned int token_id)
 		db_main->flags = SKS_CKFT_SO_PIN_TO_BE_CHANGED |
 				 SKS_CKFT_USER_PIN_TO_BE_CHANGED |
 				 SKS_CKFT_RNG |
-				 SKS_CKFT_DUAL_CRYPTO_OPERATIONS;
+				 SKS_CKFT_DUAL_CRYPTO_OPERATIONS |
+				 SKS_CKFT_LOGIN_REQUIRED;
 
 		/* 2 files: persistent state + persistent object references */
 		res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
