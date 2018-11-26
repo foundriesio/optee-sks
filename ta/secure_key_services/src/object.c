@@ -472,23 +472,29 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	TEE_Free(template);
 	template = NULL;
 
-	/*
-	 * TODO: is class is HW_OBJECT or PROCESSING, we must look from HW
-	 * features or processing capabilities, not standard secure a object.
-	 */
+	switch (get_class(req_attrs)) {
+	case SKS_UNDEFINED_ID:
+	/* Unspecified class searches among data objects */
+	case SKS_CKO_SECRET_KEY:
+	case SKS_CKO_PUBLIC_KEY:
+	case SKS_CKO_PRIVATE_KEY:
+	case SKS_CKO_DATA:
+		break;
+	default:
+		EMSG("Find object of class %s (%u) is not supported",
+		     sks2str_class(get_class(req_attrs)),
+		     get_class(req_attrs));
+		rv = SKS_CKR_ARGUMENTS_BAD;
+		goto bail;
+
+	}
 
 	/*
 	 * Scan all objects (sessions and persistent ones) and set a list of
-	 * candidates that match caller attributes
-	 *
-	 * - scan all current session session objects
-	 *   (if public session: reject private objects)
-	 * - then scan all persistent object
-	 *   (if there is already a handle in the session, skip it)
-	 *
-	 *
-	 * TODO: attrbiute class is SKS_PROCESS => search only mechanisms.
-	 * TODO: attrbiute class is SKS_HW_FEATURE => search only HW objects.
+	 * candidates that match caller attributes. First scan all current
+	 * session objects (that are visible to the session). Then scan all
+	 * remaining persistent object for which no session object handle was
+	 * publised to the client.
 	 */
 
 	LIST_FOREACH(obj, &session->object_list, link) {
