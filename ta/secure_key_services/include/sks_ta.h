@@ -715,7 +715,8 @@ struct sks_attribute_head {
 #define SKS_NOT_IMPLEMENTED			0x00001001
 
 /* Attribute specific values */
-#define SKS_UNDEFINED_ID			((uint32_t)0xFFFFFFFF)
+#define SKS_CK_UNAVAILABLE_INFORMATION		((uint32_t)0xFFFFFFFF)
+#define SKS_UNDEFINED_ID			SKS_CK_UNAVAILABLE_INFORMATION
 #define SKS_FALSE				0
 #define SKS_TRUE				1
 
