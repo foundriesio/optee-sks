@@ -394,7 +394,7 @@ static void release_find_obj_context(struct pkcs11_session *session,
 	if (!find_ctx)
 		return;
 
-	/* Release all non published handles */
+	/* Release handles not yet published to client */
 	idx = find_ctx->next;
 	if (idx < find_ctx->temp_start)
 		idx = find_ctx->temp_start;
@@ -441,11 +441,7 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 		goto bail;
 	}
 
-	/*
-	 * Can search object only in ready state and not already active search
-	 * FIXME: not clear if C_FindObjects can be called while a processing
-	 * is active. It seems not... but to be confirmed!
-	 */
+	/* Search objects only if no operation is on-going */
 	if (session_is_active(session)) {
 		rv = SKS_CKR_OPERATION_ACTIVE;
 		goto bail;
@@ -520,7 +516,7 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 		find_ctx->count++;
 	}
 
-	/* trailer handles are those not yet published by the session */
+	/* Remaining handles are those not yet published by the session */
 	find_ctx->temp_start = find_ctx->count;
 
 	LIST_FOREACH(obj, &session->token->object_list, link) {
