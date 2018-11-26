@@ -523,11 +523,17 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 		uint32_t obj_handle;
 		uint32_t *handles;
 
-		rv = token_obj_matches_ref(req_attrs, obj);
-		if (rv == SKS_NOT_FOUND)
-			continue;
-		if (rv != SKS_OK)
-			goto bail;
+		/*
+		 * If there are no attributes specified, we return
+		 * every object
+		 */
+		if (req_attrs->attrs_count) {
+			rv = token_obj_matches_ref(req_attrs, obj);
+			if (rv == SKS_NOT_FOUND)
+				continue;
+			if (rv != SKS_OK)
+				goto bail;
+		}
 
 		rv = check_access_attrs_against_token(session, obj->attributes);
 		if (rv)
