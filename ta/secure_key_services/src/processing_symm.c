@@ -23,7 +23,7 @@
 bool processing_is_tee_symm(uint32_t proc_id)
 {
 	switch (proc_id) {
-	// Authen
+	/* Authentication */
 	case SKS_CKM_AES_CMAC_GENERAL:
 	case SKS_CKM_AES_CMAC:
 	case SKS_CKM_MD5_HMAC:
@@ -33,7 +33,7 @@ bool processing_is_tee_symm(uint32_t proc_id)
 	case SKS_CKM_SHA384_HMAC:
 	case SKS_CKM_SHA512_HMAC:
 	case SKS_CKM_AES_XCBC_MAC:
-	// Cipher
+	/* Cipherering */
 	case SKS_CKM_AES_ECB:
 	case SKS_CKM_AES_CBC:
 	case SKS_CKM_AES_CBC_PAD:
@@ -59,7 +59,6 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 		{ SKS_CKM_AES_CTS, TEE_ALG_AES_CTS },
 		{ SKS_CKM_AES_CCM, TEE_ALG_AES_CCM },
 		{ SKS_CKM_AES_GCM, TEE_ALG_AES_GCM },
-		//{SKS_, TEE_ALG_AES_XTS },
 		{ SKS_CKM_AES_CMAC, TEE_ALG_AES_CMAC },
 		{ SKS_CKM_AES_CMAC_GENERAL, TEE_ALG_AES_CMAC },
 		{ SKS_CKM_AES_XCBC_MAC, TEE_ALG_AES_CBC_MAC_NOPAD },
@@ -287,7 +286,6 @@ uint32_t init_symm_operation(struct pkcs11_session *session,
 
 	assert(processing_is_tee_symm(proc_params->id));
 
-	// TODO: caller should set session->processing and it to be read here
 	rv = allocate_tee_operation(session, function, proc_params, obj);
 	if (rv)
 		return rv;

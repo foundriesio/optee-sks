@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2018, Linaro Limited
- *
- * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <assert.h>
@@ -57,7 +56,6 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 		{ SKS_CKM_RSA_PKCS, TEE_ALG_RSAES_PKCS1_V1_5
 				/* TEE_ALG_RSASSA_PKCS1_V1_5 on signatures */ },
 		{ SKS_CKM_RSA_PKCS_OAEP, 1 }, /* Need to look into params */
-		//{ SKS_CKM_MD5_RSA_PKCS, TEE_ALG_RSASSA_PKCS1_V1_5_MD5 },
 		{ SKS_CKM_SHA1_RSA_PKCS, TEE_ALG_RSASSA_PKCS1_V1_5_SHA1 },
 		{ SKS_CKM_SHA224_RSA_PKCS, TEE_ALG_RSASSA_PKCS1_V1_5_SHA224 },
 		{ SKS_CKM_SHA256_RSA_PKCS, TEE_ALG_RSASSA_PKCS1_V1_5_SHA256 },
@@ -73,9 +71,6 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 					TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA384 },
 		{ SKS_CKM_SHA512_RSA_PKCS_PSS,
 					TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA512 },
-		//{ SKS_CKM_RSA_X_509, TEE_ALG_ }
-		//{ SKS_CKM_RSA_9796, TEE_ALG_ }
-		//{ SKS_CKM_RSA_PKCS_PSS, TEE_ALG_ }
 		/* EC flavors (Must find key size from the object) */
 		{ SKS_CKM_ECDSA, 1 },
 		{ SKS_CKM_ECDSA_SHA1, 1 },
@@ -436,7 +431,7 @@ uint32_t step_asymm_operation(struct pkcs11_session *session,
 		rv = SKS_NOT_IMPLEMENTED;
 		goto bail;
 	default:
-		// No other mutl part operation expected
+		/* Other mechanism do not expect multi stage operation */
 		rv = SKS_ERROR;
 		break;
 	}
@@ -606,7 +601,7 @@ uint32_t do_asymm_derivation(struct pkcs11_session *session,
 		if (rv)
 			goto bail;
 
-		// TODO: chekc size is the expected one (active proc key)
+		// TODO: check size is the expected one (active proc key)
 		TEE_InitRefAttribute(&tee_attrs[tee_attrs_count],
 						TEE_ATTR_ECC_PUBLIC_VALUE_X,
 						a_ptr, a_size / 2);
