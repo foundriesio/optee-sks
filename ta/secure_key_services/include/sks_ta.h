@@ -932,72 +932,72 @@ struct sks_attribute_head {
  * processing/mechanism.
  *
  * AES ECB
- *   head:	32bit type = SKS_CKM_AES_ECB
- *		32bit params byte size = 0
+ *   head:	32bit: type = SKS_CKM_AES_ECB
+ *		32bit: params byte size = 0
  *
  * AES CBC, CBC_NOPAD and CTS
- *   head:	32bit type = SKS_CKM_AES_CBC
+ *   head:	32bit: type = SKS_CKM_AES_CBC
  *			  or SKS_CKM_AES_CBC_PAD
  *			  or SKS_CKM_AES_CTS
- *		32bit params byte size = 16
- *  params:	16byte IV
+ *		32bit: params byte size = 16
+ *  params:	16byte: IV
  *
  * AES CTR, params relates to struct CK_AES_CTR_PARAMS.
- *   head:	32bit type = SKS_CKM_AES_CTR
- *		32bit params byte size = 20
- *  params:	32bit counter bit increment
- *		16byte IV
+ *   head:	32bit: type = SKS_CKM_AES_CTR
+ *		32bit: params byte size = 20
+ *  params:	32bit: counter bit increment
+ *		16byte: IV
  *
  * AES GCM, params relates to struct CK_AES_GCM_PARAMS.
- *   head:	32bit type = SKS_CKM_AES_GCM
- *		32bit params byte size
- *  params:	32bit IV_byte_size
+ *   head:	32bit: type = SKS_CKM_AES_GCM
+ *		32bit: params byte size
+ *  params:	32bit: IV_byte_size
  *		byte array: IV (IV_byte_size bytes)
- *		32bit AAD_byte_size
+ *		32bit: AAD_byte_size
  *		byte array: AAD data (AAD_byte_size bytes)
- *		32bit tag bit size
+ *		32bit: tag bit size
  *
  * AES CCM, params relates to struct CK_AES_CCM_PARAMS.
- *   head:	32bit type = SKS_CKM_AES_CCM
- *		32bit params byte size
- *  params:	32bit data_byte_size
- *		32bit nonce_byte_size
+ *   head:	32bit: type = SKS_CKM_AES_CCM
+ *		32bit: params byte size
+ *  params:	32bit: data_byte_size
+ *		32bit: nonce_byte_size
  *		byte array: nonce data (nonce_byte_size bytes)
- *		32bit AAD_byte_size
+ *		32bit: AAD_byte_size
  *		byte array: AAD data (AAD_byte_size bytes)
- *		32bit MAC byte size
+ *		32bit: MAC byte size
  *
  * AES GMAC
- *   head:	32bit type = SKS_CKM_AES_GMAC
- *		32bit params byte size = 12
- *  params:	12byte IV
+ *   head:	32bit: type = SKS_CKM_AES_GMAC
+ *		32bit: params byte size = 12
+ *  params:	12byte: IV
  *
  * AES CMAC with general length, params relates to struct CK_MAC_GENERAL_PARAMS.
- *   head:	32bit type = SKS_CKM_AES_CMAC_GENERAL
- *		32bit params byte size = 12
- *  params:	32bit byte size of the output CMAC data
+ *   head:	32bit: type = SKS_CKM_AES_CMAC_GENERAL
+ *		32bit: params byte size = 12
+ *  params:	32bit: byte size of the output CMAC data
  *
  * AES CMAC fixed size (16byte CMAC)
- *   head:	32bit type = SKS_CKM_AES_CMAC_GENERAL
- *		32bit size = 0
+ *   head:	32bit: type = SKS_CKM_AES_CMAC_GENERAL
+ *		32bit: size = 0
  *
  * AES derive by ECB, params relates to struct CK_KEY_DERIVATION_STRING_DATA.
- *   head:	32bit type = SKS_CKM_AES_ECB_ENCRYPT_DATA
- *		32bit params byte size
- *  params:	32bit byte size of the data to encrypt
+ *   head:	32bit: type = SKS_CKM_AES_ECB_ENCRYPT_DATA
+ *		32bit: params byte size
+ *  params:	32bit: byte size of the data to encrypt
  *		byte array: data to encrypt
  *
  * AES derive by CBC, params relates to struct CK_AES_CBC_ENCRYPT_DATA_PARAMS.
- *   head:	32bit type = SKS_CKM_AES_CBC_ENCRYPT_DATA
- *		32bit params byte size
- *  params:	16byte IV
- *		32bit byte size of the data to encrypt
+ *   head:	32bit: type = SKS_CKM_AES_CBC_ENCRYPT_DATA
+ *		32bit: params byte size
+ *  params:	16byte: IV
+ *		32bit: byte size of the data to encrypt
  *		byte array: data to encrypt
  *
  * AES and generic secret generation
- *   head:	32bit type = SKS_CKM_AES_KEY_GEN
- *			  or SKS_CKM_GENERIC_SECRET_KEY_GEN
- *		32bit size = 0
+ *   head:	32bit: type = SKS_CKM_AES_KEY_GEN
+ *			   or SKS_CKM_GENERIC_SECRET_KEY_GEN
+ *		32bit: size = 0
  *
  * ECDH, params relates to struct CK_ECDH1_DERIVE_PARAMS.
  *   head:	32bit: type = SKS_CKM_ECDH1_DERIVE
