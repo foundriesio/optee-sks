@@ -34,6 +34,8 @@ LIBSKS_INCLUDES 	+= ${CURDIR}/../public
 LIBSKS_CFLAGS		:= $(addprefix -I, $(LIBSKS_INCLUDES)) \
 				$(CFLAGS) -D_GNU_SOURCE -fPIC
 
+LIBSKS_LFLAGS		:= $(LDFLAGS) -L$(OUT_DIR)/../libteec -lteec
+
 LIBSKS_OBJ_DIR		:= $(OUT_DIR)
 LIBSKS_OBJS		:= $(patsubst %.c,$(LIBSKS_OBJ_DIR)/%.o, $(LIBSKS_SRCS))
 
@@ -46,7 +48,7 @@ libsks: $(OUT_DIR)/$(LIBSKS_SO_LIBRARY)
 
 $(OUT_DIR)/$(LIBSKS_SO_LIBRARY): $(LIBSKS_OBJS)
 	@echo "  LINK    $@"
-	$(VPREFIX)$(CC) -shared -Wl,-soname,$(LIBSKS_SO_LIBRARY) $(LIBSKS_LFLAGS) -o $@ $+
+	$(VPREFIX)$(CC) -shared -Wl,-soname,$(LIBSKS_SO_LIBRARY) -o $@ $+ $(LIBSKS_LFLAGS)
 	@echo ""
 
 libsks: $(OUT_DIR)/$(LIBSKS_AR_LIBRARY)
