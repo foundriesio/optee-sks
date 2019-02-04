@@ -1017,6 +1017,10 @@ struct sks_attribute_head {
  *		32bit: byte size of the shared data
  *		byte array: shared data
  *
+ * RSA_PKCS (pre-hashed payload)
+ *   head:	32bit: type = SKS_CKM_RSA_PKCS
+ *		32bit: size = 0
+ *
  * RSA PKCS OAEP, params relates to struct CK_RSA_PKCS_OAEP_PARAMS.
  *   head:	32bit: type = SKS_CKM_RSA_PKCS_OAEP
  *		32bit: params byte size
