@@ -709,6 +709,7 @@ struct sks_attribute_head {
 #define SKS_CKR_USER_TYPE_INVALID		0x0000002a
 #define SKS_CKR_SESSION_READ_ONLY_EXISTS	0x0000002b
 #define SKS_CKR_KEY_SIZE_RANGE			0x0000002c
+#define SKS_CKR_ATTRIBUTE_SENSITIVE		0x0000002d
 
 /* Status without strict equivalence in Cryptoki API */
 #define SKS_NOT_FOUND				0x00001000

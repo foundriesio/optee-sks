@@ -160,6 +160,9 @@ bool object_is_private(struct sks_attrs_head *head);
 void pkcs11_max_min_key_size(uint32_t key_type, uint32_t *max_key_size,
 			     uint32_t *min_key_size, bool bit_size_only);
 
+bool attribute_is_exportable(struct sks_attribute_head *req_attr,
+			     struct sks_object *obj);
+
 uint32_t add_missing_attribute_id(struct sks_attrs_head **attrs1,
 				  struct sks_attrs_head **attrs2);
 

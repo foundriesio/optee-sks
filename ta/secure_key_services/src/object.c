@@ -684,3 +684,151 @@ uint32_t entry_find_objects_final(uintptr_t tee_session, TEE_Param *ctrl,
 
 	return SKS_OK;
 }
+
+/*
+ * Entry for command SKS_CMD_GET_ATTRIBUTE_VALUE
+ */
+uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out)
+{
+	uint32_t rv;
+	struct serialargs ctrlargs;
+	uint32_t session_handle;
+	struct pkcs11_session *session;
+	struct sks_object_head *template = NULL;
+	struct sks_object *obj = NULL;
+	uint32_t object_handle;
+	char *cur;
+	size_t len;
+	char *end;
+	bool attr_sensitive = 0;
+	bool attr_type_invalid = 0;
+	bool buffer_too_small = 0;
+
+	if (!ctrl || in || !out)
+		return SKS_BAD_PARAM;
+
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	rv = serialargs_get(&ctrlargs, &object_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
+	if (rv)
+		return rv;
+
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session) {
+		rv = SKS_CKR_SESSION_HANDLE_INVALID;
+		goto bail;
+	}
+
+	obj = sks_handle2object(object_handle, session);
+	if (!obj) {
+		rv = SKS_BAD_PARAM;
+		goto bail;
+	}
+
+	rv = check_access_attrs_against_token(session, obj->attributes);
+	if (rv) {
+		rv = SKS_CKR_OBJECT_HANDLE_INVALID;
+		goto bail;
+	}
+
+	/* iterate over attributes and set their values */
+	/*
+	 * 1. If the specified attribute (i.e., the attribute specified by the
+	 * type field) for the object cannot be revealed because the object is
+	 * sensitive or unextractable, then the ulValueLen field in that triple
+	 * is modified to hold the value CK_UNAVAILABLE_INFORMATION.
+	 *
+	 * 2. Otherwise, if the specified value for the object is invalid (the
+	 * object does not possess such an attribute), then the ulValueLen field
+	 * in that triple is modified to hold the value
+	 * CK_UNAVAILABLE_INFORMATION.
+	 *
+	 * 3. Otherwise, if the pValue field has the value NULL_PTR, then the
+	 * ulValueLen field is modified to hold the exact length of the
+	 * specified attribute for the object.
+	 *
+	 * 4. Otherwise, if the length specified in ulValueLen is large enough
+	 * to hold the value of the specified attribute for the object, then
+	 * that attribute is copied into the buffer located at pValue, and the
+	 * ulValueLen field is modified to hold the exact length of the
+	 * attribute.
+	 *
+	 * 5. Otherwise, the ulValueLen field is modified to hold the value
+	 * CK_UNAVAILABLE_INFORMATION.
+	 */
+	cur = (char *)template + sizeof(struct sks_object_head);
+	end = cur + template->attrs_size;
+
+	for (; cur < end; cur += len) {
+		struct sks_attribute_head *cli_ref =
+			(struct sks_attribute_head *)(void *)cur;
+		len = sizeof(*cli_ref) + cli_ref->size;
+
+		/* Check 1. */
+		if (!attribute_is_exportable(cli_ref, obj)) {
+			cli_ref->size = SKS_CK_UNAVAILABLE_INFORMATION;
+			attr_sensitive = 1;
+			continue;
+		}
+
+		/*
+		 * We assume that if size is 0, pValue was NULL, so we return
+		 * the size of the required buffer for it (3., 4.)
+		 */
+		rv = get_attribute(obj->attributes, cli_ref->id,
+				   cli_ref->size ? cli_ref->data : NULL,
+				   &(cli_ref->size));
+		/* Check 2. */
+		switch (rv) {
+		case SKS_OK:
+			break;
+		case SKS_NOT_FOUND:
+			cli_ref->size = SKS_CK_UNAVAILABLE_INFORMATION;
+			attr_type_invalid = 1;
+			break;
+		case SKS_SHORT_BUFFER:
+			buffer_too_small = 1;
+			break;
+		default:
+			rv = SKS_ERROR;
+			goto bail;
+		}
+	}
+
+	/*
+	 * If case 1 applies to any of the requested attributes, then the call
+	 * should return the value CKR_ATTRIBUTE_SENSITIVE. If case 2 applies to
+	 * any of the requested attributes, then the call should return the
+	 * value CKR_ATTRIBUTE_TYPE_INVALID. If case 5 applies to any of the
+	 * requested attributes, then the call should return the value
+	 * CKR_BUFFER_TOO_SMALL. As usual, if more than one of these error codes
+	 * is applicable, Cryptoki may return any of them. Only if none of them
+	 * applies to any of the requested attributes will CKR_OK be returned.
+	 */
+
+	rv = SKS_OK;
+	if (attr_sensitive)
+		rv = SKS_CKR_ATTRIBUTE_SENSITIVE;
+	if (attr_type_invalid)
+		rv = SKS_CKR_ATTRIBUTE_TYPE_INVALID;
+	if (buffer_too_small)
+		rv = SKS_CKR_BUFFER_TOO_SMALL;
+
+	/* Move updated template to out buffer */
+	TEE_MemMove(out->memref.buffer, template, out->memref.size);
+
+bail:
+	TEE_Free(template);
+	template = NULL;
+
+	return rv;
+}
