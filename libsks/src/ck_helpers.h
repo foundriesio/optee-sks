@@ -92,4 +92,24 @@ int ck_attr2boolprop_shift(CK_ULONG attr);
 int sks_object_has_boolprop(uint32_t class);
 int sks_class_has_type(uint32_t class);
 
+/*
+ * Try to guess key type if mechanism is key generation
+ *
+ * @mech: Referecn to mechanism
+ * @attrs; Reference to input object attributes
+ * @count: number of attributes for the object, output value may be incremented
+ * @attrs_new_p: Referenece to output attributes, always defines the key type
+ *
+ * This may be needed because some tools (e.g.: pkcs11-tool) may not specify
+ * some attributes as key type when these can be assumed from the mechanism
+ * type.
+ *
+ * The function allocates memory for a copy of the attributes since it could
+ * be increased when adding the missing attribute. Caller is responsible from
+ * freeing the output attribute references.
+ */
+CK_RV ck_guess_key_type(CK_MECHANISM_PTR mecha,
+		       CK_ATTRIBUTE_PTR attrs, CK_ULONG_PTR count,
+		       CK_ATTRIBUTE_PTR *attrs_new_p);
+
 #endif /*__HELPERS_CK_H*/

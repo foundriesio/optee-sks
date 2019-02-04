@@ -11,6 +11,7 @@
 #include "local_utils.h"
 #include "pkcs11_processing.h"
 #include "pkcs11_token.h"
+#include "ck_helpers.h"
 
 static int lib_inited;
 
@@ -1742,12 +1743,30 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session,
 			CK_OBJECT_HANDLE_PTR priv_key)
 {
 	CK_RV rv;
+	CK_ATTRIBUTE_PTR pub_attribs_n = NULL;
+	CK_ATTRIBUTE_PTR priv_attribs_n = NULL;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	rv = ck_generate_key_pair(session, mechanism, pub_attribs, pub_count,
-				  priv_attribs, priv_count, pub_key, priv_key);
+	rv = ck_guess_key_type(mechanism, pub_attribs, &pub_count,
+			       &pub_attribs_n);
+	if (rv != CKR_OK)
+		goto bail;
+
+	rv = ck_guess_key_type(mechanism, priv_attribs, &priv_count,
+			       &priv_attribs_n);
+	if (rv != CKR_OK)
+		goto bail;
+
+	rv = ck_generate_key_pair(session, mechanism, pub_attribs_n, pub_count,
+				  priv_attribs_n, priv_count, pub_key, priv_key);
+
+bail:
+	if (pub_attribs_n)
+		free(pub_attribs_n);
+	if (priv_attribs_n)
+		free(priv_attribs_n);
 
 	switch (rv) {
 	case CKR_ARGUMENTS_BAD:
