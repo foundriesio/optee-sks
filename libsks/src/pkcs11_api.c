@@ -18,10 +18,10 @@ static int lib_inited;
 #define DO_NOT_REGISTER_CK_FUNCTION(_function)	._function = NULL
 
 static const CK_FUNCTION_LIST libsks_function_list = {
-    .version = {
-        .major = 2,
-        .minor = 40,
-    },
+	.version = {
+		.major = 2,
+		.minor = 40,
+	},
 	REGISTER_CK_FUNCTION(C_Initialize),
 	REGISTER_CK_FUNCTION(C_Finalize),
 	REGISTER_CK_FUNCTION(C_GetInfo),
