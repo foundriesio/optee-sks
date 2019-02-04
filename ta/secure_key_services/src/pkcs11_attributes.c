@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <stdlib.h>
 #include <assert.h>
 #include <inttypes.h>
 #include <sks_internal_abi.h>
@@ -22,6 +23,9 @@
 #include "sanitize_object.h"
 #include "serializer.h"
 #include "sks_helpers.h"
+
+/* Byte size of CKA_ID attribute when generated locally */
+#define SKS_CKA_DEFAULT_SIZE		16
 
 struct pkcs11_mechachism_modes {
 	uint32_t id;
@@ -1485,4 +1489,66 @@ bool object_is_private(struct sks_attrs_head *head)
 		return true;
 
 	return false;
+}
+
+/*
+ * Add a CKA ID attribute to an object or paired object if missing.
+ * If 2 objects are provided and at least 1 does not have a CKA_ID,
+ * the 2 objects will have the same CKA_ID attribute.
+ *
+ * @attrs1 - Object
+ * @attrs2 - Object paired to attrs1 or NULL
+ * Return an SKS return code
+ */
+uint32_t add_missing_attribute_id(struct sks_attrs_head **attrs1,
+				  struct sks_attrs_head **attrs2)
+{
+	uint32_t rv;
+	void *id1;
+	size_t id1_size;
+	void *id2;
+	size_t id2_size;
+
+	rv = get_attribute_ptr(*attrs1, SKS_CKA_ID, &id1, &id1_size);
+	if (rv) {
+		if (rv != SKS_NOT_FOUND)
+			return rv;
+		id1 = NULL;
+	}
+
+	if (attrs2) {
+		rv = get_attribute_ptr(*attrs2, SKS_CKA_ID, &id2, &id2_size);
+		if (rv) {
+			if (rv != SKS_NOT_FOUND)
+				return rv;
+			id2 = NULL;
+		}
+
+		if (id1 && id2)
+			return SKS_OK;
+
+		if (id1 && !id2)
+			return add_attribute(attrs2, SKS_CKA_ID, id1, id1_size);
+
+		if (!id1 && id2)
+			return add_attribute(attrs1, SKS_CKA_ID, id2, id2_size);
+	} else {
+		if (id1)
+			return SKS_OK;
+	}
+
+	id1_size = SKS_CKA_DEFAULT_SIZE;
+	id1 = TEE_Malloc(id1_size, 0);
+	if (!id1)
+		return SKS_MEMORY;
+
+	TEE_GenerateRandom(id1, (uint32_t)id1_size);
+
+	rv = add_attribute(attrs1, SKS_CKA_ID, id1, id1_size);
+	if (rv == SKS_OK && attrs2)
+		rv = add_attribute(attrs2, SKS_CKA_ID, id1, id1_size);
+
+	TEE_Free(id1);
+
+	return rv;
 }

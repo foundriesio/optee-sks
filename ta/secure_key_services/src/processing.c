@@ -543,6 +543,11 @@ uint32_t entry_generate_key_pair(uintptr_t teesess,
 	TEE_Free(template);
 	template = NULL;
 
+	/* Generate CKA_ID for keys if not specified by the templates */
+	rv = add_missing_attribute_id(&pub_head, &priv_head);
+	if (rv)
+		goto bail;
+
 	/* Check created object against processing and token state */
 	rv = check_created_attrs(pub_head, priv_head);
 	if (rv)
