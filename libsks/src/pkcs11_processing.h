@@ -96,4 +96,9 @@ CK_RV ck_derive_key(CK_SESSION_HANDLE session,
 		    CK_ULONG count,
 		    CK_OBJECT_HANDLE_PTR key_handle);
 
+CK_RV ck_get_attribute_value(CK_SESSION_HANDLE session,
+			     CK_OBJECT_HANDLE obj,
+			     CK_ATTRIBUTE_PTR attribs,
+			     CK_ULONG count);
+
 #endif /*__PKCS11_PROCESSING_H*/

@@ -296,7 +296,6 @@ CK_RV ck_generate_key_pair(CK_SESSION_HANDLE session,
 	if (rv)
 		goto bail;
 
-
 	/* ctrl = [session-handle][serial-mecha][serial-pub][serial-priv] */
 	ctrl_size = sizeof(uint32_t) + smecha.size + pub_sattr.size +
 			priv_sattr.size;
@@ -600,5 +599,58 @@ bail:
 	free(ctrl);
 	release_serial_object(&smecha);
 	release_serial_object(&sattr);
+	return rv;
+}
+
+CK_RV ck_get_attribute_value(CK_SESSION_HANDLE session,
+			     CK_OBJECT_HANDLE obj,
+			     CK_ATTRIBUTE_PTR attribs,
+			     CK_ULONG count)
+{
+	CK_RV rv;
+	struct serializer sattr;
+	uint32_t session_handle = session;
+	char *ctrl = NULL;
+	size_t ctrl_size;
+	char *out = NULL;
+	size_t out_size;
+	uint32_t obj_handle = obj;
+	size_t handle_size = sizeof(obj_handle);
+
+	rv = serialize_ck_attributes(&sattr, attribs, count);
+	if (rv)
+		goto bail;
+
+	/* ctrl = [session][obj-handle][attributes] */
+	ctrl_size = sizeof(uint32_t) + handle_size + sattr.size;
+	ctrl = malloc(ctrl_size);
+	if (!ctrl) {
+		rv = CKR_HOST_MEMORY;
+		goto bail;
+	}
+	/* out = [attributes] */
+	out_size = sattr.size;
+	out = malloc(out_size);
+	if (!out){
+		rv = CKR_HOST_MEMORY;
+		goto bail;
+	}
+
+	memcpy(ctrl, &session_handle, sizeof(uint32_t));
+	memcpy(ctrl + sizeof(uint32_t), &obj_handle, sizeof(uint32_t));
+	memcpy(ctrl + sizeof(uint32_t) + handle_size, sattr.buffer, sattr.size);
+
+	rv = ck_invoke_ta_in_out(ck_session2sks_ctx(session),
+				 SKS_CMD_GET_ATTRIBUTE_VALUE, ctrl, ctrl_size,
+				 NULL, 0, out, &out_size);
+	if (rv != CKR_OK && rv != CKR_BUFFER_TOO_SMALL)
+		goto bail;
+
+	rv = deserialize_ck_attributes(out, attribs, count);
+
+bail:
+	free(ctrl);
+	release_serial_object(&sattr);
+
 	return rv;
 }

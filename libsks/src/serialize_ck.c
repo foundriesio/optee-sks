@@ -142,6 +142,32 @@ static CK_RV serialize_indirect_attribute(struct serializer *obj,
 	return rv;
 }
 
+static CK_RV deserialize_indirect_attribute(struct sks_attribute_head *obj,
+					    CK_ATTRIBUTE_PTR attribute)
+{
+	CK_ULONG count;
+	CK_ATTRIBUTE_PTR attr;
+	CK_RV rv;
+
+	switch (attribute->type) {
+	/* These are serialized each seperately */
+	case CKA_WRAP_TEMPLATE:
+	case CKA_UNWRAP_TEMPLATE:
+		count = attribute->ulValueLen / sizeof(CK_ATTRIBUTE);
+		attr = (CK_ATTRIBUTE_PTR)attribute->pValue;
+		break;
+	default:
+		return CKR_GENERAL_ERROR;
+	}
+
+	/*
+	 * deserialize_ck_attributes expects sks_attribute_head,
+	 * not sks_object_head, so we need to correct the pointer
+	 */
+	rv = deserialize_ck_attributes(obj->data, attr, count);
+	return rv;
+}
+
 static int ck_attr_is_ulong(CK_ATTRIBUTE_TYPE attribute_id)
 {
 	return (ck_attr_is_class(attribute_id) ||
@@ -452,6 +478,105 @@ out:
 	else
 		finalize_serial_object(obj);
 
+	return rv;
+}
+
+static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
+				      CK_ATTRIBUTE_PTR out)
+{
+	CK_ULONG ck_ulong;
+	uint32_t sks_data32 = 0;
+	size_t n;
+	CK_RV rv;
+
+	rv = sks2ck_attribute_type(&(out->type), in->id);
+	if (rv)
+		return rv;
+
+	if (out->ulValueLen < in->size) {
+		out->ulValueLen = in->size;
+		return CKR_OK;
+	}
+	out->ulValueLen = in->size;
+
+	if (!out->pValue)
+		return CKR_OK;
+
+	if (ck_attr_is_ulong(out->type)) {
+		if (out->ulValueLen != sizeof(CK_ULONG))
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+
+		memcpy(&sks_data32, in->data, sizeof(CK_ULONG));
+	}
+
+	switch (out->type) {
+	case CKA_CLASS:
+		rv = sks2ck_object_class(&ck_ulong, sks_data32);
+		if (rv)
+			return rv;
+		memcpy(out->pValue, &ck_ulong, sizeof(CK_ULONG));
+		break;
+
+	case CKA_KEY_TYPE:
+		rv = sks2ck_key_type(&ck_ulong, sks_data32);
+		if (rv)
+			return rv;
+		memcpy(out->pValue, &ck_ulong, sizeof(CK_ULONG));
+		break;
+
+	case CKA_WRAP_TEMPLATE:
+	case CKA_UNWRAP_TEMPLATE:
+		rv = deserialize_indirect_attribute(in, out->pValue);
+		break;
+
+	case CKA_ALLOWED_MECHANISMS:
+		n = out->ulValueLen / sizeof(CK_ULONG);
+		rv = sks2ck_mechanism_type_list(out->pValue, in->data, n);
+		break;
+
+	/* Attributes which data value do not need conversion (aside ulong) */
+	default:
+		memcpy(out->pValue, in->data, out->ulValueLen);
+		rv = CKR_OK;
+		break;
+	}
+
+	return rv;
+}
+
+CK_RV deserialize_ck_attributes(uint8_t *in, CK_ATTRIBUTE_PTR attributes,
+				CK_ULONG count)
+{
+	CK_ATTRIBUTE_PTR cur_attr = attributes;
+	CK_ULONG n;
+	CK_RV rv = CKR_OK;
+	uint8_t *curr_head = in;
+	size_t len;
+
+	curr_head += sizeof(struct sks_object_head);
+
+#ifdef SKS_WITH_GENERIC_ATTRIBS_IN_HEAD
+#error Not supported.
+#endif
+
+	for (n = count; n > 0; n--, cur_attr++, curr_head += len) {
+		struct sks_attribute_head *cli_ref =
+			(struct sks_attribute_head *)(void *)curr_head;
+
+		len = sizeof(*cli_ref);
+		/*
+		 * Can't trust size becuase it was set to reflect
+		 * required buffer.
+		 */
+		if (cur_attr->pValue)
+			len += cli_ref->size;
+
+		rv = deserialize_ck_attribute(cli_ref, cur_attr);
+		if (rv)
+			goto out;
+	}
+
+out:
 	return rv;
 }
 

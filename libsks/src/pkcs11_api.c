@@ -47,7 +47,7 @@ static const CK_FUNCTION_LIST libsks_function_list = {
 	DO_NOT_REGISTER_CK_FUNCTION(C_CopyObject),
 	REGISTER_CK_FUNCTION(C_DestroyObject),
 	DO_NOT_REGISTER_CK_FUNCTION(C_GetObjectSize),
-	DO_NOT_REGISTER_CK_FUNCTION(C_GetAttributeValue),
+	REGISTER_CK_FUNCTION(C_GetAttributeValue),
 	DO_NOT_REGISTER_CK_FUNCTION(C_SetAttributeValue),
 	REGISTER_CK_FUNCTION(C_FindObjectsInit),
 	REGISTER_CK_FUNCTION(C_FindObjects),
@@ -746,15 +746,35 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session,
 			  CK_ATTRIBUTE_PTR attribs,
 			  CK_ULONG count)
 {
-	(void)session;
-	(void)obj;
-	(void)attribs;
-	(void)count;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = ck_get_attribute_value(session, obj, attribs, count);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_ATTRIBUTE_TYPE_INVALID:
+	case CKR_ATTRIBUTE_VALUE_INVALID:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_OK:
+	case CKR_OPERATION_ACTIVE:
+	case CKR_PIN_EXPIRED:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_SetAttributeValue(CK_SESSION_HANDLE session,
