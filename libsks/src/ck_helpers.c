@@ -744,6 +744,13 @@ CK_RV ck_guess_key_type(CK_MECHANISM_PTR mecha,
 		attrs_new[count_new - 1].ulValueLen = sizeof(CK_KEY_TYPE);
 		rv = CKR_OK;
 		break;
+	case CKM_EC_KEY_PAIR_GEN:
+		*key_type_p = CKK_EC;
+		attrs_new[count_new - 1].type = CKA_KEY_TYPE;
+		attrs_new[count_new - 1].pValue = key_type_p;
+		attrs_new[count_new - 1].ulValueLen = sizeof(CK_KEY_TYPE);
+		rv = CKR_OK;
+		break;
 	default:
 		rv = CKR_TEMPLATE_INCOMPLETE;
 		break;
