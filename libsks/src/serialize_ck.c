@@ -498,7 +498,6 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 		out->ulValueLen = in->size;
 		return CKR_OK;
 	}
-	out->ulValueLen = in->size;
 
 	if (!out->pValue)
 		return CKR_OK;
@@ -538,7 +537,7 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 
 	/* Attributes which data value do not need conversion (aside ulong) */
 	default:
-		memcpy(out->pValue, in->data, out->ulValueLen);
+		memcpy(out->pValue, in->data, in->size);
 		rv = CKR_OK;
 		break;
 	}
