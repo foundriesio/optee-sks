@@ -172,7 +172,8 @@ static int ck_attr_is_ulong(CK_ATTRIBUTE_TYPE attribute_id)
 {
 	return (ck_attr_is_class(attribute_id) ||
 		ck_attr_is_type(attribute_id) ||
-		attribute_id == CKA_VALUE_LEN);
+		attribute_id == CKA_VALUE_LEN ||
+		attribute_id == CKA_MODULUS_BITS);
 }
 
 static CK_RV serialize_ck_attribute(struct serializer *obj, CK_ATTRIBUTE *attr)
