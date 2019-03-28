@@ -612,7 +612,7 @@ CK_RV ck_get_attribute_value(CK_SESSION_HANDLE session,
 	uint32_t session_handle = session;
 	char *ctrl = NULL;
 	size_t ctrl_size;
-	char *out = NULL;
+	uint8_t *out = NULL;
 	size_t out_size;
 	uint32_t obj_handle = obj;
 	size_t handle_size = sizeof(obj_handle);

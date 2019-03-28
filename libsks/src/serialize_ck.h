@@ -15,7 +15,7 @@ CK_RV serialize_ck_attributes(struct serializer *obj,
 				CK_ATTRIBUTE_PTR attributes, CK_ULONG count);
 
 /* Convert SKS attributes back to CK_ATTRIBUTE array */
-CK_RV deserialize_ck_attributes(char *in,
+CK_RV deserialize_ck_attributes(uint8_t *in,
 				CK_ATTRIBUTE_PTR attributes, CK_ULONG count);
 
 /* Create (and allocate) a serial object for CK_MECHANISM array */
