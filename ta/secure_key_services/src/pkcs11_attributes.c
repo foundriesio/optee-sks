@@ -189,7 +189,7 @@ static uint32_t sks_function2ckfm(enum processing_func function)
 
 int check_pkcs11_mechanism_flags(uint32_t mechanism_type, uint32_t flags)
 {
-	size_t n;
+	size_t n = 0;
 	uint32_t test_flags = flags & (SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
 				SKS_CKFM_DERIVE | SKS_CKFM_DIGEST |
 				SKS_CKFM_SIGN | SKS_CKFM_SIGN_RECOVER |
@@ -216,9 +216,8 @@ uint32_t check_mechanism_against_processing(struct pkcs11_session *session,
 					    enum processing_func function,
 					    enum processing_step step)
 {
-	size_t n;
+	size_t n = 0;
 	bool allowed = false;
-
 
 	switch (step) {
 	case SKS_FUNC_STEP_INIT:
@@ -328,10 +327,10 @@ static uint32_t pkcs11_import_object_boolprop(struct sks_attrs_head **out,
 					      struct sks_attrs_head *template,
 					      uint32_t attribute)
 {
-	uint32_t rv;
-	uint8_t bbool;
+	uint32_t rv = 0;
+	uint8_t bbool = 0;
 	size_t size = sizeof(uint8_t);
-	void *attr;
+	void *attr = NULL;
 
 	rv = get_attribute(template, attribute, &bbool, &size);
 	if (rv || !bbool)
@@ -348,7 +347,7 @@ static uint32_t set_mandatory_boolprops(struct sks_attrs_head **out,
 					uint32_t const *bp, size_t bp_count)
 {
 	uint32_t rv = SKS_OK;
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < bp_count; n++) {
 		rv = pkcs11_import_object_boolprop(out, temp, bp[n]);
@@ -364,11 +363,11 @@ static uint32_t __unused set_mandatory_attributes(struct sks_attrs_head **out,
 					 uint32_t const *bp, size_t bp_count)
 {
 	uint32_t rv = SKS_OK;
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < bp_count; n++) {
-		size_t size;
-		void *value;
+		size_t size = 0;
+		void *value = NULL;
 
 		if (get_attribute_ptr(temp, bp[n], &value, &size)) {
 			/* FIXME: currently set attribute as empty. Fail? */
@@ -388,11 +387,11 @@ static uint32_t set_optional_attributes(struct sks_attrs_head **out,
 					uint32_t const *bp, size_t bp_count)
 {
 	uint32_t rv = SKS_OK;
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < bp_count; n++) {
-		size_t size;
-		void *value;
+		size_t size = 0;
+		void *value = NULL;
 
 		if (get_attribute_ptr(temp, bp[n], &value, &size))
 			continue;
@@ -505,8 +504,8 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 	uint32_t const *optional = &pkcs11_any_object_optional[0];
 	size_t boolprops_count = ARRAY_SIZE(pkcs11_any_object_boolprops);
 	size_t optional_count = ARRAY_SIZE(pkcs11_any_object_optional);
-	uint32_t class;
-	uint32_t rv;
+	uint32_t class = 0;
+	uint32_t rv = 0;
 
 	init_attributes_head(out);
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
@@ -537,8 +536,8 @@ static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **out,
 	uint32_t const *optional = &pkcs11_any_key_optional[0];
 	size_t boolprops_count = ARRAY_SIZE(pkcs11_any_key_boolprops);
 	size_t optional_count = ARRAY_SIZE(pkcs11_any_key_optional);
-	uint32_t type;
-	uint32_t rv;
+	uint32_t type = 0;
+	uint32_t rv = 0;
 
 	rv = create_pkcs11_storage_attributes(out, temp);
 	if (rv)
@@ -567,7 +566,7 @@ static uint32_t create_pkcs11_symm_key_attributes(struct sks_attrs_head **out,
 	uint32_t const *optional = &pkcs11_symm_key_optional[0];
 	size_t boolprops_count = ARRAY_SIZE(pkcs11_symm_key_boolprops);
 	size_t optional_count = ARRAY_SIZE(pkcs11_symm_key_optional);
-	uint32_t rv;
+	uint32_t rv = 0;
 
 	assert(get_class(temp) == SKS_CKO_SECRET_KEY);
 
@@ -603,7 +602,7 @@ static uint32_t create_pkcs11_symm_key_attributes(struct sks_attrs_head **out,
 static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **out,
 					      struct sks_attrs_head *temp)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 
 	assert(get_class(temp) == SKS_CKO_DATA);
 
@@ -623,7 +622,7 @@ static uint32_t create_pkcs11_data_attributes(struct sks_attrs_head **out,
 static uint32_t create_pkcs11_pub_key_attributes(struct sks_attrs_head **out,
 						 struct sks_attrs_head *temp)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	uint32_t const *boolprops = &pkcs11_public_key_boolprops[0];
 	uint32_t const *mandated = &pkcs11_public_key_mandated[0];
 	uint32_t const *optional = &pkcs11_public_key_optional[0];
@@ -694,7 +693,7 @@ static uint32_t create_pkcs11_priv_key_attributes(struct sks_attrs_head **out,
 	size_t boolprops_count = ARRAY_SIZE(pkcs11_private_key_boolprops);
 	size_t mandated_count = ARRAY_SIZE(pkcs11_private_key_mandated);
 	size_t optional_count = ARRAY_SIZE(pkcs11_private_key_optional);
-	uint32_t rv;
+	uint32_t rv = 0;
 
 	assert(get_class(temp) == SKS_CKO_PRIVATE_KEY);
 
@@ -775,10 +774,10 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 {
 	struct sks_attrs_head *temp = NULL;
 	struct sks_attrs_head *attrs = NULL;
-	uint32_t rv;
-	uint8_t local;
-	uint8_t always_sensitive;
-	uint8_t never_extract;
+	uint32_t rv = 0;
+	uint8_t local = 0;
+	uint8_t always_sensitive = 0;
+	uint8_t never_extract = 0;
 
 #ifdef DEBUG	/* Sanity: check function argument */
 	trace_attributes_from_api_head("template", template, template_size);
@@ -962,7 +961,7 @@ uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 uint32_t check_created_attrs_against_token(struct pkcs11_session *session,
 					   struct sks_attrs_head *head)
 {
-	uint32_t rc;
+	uint32_t rc = 0;
 
 	rc = check_attrs_misc_integrity(head);
 	if (rc)
@@ -1006,7 +1005,7 @@ uint32_t check_created_attrs_against_parent_key(
 
 #define DMSG_BAD_BBOOL(attr, proc, head) \
 	do {	\
-		uint8_t bvalue __maybe_unused;			\
+		uint8_t __maybe_unused bvalue = 0;		\
 								\
 		DMSG("%s issue for %s: %sfound, value %d",	\
 			sks2str_attr(attr),			\
@@ -1028,7 +1027,7 @@ uint32_t check_created_attrs_against_parent_key(
 uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 						struct sks_attrs_head *head)
 {
-	uint8_t bbool;
+	uint8_t bbool = 0;
 
 	/*
 	 * Processings that do not create secrets are not expected to call
@@ -1155,10 +1154,10 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 	struct sks_attrs_head *secret = NULL;
 	struct sks_attrs_head *private = NULL;
 	struct sks_attrs_head *public = NULL;
-	uint32_t max_key_size;
-	uint32_t min_key_size;
+	uint32_t max_key_size = 0;
+	uint32_t min_key_size = 0;
 	uint32_t key_length = 0;
-	uint32_t rv;
+	uint32_t rv = 0;
 
 	switch (get_class(key1)) {
 	case SKS_CKO_SECRET_KEY:
@@ -1282,10 +1281,10 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 static bool parent_key_complies_allowed_processings(uint32_t proc_id,
 						    struct sks_attrs_head *head)
 {
-	char *attr;
-	size_t size;
-	uint32_t proc;
-	size_t count;
+	char *attr = NULL;
+	size_t size = 0;
+	uint32_t proc = 0;
+	size_t count = 0;
 
 	/* Check only if restricted allowed mechanisms list is defined */
 	if (get_attribute_ptr(head, SKS_CKA_ALLOWED_MECHANISMS,
@@ -1318,7 +1317,7 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 					       enum processing_func function,
 					       struct sks_attrs_head *head)
 {
-	uint32_t rc __maybe_unused;
+	uint32_t __maybe_unused rc = 0;
 	uint32_t key_class = get_class(head);
 	uint32_t key_type = get_type(head);
 
@@ -1503,11 +1502,11 @@ bool object_is_private(struct sks_attrs_head *head)
 uint32_t add_missing_attribute_id(struct sks_attrs_head **attrs1,
 				  struct sks_attrs_head **attrs2)
 {
-	uint32_t rv;
-	void *id1;
-	size_t id1_size;
-	void *id2;
-	size_t id2_size;
+	uint32_t rv = 0;
+	void *id1 = NULL;
+	size_t id1_size = 0;
+	void *id2 = NULL;
+	size_t id2_size = 0;
 
 	rv = get_attribute_ptr(*attrs1, SKS_CKA_ID, &id1, &id1_size);
 	if (rv) {
@@ -1556,9 +1555,9 @@ uint32_t add_missing_attribute_id(struct sks_attrs_head **attrs1,
 bool attribute_is_exportable(struct sks_attribute_head *req_attr,
 			     struct sks_object *obj)
 {
-	uint8_t boolval;
-	size_t boolsize;
-	uint32_t rv;
+	uint8_t boolval = 0;
+	size_t boolsize = 0;
+	uint32_t rv = 0;
 
 	switch (req_attr->id) {
 	case SKS_CKA_PRIVATE_EXPONENT:

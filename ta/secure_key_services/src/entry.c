@@ -54,7 +54,7 @@ void TA_CloseSessionEntryPoint(void *tee_session)
 
 static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
-	uint32_t *ver;
+	uint32_t *ver = NULL;
 
 	if (ctrl || in)
 		return SKS_BAD_PARAM;
@@ -98,8 +98,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 	TEE_Param *p2_in = NULL;
 	TEE_Param *p2_out = NULL;
 	uintptr_t teesess = (uintptr_t)tee_session;
-	TEE_Result res;
-	uint32_t rc;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t rc = 0;
 
 	/* param#0: input buffer with request serialazed arguments */
 	switch (TEE_PARAM_TYPE_GET(ptypes, 0)) {

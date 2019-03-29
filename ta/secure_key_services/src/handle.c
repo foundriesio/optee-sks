@@ -34,9 +34,9 @@ void handle_db_destroy(struct handle_db *db)
 
 uint32_t handle_get(struct handle_db *db, void *ptr)
 {
-	uint32_t n;
-	void *p;
-	uint32_t new_max_ptrs;
+	uint32_t n = 0;
+	void *p = NULL;
+	uint32_t new_max_ptrs = 0;
 
 	if (!db || !ptr)
 		return 0;
@@ -70,7 +70,7 @@ uint32_t handle_get(struct handle_db *db, void *ptr)
 
 void *handle_put(struct handle_db *db, uint32_t handle)
 {
-	void *p;
+	void *p = NULL;
 
 	if (!db || !handle || handle >= db->max_ptrs)
 		return NULL;
@@ -90,7 +90,7 @@ void *handle_lookup(struct handle_db *db, uint32_t handle)
 
 uint32_t handle_lookup_handle(struct handle_db *db, void *ptr)
 {
-	uint32_t n;
+	uint32_t n = 0;
 
 	if (ptr) {
 		for (n = 1; n < db->max_ptrs; n++) {

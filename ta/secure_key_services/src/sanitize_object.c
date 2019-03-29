@@ -54,16 +54,17 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 				     void *src)
 {
 	struct sks_object_head head;
-	char *cur;
-	char *end;
-	size_t len;
-	uint32_t class_found;
-	uint32_t type_found;
+	char *cur = NULL;
+	char *end = NULL;
+	size_t len = 0;
+	uint32_t class_found = 0;
+	uint32_t type_found = 0;
 	struct sks_attribute_head cli_ref;
 	uint32_t rc = SKS_OK;
-	size_t src_size;
+	size_t src_size = 0;
 
-	TEE_MemMove(&head, src, sizeof(struct sks_object_head));
+	TEE_MemMove(&head, src, sizeof(head));
+	TEE_MemFill(&cli_ref, 0, sizeof(cli_ref));
 
 	src_size = sizeof(struct sks_object_head) + head.attrs_size;
 
@@ -101,7 +102,7 @@ static uint32_t sanitize_class_and_type(struct sks_attrs_head **dst,
 
 		/* The attribute is a type-in-class */
 		if (sks_attr_is_type(cli_ref.id)) {
-			uint32_t type;
+			uint32_t type = 0;
 
 			if (cli_ref.size != sks_attr_is_type(cli_ref.id)) {
 				rc = SKS_CKR_TEMPLATE_INCONSISTENT;
@@ -152,11 +153,11 @@ static uint32_t sanitize_boolprop(struct sks_attrs_head **dst,
 				char *cur, uint32_t *boolprop_base,
 				uint32_t *sanity)
 {
-	int shift;
-	uint32_t mask;
-	uint32_t value;
-	uint32_t *boolprop_ptr;
-	uint32_t *sanity_ptr;
+	int shift = 0;
+	uint32_t mask = 0;
+	uint32_t value = 0;
+	uint32_t *boolprop_ptr = NULL;
+	uint32_t *sanity_ptr = NULL;
 
 	/* Get the booloean property shift position and value */
 	shift = sks_attr2boolprop_shift(cli_ref->id);
@@ -187,7 +188,7 @@ static uint32_t sanitize_boolprop(struct sks_attrs_head **dst,
 
 	/* Store the attribute inside the serialized data */
 	if (!(*sanity_ptr & mask)) {
-		uint32_t rc;
+		uint32_t rc = 0;
 		uint8_t sks_bool = !!value;
 
 		rc = add_attribute(dst, SKS_BOOLPROPS_BASE + shift,
@@ -204,15 +205,16 @@ static uint32_t sanitize_boolprop(struct sks_attrs_head **dst,
 static uint32_t sanitize_boolprops(struct sks_attrs_head **dst, void *src)
 {
 	struct sks_object_head head;
-	char *cur;
-	char *end;
-	size_t len;
+	char *cur = NULL;
+	char *end = NULL;
+	size_t len = 0;
 	struct sks_attribute_head cli_ref;
 	uint32_t sanity[SKS_MAX_BOOLPROP_ARRAY] = { 0 };
 	uint32_t boolprops[SKS_MAX_BOOLPROP_ARRAY] = { 0 };
-	uint32_t rc;
+	uint32_t rc = 0;
 
-	TEE_MemMove(&head, src, sizeof(struct sks_object_head));
+	TEE_MemMove(&head, src, sizeof(head));
+	TEE_MemFill(&cli_ref, 0, sizeof(cli_ref));
 
 	cur = (char *)src + sizeof(struct sks_object_head);
 	end = cur + head.attrs_size;
@@ -235,8 +237,8 @@ static uint32_t sanitize_indirect_attr(struct sks_attrs_head **dst,
 					struct sks_attribute_head *cli_ref,
 					char *cur)
 {
-	struct sks_attrs_head *obj2;
-	uint32_t rc;
+	struct sks_attrs_head *obj2 = NULL;
+	uint32_t rc = 0;
 	uint32_t class = get_class(*dst);
 
 	if (class == SKS_UNDEFINED_ID)
@@ -274,10 +276,12 @@ uint32_t sanitize_client_object(struct sks_attrs_head **dst,
 				void *src, size_t size)
 {
 	struct sks_object_head head;
-	uint32_t rc;
-	char *cur;
-	char *end;
-	size_t next;
+	uint32_t rc = 0;
+	char *cur = NULL;
+	char *end = NULL;
+	size_t next = 0;
+
+	TEE_MemFill(&head, 0, sizeof(head));
 
 	if (size < sizeof(struct sks_object_head))
 		return SKS_BAD_PARAM;
@@ -347,10 +351,10 @@ bail:
 static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 {
 	size_t next = 0;
-	char *prefix2;
+	char *prefix2 = NULL;
 	size_t prefix_len = strlen(prefix);
 	char *cur = src;
-	uint32_t rc;
+	uint32_t rc = 0;
 
 	/* append 4 spaces to the prefix plus terminal '\0' */
 	prefix2 = TEE_Malloc(prefix_len + 1 + 4, TEE_MALLOC_FILL_ZERO);
@@ -364,7 +368,7 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 	for (; cur < (char *)end; cur += next) {
 		struct sks_ref sks_ref;
 		uint8_t data[4] = { 0 };
-		uint32_t data_u32;
+		uint32_t data_u32 = 0;
 
 		TEE_MemMove(&sks_ref, cur, sizeof(sks_ref));
 		TEE_MemMove(&data[0], cur + sizeof(sks_ref),
@@ -431,9 +435,9 @@ uint32_t trace_attributes_from_api_head(const char *prefix,
 					void *ref, size_t size)
 {
 	struct sks_object_head head;
-	char *pre;
-	size_t offset;
-	uint32_t rc;
+	char *pre = NULL;
+	size_t offset = 0;
+	uint32_t rc = 0;
 
 	TEE_MemMove(&head, ref, sizeof(head));
 

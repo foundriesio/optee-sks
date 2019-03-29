@@ -60,7 +60,7 @@ struct pkcs11_client *tee_session2client(uintptr_t tee_session)
 
 uintptr_t register_client(void)
 {
-	struct pkcs11_client *client;
+	struct pkcs11_client *client = NULL;
 
 	client = TEE_Malloc(sizeof(*client), TEE_MALLOC_FILL_ZERO);
 	if (!client)
@@ -76,8 +76,8 @@ uintptr_t register_client(void)
 void unregister_client(uintptr_t tee_session)
 {
 	struct pkcs11_client *client = tee_session2client(tee_session);
-	struct pkcs11_session *session;
-	struct pkcs11_session *next;
+	struct pkcs11_session *session = NULL;
+	struct pkcs11_session *next = NULL;
 
 	if (!client) {
 		EMSG("Unexpected invalid TEE session handle");
@@ -115,7 +115,7 @@ static int pkcs11_token_init(unsigned int id)
 
 int pkcs11_init(void)
 {
-	unsigned int id;
+	unsigned int id = 0;
 
 	for (id = 0; id < TOKEN_COUNT; id++)
 		if (pkcs11_token_init(id))
@@ -128,7 +128,7 @@ int pkcs11_init(void)
 
 void pkcs11_deinit(void)
 {
-	unsigned int id;
+	unsigned int id = 0;
 
 	for (id = 0; id < TOKEN_COUNT; id++)
 		close_persistent_db(get_token(id));
@@ -179,7 +179,9 @@ int set_processing_state(struct pkcs11_session *session,
 			 struct sks_object *obj1, struct sks_object *obj2)
 {
 	enum pkcs11_proc_state state;
-	struct active_processing *proc;
+	struct active_processing *proc = NULL;
+
+	TEE_MemFill(&state, 0, sizeof(state));
 
 	if (session->processing)
 		return SKS_CKR_OPERATION_ACTIVE;
@@ -232,7 +234,7 @@ static void cipher_pin(TEE_ObjectHandle key_handle, uint8_t *buf, size_t len)
 	uint8_t iv[16] = { 0 };
 	uint32_t size = len;
 	TEE_OperationHandle tee_op_handle = TEE_HANDLE_NULL;
-	TEE_Result res;
+	TEE_Result res = TEE_ERROR_GENERIC;
 
 	res = TEE_AllocateOperation(&tee_op_handle,
 				    TEE_ALG_AES_CBC_NOPAD,
@@ -257,16 +259,18 @@ static void cipher_pin(TEE_ObjectHandle key_handle, uint8_t *buf, size_t len)
 uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	uint32_t pin_size;
-	void *pin;
-	char label[SKS_TOKEN_LABEL_SIZE + 1];
+	uint32_t token_id = 0;
+	uint32_t pin_size = 0;
+	void *pin = NULL;
+	char label[SKS_TOKEN_LABEL_SIZE + 1] = { 0 };
 	struct ck_token *token;
 	uint8_t *cpin = NULL;
-	int pin_rc;
+	int pin_rc = 0;
 	struct pkcs11_client *client;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -388,8 +392,8 @@ inited:
 uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
 	const size_t out_size = sizeof(uint32_t) * TOKEN_COUNT;
-	uint32_t *id;
-	unsigned int n;
+	uint32_t *id = NULL;
+	unsigned int n = 0;
 
 	if (ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -413,15 +417,18 @@ uint32_t entry_ck_slot_list(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	struct ck_token *token;
+	uint32_t token_id = 0;
+	struct ck_token *token = NULL;
 	const char desc[] = SKS_CRYPTOKI_SLOT_DESCRIPTION;
 	const char manuf[] = SKS_CRYPTOKI_SLOT_MANUFACTURER;
 	const char hwver[2] = SKS_CRYPTOKI_SLOT_HW_VERSION;
 	const char fwver[2] = SKS_CRYPTOKI_SLOT_FW_VERSION;
 	struct sks_slot_info info;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
+	TEE_MemFill(&info, 0, sizeof(info));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -464,16 +471,19 @@ uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	struct ck_token *token;
+	uint32_t token_id = 0;
+	struct ck_token *token = NULL;
 	const char manuf[] = SKS_CRYPTOKI_TOKEN_MANUFACTURER;
 	const char sernu[] = SKS_CRYPTOKI_TOKEN_SERIAL_NUMBER;
 	const char model[] = SKS_CRYPTOKI_TOKEN_MODEL;
 	const char hwver[] = SKS_CRYPTOKI_TOKEN_HW_VERSION;
 	const char fwver[] = SKS_CRYPTOKI_TOKEN_FW_VERSION;
 	struct sks_token_info info;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
+	TEE_MemFill(&info, 0, sizeof(info));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -534,12 +544,14 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	struct ck_token *token;
+	uint32_t token_id = 0;
+	struct ck_token *token = NULL;
 	uint32_t mechanisms_count = (uint32_t)get_supported_mechanisms(NULL, 0);
-	size_t __maybe_unused count;
+	size_t __maybe_unused count = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -776,12 +788,14 @@ static void supported_mechanism_key_size(uint32_t proc_id,
 uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	uint32_t type;
-	struct ck_token *token;
-	struct sks_mechanism_info *info;
+	uint32_t token_id = 0;
+	uint32_t type = 0;
+	struct ck_token *token = NULL;
+	struct sks_mechanism_info *info = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -829,7 +843,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 static void set_session_state(struct pkcs11_client *client,
 			      struct pkcs11_session *session, bool readonly)
 {
-	struct pkcs11_session *sess;
+	struct pkcs11_session *sess = NULL;
 	enum pkcs11_session_state state = PKCS11_SESSION_RESET;
 
 	/*
@@ -882,7 +896,7 @@ static void set_session_state(struct pkcs11_client *client,
 static void session_login_user(struct pkcs11_session *session)
 {
 	struct pkcs11_client *client = tee_session2client(session->tee_session);
-	struct pkcs11_session *sess;
+	struct pkcs11_session *sess = NULL;
 
 	TAILQ_FOREACH(sess, &client->session_list, link) {
 		if (sess->token != session->token)
@@ -898,7 +912,7 @@ static void session_login_user(struct pkcs11_session *session)
 static void session_login_so(struct pkcs11_session *session)
 {
 	struct pkcs11_client *client = tee_session2client(session->tee_session);
-	struct pkcs11_session *sess;
+	struct pkcs11_session *sess = NULL;
 
 	TAILQ_FOREACH(sess, &client->session_list, link) {
 		if (sess->token != session->token)
@@ -914,8 +928,8 @@ static void session_login_so(struct pkcs11_session *session)
 static void session_logout(struct pkcs11_session *session)
 {
 	struct pkcs11_client *client = tee_session2client(session->tee_session);
-	struct pkcs11_session *sess;
-	struct sks_object *obj;
+	struct pkcs11_session *sess = NULL;
+	struct sks_object *obj = NULL;
 
 	TAILQ_FOREACH(sess, &client->session_list, link) {
 		if (sess->token != session->token)
@@ -941,12 +955,14 @@ static void session_logout(struct pkcs11_session *session)
 static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out, bool readonly)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	struct ck_token *token;
-	struct pkcs11_session *session;
-	struct pkcs11_client *client;
+	uint32_t token_id = 0;
+	struct ck_token *token = NULL;
+	struct pkcs11_session *session = NULL;
+	struct pkcs11_client *client = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -1065,10 +1081,12 @@ static void close_ck_session(struct pkcs11_session *session)
 uint32_t entry_ck_token_close_session(uintptr_t tee_session, TEE_Param *ctrl,
 				      TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out || ctrl->memref.size < sizeof(uint32_t))
 		return SKS_BAD_PARAM;
@@ -1091,13 +1109,15 @@ uint32_t entry_ck_token_close_session(uintptr_t tee_session, TEE_Param *ctrl,
 uint32_t entry_ck_token_close_all(uintptr_t tee_session, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t token_id;
-	struct ck_token *token;
-	struct pkcs11_session *session;
-	struct pkcs11_session *next;
+	uint32_t token_id = 0;
+	struct ck_token *token = NULL;
+	struct pkcs11_session *session = NULL;
+	struct pkcs11_session *next = NULL;
 	struct pkcs11_client *client = tee_session2client(tee_session);
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -1126,12 +1146,14 @@ static uint32_t set_pin(struct pkcs11_session *session,
 			uint8_t *new_pin, size_t new_pin_size,
 			uint32_t user_type)
 {
-	uint8_t *cpin;
-	uint32_t *pin_count;
-	uint32_t *pin_size;
-	uint8_t *pin;
+	uint8_t *cpin = NULL;
+	uint32_t *pin_count = NULL;
+	uint32_t *pin_size = NULL;
+	uint8_t *pin = NULL;
 	TEE_ObjectHandle pin_key_hdl;
-	uint32_t flag_mask;
+	uint32_t flag_mask = 0;
+
+	TEE_MemFill(&pin_key_hdl, 0, sizeof(pin_key_hdl));
 
 	if (session->token->db_main->flags & SKS_CKFT_WRITE_PROTECTED)
 		return SKS_CKR_TOKEN_WRITE_PROTECTED;
@@ -1197,12 +1219,14 @@ static uint32_t set_pin(struct pkcs11_session *session,
 uint32_t entry_init_pin(uintptr_t tee_session, TEE_Param *ctrl,
 			TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
-	uint32_t pin_size;
-	void *pin;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+	uint32_t pin_size = 0;
+	void *pin = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -1239,8 +1263,8 @@ static uint32_t check_so_pin(struct pkcs11_session *session,
 			     uint8_t *pin, size_t pin_size)
 {
 	struct ck_token *token = session->token;
-	uint8_t *cpin;
-	int pin_rc;
+	uint8_t *cpin = NULL;
+	int pin_rc = 0;
 
 	/* Note: intentional return code USER_PIN_NOT_INITIALIZED */
 	if (!token->db_main->so_pin_size ||
@@ -1319,8 +1343,8 @@ static uint32_t check_user_pin(struct pkcs11_session *session,
 				uint8_t *pin, size_t pin_size)
 {
 	struct ck_token *token = session->token;
-	uint8_t *cpin;
-	int pin_rc;
+	uint8_t *cpin = NULL;
+	int pin_rc = 0;
 
 	if (!token->db_main->user_pin_size ||
 	    !(token->db_main->flags & SKS_CKFT_USER_PIN_INITIALIZED))
@@ -1398,14 +1422,16 @@ static uint32_t check_user_pin(struct pkcs11_session *session,
 uint32_t entry_set_pin(uintptr_t tee_session, TEE_Param *ctrl,
 			TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
-	uint32_t old_pin_size;
-	uint32_t pin_size;
-	void *old_pin;
-	void *pin;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+	uint32_t old_pin_size = 0;
+	uint32_t pin_size = 0;
+	void *old_pin = NULL;
+	void *pin = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -1467,15 +1493,17 @@ uint32_t entry_set_pin(uintptr_t tee_session, TEE_Param *ctrl,
 uint32_t entry_login(uintptr_t tee_session, TEE_Param *ctrl,
 		     TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
-	struct pkcs11_session *sess;
-	struct pkcs11_client *client;
-	uint32_t user_type;
-	uint32_t pin_size;
-	void *pin;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+	struct pkcs11_session *sess = NULL;
+	struct pkcs11_client *client = NULL;
+	uint32_t user_type = 0;
+	uint32_t pin_size = 0;
+	void *pin = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -1584,10 +1612,12 @@ uint32_t entry_login(uintptr_t tee_session, TEE_Param *ctrl,
 uint32_t entry_logout(uintptr_t tee_session, TEE_Param *ctrl,
 		      TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;

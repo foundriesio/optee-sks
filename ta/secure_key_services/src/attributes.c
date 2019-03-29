@@ -54,10 +54,10 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 			uint32_t attribute, void *data, size_t size)
 {
 	size_t buf_len = sizeof(struct sks_attrs_head) + (*head)->attrs_size;
-	uint32_t rv;
-	uint32_t data32;
+	uint32_t rv = 0;
+	uint32_t data32 = 0;
 	char **bstart = (void *)head;
-	int shift __maybe_unused;
+	int __maybe_unused shift = 0;
 
 #ifdef SKS_SHEAD_WITH_TYPE
 	if (attribute == SKS_CKA_CLASS || sks_attr_is_type(attribute)) {
@@ -116,9 +116,9 @@ uint32_t add_attribute(struct sks_attrs_head **head,
 uint32_t remove_attribute(struct sks_attrs_head **head, uint32_t attribute)
 {
 	struct sks_attrs_head *h = *head;
-	char *cur;
-	char *end;
-	size_t next_off;
+	char *cur = NULL;
+	char *end = NULL;
+	size_t next_off = 0;
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	/* Can't remove an attribute that is defined in the head */
@@ -157,9 +157,9 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
 				size_t max_check)
 {
 	struct sks_attrs_head *h = *head;
-	char *cur;
-	char *end;
-	size_t next_off;
+	char *cur = NULL;
+	char *end = NULL;
+	size_t next_off = 0;
 	size_t found = 0;
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
@@ -216,7 +216,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 {
 	char *cur = (char *)head + sizeof(struct sks_attrs_head);
 	char *end = cur + head->attrs_size;
-	size_t next_off;
+	size_t next_off = 0;
 	size_t max_found = *count;
 	size_t found = 0;
 	void **attr_ptr = attr;
@@ -307,11 +307,11 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 			void *attr, size_t *attr_size)
 {
-	uint32_t rc;
-	void *attr_ptr;
-	size_t size;
-	uint8_t bbool __maybe_unused;
-	int shift __maybe_unused;
+	uint32_t rc = 0;
+	void *attr_ptr = NULL;
+	size_t size = 0;
+	uint8_t __maybe_unused bbool = 0;
+	int __maybe_unused shift = 0;
 
 #ifdef SKS_SHEAD_WITH_TYPE
 	if (attribute == SKS_CKA_CLASS) {
@@ -330,7 +330,7 @@ uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	shift = sks_attr2boolprop_shift(attribute);
 	if (head_contains_boolprops(head) && shift >= 0) {
-		uint32_t *boolprop;
+		uint32_t *boolprop = NULL;
 
 		boolprop = (shift < 32) ? &head->boolpropl : &head->boolproph;
 		bbool = (*boolprop & (1 << (shift % 32))) ? SKS_TRUE : SKS_FALSE;
@@ -364,10 +364,10 @@ found:
 
 bool get_bool(struct sks_attrs_head *head, uint32_t attribute)
 {
-	uint32_t rc __maybe_unused;
-	uint8_t bbool;
+	uint32_t __maybe_unused rc = 0;
+	uint8_t bbool = 0;
 	size_t size = sizeof(bbool);
-	int __maybe_unused shift;
+	int __maybe_unused shift = 0;
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	shift = sks_attr2boolprop_shift(attribute);
@@ -396,7 +396,7 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 {
 	size_t count = ref->attrs_count;
 	unsigned char *ref_attr = ref->attrs;
-	uint32_t rc;
+	uint32_t rc = 0;
 
 	if (!ref->attrs_count) {
 		DMSG("Empty reference: no match");
@@ -413,9 +413,9 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 
 	for (count = 0; count < ref->attrs_count; count++) {
 		struct sks_ref sks_ref;
-		void *found;
-		size_t size;
-		int shift;
+		void *found = NULL;
+		size_t size = 0;
+		int shift = 0;
 
 		TEE_MemMove(&sks_ref, ref_attr, sizeof(sks_ref));
 
@@ -458,7 +458,7 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 {
 	size_t next_off = 0;
-	char *prefix2;
+	char *prefix2 = NULL;
 	size_t prefix_len = strlen(prefix);
 	char *cur = src;
 
@@ -473,7 +473,7 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 
 	for (; cur < (char *)end; cur += next_off) {
 		struct sks_ref sks_ref;
-		uint8_t data[4];
+		uint8_t data[4] = { 0 };
 
 		TEE_MemMove(&sks_ref, cur, sizeof(sks_ref));
 		TEE_MemMove(&data[0], cur + sizeof(sks_ref),
@@ -551,7 +551,7 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 static void trace_boolprops(const char *prefix, struct sks_attrs_head *head)
 {
-	size_t n __maybe_unused;
+	size_t __maybe_unused n = 0;
 
 	for (n = 0; n <= SKS_BOOLPROPS_LAST; n++) {
 		bool bp = n < 32 ? !!(head->boolpropl & BIT(n)) :
@@ -566,9 +566,9 @@ static void trace_boolprops(const char *prefix, struct sks_attrs_head *head)
 uint32_t trace_attributes(const char *prefix, void *ref)
 {
 	struct sks_attrs_head head;
-	char *pre;
-	uint32_t rc;
-	size_t n __maybe_unused;
+	char *pre = NULL;
+	uint32_t rc = 0;
+	size_t __maybe_unused n = 0;
 
 	TEE_MemMove(&head, ref, sizeof(head));
 

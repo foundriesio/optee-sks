@@ -889,7 +889,7 @@ static const struct supported_ecc_curve ec_curve_param[] = {
 
 static const struct supported_ecc_curve *get_curve(void *attr, size_t size)
 {
-	size_t idx;
+	size_t idx = 0;
 
 	/* Weak: not a real DER parser: try by params then by named curve */
 	for (idx = 0; idx < ARRAY_SIZE(ec_curve_param); idx++) {
@@ -1020,8 +1020,10 @@ uint32_t sks2tee_algo_ecdh(uint32_t *tee_id,
 			   struct sks_object *obj)
 {
 	struct serialargs args;
-	uint32_t rv;
-	uint32_t kdf;
+	uint32_t rv = 0;
+	uint32_t kdf = 0;
+
+	TEE_MemFill(&args, 0, sizeof(args));
 
 	serialargs_init(&args, proc_params->data, proc_params->size);
 
@@ -1062,8 +1064,10 @@ uint32_t sks2tee_ecdh_param_pub(struct sks_attribute_head *proc_params,
 			        void **pub_data, size_t *pub_size)
 {
 	struct serialargs args;
-	uint32_t rv;
-	uint32_t temp;
+	uint32_t rv = 0;
+	uint32_t temp = 0;
+
+	TEE_MemFill(&args, 0, sizeof(args));
 
 	serialargs_init(&args, proc_params->data, proc_params->size);
 
@@ -1131,7 +1135,7 @@ static uint32_t tee2sks_ec_attributes(struct sks_attrs_head **pub_head,
 				 struct sks_attrs_head **priv_head,
 				 TEE_ObjectHandle tee_obj)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 
 	rv = tee2sks_add_attribute(priv_head, SKS_CKA_VALUE,
 				   tee_obj, TEE_ATTR_ECC_PRIVATE_VALUE);
@@ -1166,14 +1170,16 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 			  struct sks_attrs_head **pub_head,
 			  struct sks_attrs_head **priv_head)
 {
-	uint32_t rv;
-	void *a_ptr;
-	size_t a_size;
-	uint32_t tee_size;
-	uint32_t tee_curve;
+	uint32_t rv = 0;
+	void *a_ptr = NULL;
+	size_t a_size = 0;
+	uint32_t tee_size = 0;
+	uint32_t tee_curve = 0;
 	TEE_ObjectHandle tee_obj = TEE_HANDLE_NULL;
 	TEE_Attribute tee_key_attr[1];
-	TEE_Result res;
+	TEE_Result res = TEE_ERROR_GENERIC;
+
+	TEE_MemFill(tee_key_attr, 0, sizeof(tee_key_attr));
 
 	if (!proc_params || !*pub_head || !*priv_head)
 		return SKS_CKR_TEMPLATE_INCONSISTENT;

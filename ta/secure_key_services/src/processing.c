@@ -24,7 +24,7 @@ static uint32_t get_ready_session(struct pkcs11_session **sess,
 				  uint32_t session_handle,
 				  uintptr_t tee_session)
 {
-	struct pkcs11_session *session;
+	struct pkcs11_session *session = NULL;
 
 	session = sks_handle2session(session_handle, tee_session);
 	if (!session)
@@ -74,7 +74,7 @@ static uint32_t get_active_session(struct pkcs11_session **sess,
 				  uintptr_t tee_session,
 				  enum processing_func function)
 {
-	struct pkcs11_session *session;
+	struct pkcs11_session *session = NULL;
 	uint32_t rv = SKS_CKR_OPERATION_NOT_INITIALIZED;
 
 	session = sks_handle2session(session_handle, tee_session);
@@ -128,14 +128,16 @@ void release_active_processing(struct pkcs11_session *session)
 uint32_t entry_import_object(uintptr_t tee_session,
 			     TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
 	struct sks_attrs_head *head = NULL;
 	struct sks_object_head *template = NULL;
-	size_t template_size;
-	uint32_t obj_handle;
+	size_t template_size = 0;
+	uint32_t obj_handle = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	/*
 	 * Collect the arguments of the request
@@ -228,8 +230,8 @@ bail:
 
 size_t get_object_key_bit_size(struct sks_object *obj)
 {
-	void *a_ptr;
-	size_t a_size;
+	void *a_ptr = NULL;
+	size_t a_size = 0;
 	struct sks_attrs_head *attrs = obj->attributes;
 
 	switch (get_type(attrs)) {
@@ -267,7 +269,7 @@ size_t get_object_key_bit_size(struct sks_object *obj)
 
 static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	void *data;
 	size_t data_size;
 	uint32_t value_len;
@@ -303,15 +305,17 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 uint32_t entry_generate_secret(uintptr_t tee_session,
 			       TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
 	struct sks_attribute_head *proc_params = NULL;
 	struct sks_attrs_head *head = NULL;
 	struct sks_object_head *template = NULL;
-	size_t template_size;
-	uint32_t obj_handle;
+	size_t template_size = 0;
+	uint32_t obj_handle = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -428,8 +432,8 @@ uint32_t alloc_get_tee_attribute_data(TEE_ObjectHandle tee_obj,
 					     uint32_t attribute,
 					     void **data, size_t *size)
 {
-	TEE_Result res;
-	void *ptr;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	void *ptr = NULL;
 	size_t sz = 0;
 
 	res = TEE_GetObjectBufferAttribute(tee_obj, attribute, NULL, &sz);
@@ -454,7 +458,7 @@ uint32_t alloc_get_tee_attribute_data(TEE_ObjectHandle tee_obj,
 uint32_t tee2sks_add_attribute(struct sks_attrs_head **head, uint32_t sks_id,
 				TEE_ObjectHandle tee_obj, uint32_t tee_id)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	void *a_ptr = NULL;
 	size_t a_size = 0;
 
@@ -476,18 +480,20 @@ bail:
 uint32_t entry_generate_key_pair(uintptr_t teesess,
 				 TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
 	struct sks_attribute_head *proc_params = NULL;
 	struct sks_attrs_head *pub_head = NULL;
 	struct sks_attrs_head *priv_head = NULL;
 	struct sks_object_head *template = NULL;
-	size_t template_size;
-	uint32_t pubkey_handle;
-	uint32_t privkey_handle;
-	uint32_t *hdl_ptr;
+	size_t template_size = 0;
+	uint32_t pubkey_handle = 0;
+	uint32_t privkey_handle = 0;
+	uint32_t *hdl_ptr = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -646,13 +652,15 @@ uint32_t entry_processing_init(uintptr_t tee_session, TEE_Param *ctrl,
 				TEE_Param *in, TEE_Param *out,
 				enum processing_func function)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
+	uint32_t session_handle = 0;
 	struct pkcs11_session *session = NULL;
 	struct sks_attribute_head *proc_params = NULL;
-	uint32_t key_handle;
-	struct sks_object *obj;
+	uint32_t key_handle = 0;
+	struct sks_object *obj = NULL;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || out)
 		return SKS_BAD_PARAM;
@@ -737,11 +745,13 @@ uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
 				enum processing_func function,
 				enum processing_step step)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
-	uint32_t mecha_type;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+	uint32_t mecha_type = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl)
 		return SKS_BAD_PARAM;
@@ -812,14 +822,15 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 				  enum processing_step step)
 
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
-	uint32_t mecha_type;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+	uint32_t mecha_type = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	assert(function == SKS_FUNCTION_VERIFY);
-
 	if (!ctrl)
 		return SKS_BAD_PARAM;
 
@@ -863,18 +874,20 @@ bail:
 uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
 			  TEE_Param *in, TEE_Param *out)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct serialargs ctrlargs;
-	uint32_t session_handle;
-	struct pkcs11_session *session;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
 	struct sks_attribute_head *proc_params = NULL;
-	uint32_t parent_handle;
+	uint32_t parent_handle = 0;
 	struct sks_object *parent_obj;
 	struct sks_attrs_head *head = NULL;
 	struct sks_object_head *template = NULL;
-	size_t template_size;
-	uint32_t out_handle;
+	size_t template_size = 0;
+	uint32_t out_handle = 0;
 	uint32_t __maybe_unused mecha_id = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;

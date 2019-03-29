@@ -497,7 +497,7 @@ uint32_t tee2sks_error(TEE_Result res)
 
 bool valid_sks_attribute_id(uint32_t id, uint32_t size)
 {
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < ARRAY_SIZE(attr_ids); n++) {
 		if (id != attr_ids[n].id)
@@ -540,7 +540,7 @@ bool key_type_is_asymm_key(uint32_t id)
 
 bool mechanism_is_valid(uint32_t id)
 {
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < ARRAY_SIZE(processing_ids); n++)
 		if (id == processing_ids[n].id)
@@ -551,7 +551,7 @@ bool mechanism_is_valid(uint32_t id)
 
 bool mechanism_is_supported(uint32_t id)
 {
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < ARRAY_SIZE(processing_ids); n++) {
 		if (processing_ids[n].id == id)
@@ -563,8 +563,8 @@ bool mechanism_is_supported(uint32_t id)
 
 size_t get_supported_mechanisms(uint32_t *array, size_t array_count)
 {
-	size_t n;
-	size_t m;
+	size_t n = 0;
+	size_t m = 0;
 	size_t count = 0;
 
 	for (n = 0; n < ARRAY_SIZE(processing_ids); n++) {
@@ -596,9 +596,9 @@ size_t get_supported_mechanisms(uint32_t *array, size_t array_count)
 bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			struct sks_object *obj, uint32_t sks_id)
 {
-	void *a_ptr;
-	size_t a_size;
-	uint32_t data32;
+	void *a_ptr = NULL;
+	size_t a_size = 0;
+	uint32_t data32 = 0;
 
 	switch (tee_id) {
 	case TEE_ATTR_ECC_PUBLIC_VALUE_X:
@@ -659,7 +659,7 @@ void sks2tee_mode(uint32_t *tee_id, uint32_t function)
  */
 const char *sks2str_attr(uint32_t id)
 {
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < ARRAY_SIZE(attr_ids); n++) {
 		if (id != attr_ids[n].id)
@@ -674,7 +674,7 @@ const char *sks2str_attr(uint32_t id)
 
 static const char *sks2str_mechanism_type(uint32_t id)
 {
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < ARRAY_SIZE(processing_ids); n++) {
 		if (id != processing_ids[n].id)
@@ -690,7 +690,7 @@ static const char *sks2str_mechanism_type(uint32_t id)
 static const char *id2str(uint32_t id, const struct string_id *table,
 			  size_t count, const char *prefix)
 {
-	size_t n;
+	size_t n = 0;
 	const char *str = NULL;
 
 	for (n = 0; n < count; n++) {
@@ -782,7 +782,7 @@ const char *sks2str_attr_value(uint32_t id, size_t size, void *value)
 	static const char str_true[] = "TRUE";
 	static const char str_false[] = "FALSE";
 	static const char str_unkwon[] = "*";
-	uint32_t type;
+	uint32_t type = 0;
 
 	if (sks_attr2boolprop_shift(id) >= 0)
 		return !!*(uint8_t *)value ? str_true : str_false;

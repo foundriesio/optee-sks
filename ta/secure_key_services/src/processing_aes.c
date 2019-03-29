@@ -18,10 +18,12 @@ uint32_t tee_init_ctr_operation(struct active_processing *processing,
 				    void *proc_params, size_t params_size)
 {
 	struct serialargs args;
-	uint32_t rv;
+	uint32_t rv = 0;
 	/* CTR parameters */
-	uint32_t incr_counter;
-	void *counter_bits;
+	uint32_t incr_counter = 0;
+	void *counter_bits = NULL;
+
+	TEE_MemFill(&args, 0, sizeof(args));
 
 	if (!proc_params)
 		return SKS_BAD_PARAM;
@@ -53,7 +55,6 @@ bail:
 
 void tee_release_ctr_operation(struct active_processing *processing __unused)
 {
-	return;
 }
 
 /*
@@ -101,7 +102,7 @@ struct ae_aes_context {
 
 static void release_ae_aes_context(struct ae_aes_context *ctx)
 {
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < ctx->out_count; n++) {
 		TEE_Free(ctx->out_data[n].data);
@@ -119,13 +120,13 @@ uint32_t tee_ae_decrypt_update(struct active_processing *processing,
 			       void *in, size_t in_size)
 {
 	struct ae_aes_context *ctx = processing->extra_ctx;
-	size_t data_len;
-	uint32_t size;
-	TEE_Result res;
-	uint32_t rv;
+	size_t data_len = 0;
+	uint32_t size = 0;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t rv = 0;
 	char *ct = NULL;
 	uint32_t ct_size = 0;
-	void *ptr;
+	void *ptr = NULL;
 
 	if (!in_size)
 		return SKS_OK;
@@ -276,8 +277,8 @@ bail:
 static uint32_t reveale_ae_data(struct ae_aes_context *ctx,
 				void *out, uint32_t *out_size)
 {
-	size_t n;
-	uint32_t req_size;
+	size_t n = 0;
+	uint32_t req_size = 0;
 	char *out_ptr = out;
 
 	for (req_size = 0, n = 0; n < ctx->out_count; n++)
@@ -312,9 +313,9 @@ uint32_t tee_ae_decrypt_final(struct active_processing *processing,
 			      void *out, uint32_t *out_size)
 {
 	struct ae_aes_context *ctx = processing->extra_ctx;
-	uint32_t rv;
-	TEE_Result res;
-	uint32_t data_size;
+	uint32_t rv = 0;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t data_size = 0;
 	void *data_ptr = NULL;
 
 	if (!out_size) {
@@ -365,7 +366,7 @@ uint32_t tee_ae_decrypt_final(struct active_processing *processing,
 		goto bail;
 
 	if (data_ptr) {
-		void *tmp_ptr;
+		void *tmp_ptr = NULL;
 
 		tmp_ptr = TEE_Realloc(ctx->out_data,
 					(ctx->out_count + 1) *
@@ -394,8 +395,8 @@ uint32_t tee_ae_encrypt_final(struct active_processing *processing,
 			      void *out, uint32_t *out_size)
 {
 	struct ae_aes_context *ctx = processing->extra_ctx;
-	TEE_Result res;
-	uint8_t *tag;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint8_t *tag = NULL;
 	uint32_t tag_len = 0;
 	uint32_t size = 0;
 
@@ -439,16 +440,18 @@ uint32_t tee_ae_encrypt_final(struct active_processing *processing,
 uint32_t tee_init_ccm_operation(struct active_processing *processing,
 				void *proc_params, size_t params_size)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 	struct ae_aes_context *params = NULL;
 	struct serialargs args;
 	/* CCM parameters */
-	uint32_t data_len;
-	uint32_t nonce_len;
+	uint32_t data_len = 0;
+	uint32_t nonce_len = 0;
 	void *nonce = NULL;
-	uint32_t aad_len;
+	uint32_t aad_len = 0;
 	void *aad = NULL;
-	uint32_t mac_len;
+	uint32_t mac_len = 0;
+
+	TEE_MemFill(&args, 0, sizeof(args));
 
 	if (!proc_params)
 		return SKS_BAD_PARAM;
@@ -551,15 +554,17 @@ uint32_t tee_init_gcm_operation(struct active_processing *processing,
 				    void *proc_params, size_t params_size)
 {
 	struct serialargs args;
-	uint32_t rv;
-	uint32_t tag_len;
+	uint32_t rv = 0;
+	uint32_t tag_len = 0;
 	struct ae_aes_context *params = NULL;
 	/* GCM parameters */
-	uint32_t iv_len;
+	uint32_t iv_len = 0;
 	void *iv = NULL;
-	uint32_t aad_len;
+	uint32_t aad_len = 0;
 	void *aad = NULL;
-	uint32_t tag_bitlen;
+	uint32_t tag_bitlen = 0;
+
+	TEE_MemFill(&args, 0, sizeof(args));
 
 	if (!proc_params)
 		return SKS_BAD_PARAM;

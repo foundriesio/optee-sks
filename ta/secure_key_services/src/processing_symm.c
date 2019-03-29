@@ -71,7 +71,7 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 		{ SKS_CKM_SHA512_HMAC, TEE_ALG_HMAC_SHA512 },
 	};
 	size_t end = sizeof(sks2tee_algo) / (2 * sizeof(uint32_t));
-	size_t n;
+	size_t n = 0;
 
 	for (n = 0; n < end; n++) {
 		if (proc_params->id == sks2tee_algo[n][0]) {
@@ -99,8 +99,8 @@ static uint32_t sks2tee_key_type(uint32_t *tee_type, struct sks_object *obj)
 		{ SKS_CKK_SHA512_HMAC, TEE_TYPE_HMAC_SHA512 },
 	};
 	const size_t last = sizeof(sks2tee_key_type) / (2 * sizeof(uint32_t));
-	size_t n;
-	uint32_t type;
+	size_t n = 0;
+	uint32_t type = 0;
 
 	type = get_type(obj->attributes);
 
@@ -124,7 +124,7 @@ static uint32_t allocate_tee_operation(struct pkcs11_session *session,
 	uint32_t size = (uint32_t)get_object_key_bit_size(obj);
 	uint32_t algo = 0;
 	uint32_t mode = 0;
-	TEE_Result res;
+	TEE_Result res = TEE_ERROR_GENERIC;
 
 	assert(session->processing->tee_op_handle == TEE_HANDLE_NULL);
 
@@ -162,10 +162,12 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 				struct sks_object *obj)
 {
 	TEE_Attribute tee_attr;
-	size_t object_size;
-	uint32_t key_type;
-	uint32_t rv;
-	TEE_Result res;
+	size_t object_size = 0;
+	uint32_t key_type = 0;
+	uint32_t rv = 0;
+	TEE_Result res = TEE_ERROR_GENERIC;
+
+	TEE_MemFill(&tee_attr, 0, sizeof(tee_attr));
 
 	if (obj->key_handle != TEE_HANDLE_NULL) {
 		/* Key was already loaded and fits current need */
@@ -282,7 +284,7 @@ uint32_t init_symm_operation(struct pkcs11_session *session,
 				struct sks_attribute_head *proc_params,
 				struct sks_object *obj)
 {
-	uint32_t rv;
+	uint32_t rv = 0;
 
 	assert(processing_is_tee_symm(proc_params->id));
 
@@ -312,7 +314,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 			     TEE_Param *in, TEE_Param *io2)
 {
 	uint32_t rv = SKS_ERROR;
-	TEE_Result res;
+	TEE_Result res = TEE_ERROR_GENERIC;
 	void *in_buf = in ? in->memref.buffer : NULL;
 	size_t in_size = in ? in->memref.size : 0;
 	void *out_buf = io2 ? io2->memref.buffer : NULL;
