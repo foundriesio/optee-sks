@@ -359,6 +359,14 @@ static const struct string_id __maybe_unused string_proc_flags[] = {
 	SKS_ID(SKS_CKFM_EC_COMPRESS),
 };
 
+static const struct string_id __maybe_unused string_functions[] = {
+	SKS_ID(SKS_FUNCTION_ENCRYPT),
+	SKS_ID(SKS_FUNCTION_DECRYPT),
+	SKS_ID(SKS_FUNCTION_SIGN),
+	SKS_ID(SKS_FUNCTION_VERIFY),
+	SKS_ID(SKS_FUNCTION_DERIVE),
+};
+
 /*
  * Helper functions to analyse SKS identifiers
  */
@@ -796,4 +804,8 @@ const char *sks2str_attr_value(uint32_t id, size_t size, void *value)
 	return str_unkwon;
 }
 
+const char *sks2str_function(uint32_t id)
+{
+	return ID2STR(id, string_functions, "SKS_FUNCTION_");
+}
 #endif /*CFG_TEE_TA_LOG_LEVEL*/
