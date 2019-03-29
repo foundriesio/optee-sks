@@ -302,6 +302,9 @@ uint32_t entry_destroy_object(uintptr_t tee_session, TEE_Param *ctrl,
 	destroy_object(session, object, false);
 	handle_put(&session->object_handle_db, object_handle);
 
+	IMSG("SKSs%" PRIu32 ": destroy object 0x%" PRIx32,
+	     session_handle, object_handle);
+
 	return rv;
 }
 
@@ -644,6 +647,8 @@ uint32_t entry_find_objects(uintptr_t tee_session, TEE_Param *ctrl,
 	/* Update output buffer accoriding the number of handles provided */
 	out->memref.size = count * sizeof(uint32_t);
 
+	IMSG("SKSs%" PRIu32 ": finding objects", session_handle);
+
 	return SKS_OK;
 }
 
@@ -825,6 +830,9 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 
 	/* Move updated template to out buffer */
 	TEE_MemMove(out->memref.buffer, template, out->memref.size);
+
+	IMSG("SKSs%" PRIu32 ": get attributes 0x%" PRIx32,
+	     session_handle, object_handle);
 
 bail:
 	TEE_Free(template);

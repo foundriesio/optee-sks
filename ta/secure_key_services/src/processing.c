@@ -216,6 +216,9 @@ uint32_t entry_import_object(uintptr_t tee_session,
 	TEE_MemMove(out->memref.buffer, &obj_handle, sizeof(uint32_t));
 	out->memref.size = sizeof(uint32_t);
 
+	IMSG("SKSs%" PRIu32 ": import object 0x%" PRIx32,
+	     session_handle, obj_handle);
+
 bail:
 	TEE_Free(template);
 	TEE_Free(head);
@@ -409,6 +412,9 @@ uint32_t entry_generate_secret(uintptr_t tee_session,
 
 	TEE_MemMove(out->memref.buffer, &obj_handle, sizeof(uint32_t));
 	out->memref.size = sizeof(uint32_t);
+
+	IMSG("SKSs%" PRIu32 ": generate secret 0x%" PRIx32,
+	     session_handle, obj_handle);
 
 bail:
 	TEE_Free(proc_params);
@@ -613,6 +619,9 @@ uint32_t entry_generate_key_pair(uintptr_t teesess,
 	TEE_MemMove(hdl_ptr + 1, &privkey_handle, sizeof(uint32_t));
 	out->memref.size = 2 * sizeof(uint32_t);
 
+	IMSG("SKSs%" PRIu32 ": create key pair 0x%" PRIx32 "/0x%" PRIx32,
+	     session_handle, privkey_handle, pubkey_handle);
+
 bail:
 	TEE_Free(proc_params);
 	TEE_Free(template);
@@ -697,6 +706,9 @@ uint32_t entry_processing_init(uintptr_t tee_session, TEE_Param *ctrl,
 	}
 	if (rv == SKS_OK) {
 		session->processing->mecha_type = proc_params->id;
+		IMSG("SKSs%" PRIu32 ": init processing %s %s",
+		     session_handle, sks2str_proc(proc_params->id),
+		     sks2str_function(function));
 	}
 
 bail:
@@ -759,8 +771,12 @@ uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
 	if (processing_is_tee_asymm(mecha_type)) {
 		rv = step_asymm_operation(session, function, step, in, out);
 	}
-	if (rv == SKS_OK)
+	if (rv == SKS_OK) {
 		session->processing->updated = true;
+		IMSG("SKSs%" PRIu32 ": processing %s %s",
+		     session_handle, sks2str_proc(mecha_type),
+		     sks2str_function(function));
+	}
 
 bail:
 	switch (step) {
@@ -832,6 +848,11 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 	if (processing_is_tee_asymm(mecha_type)) {
 		rv = step_asymm_operation(session, function, step, in, in2);
 	}
+
+	IMSG("SKSs%" PRIu32 ": verify %s %s: %s", session_handle,
+	     sks2str_proc(mecha_type), sks2str_function(function),
+	     sks2str_rc(rv));
+
 bail:
 	if (rv != SKS_SHORT_BUFFER)
 		release_active_processing(session);
@@ -853,6 +874,7 @@ uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
 	struct sks_object_head *template = NULL;
 	size_t template_size;
 	uint32_t out_handle;
+	uint32_t __maybe_unused mecha_id = 0;
 
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
@@ -977,6 +999,7 @@ uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
 	}
 #endif
 
+	mecha_id = proc_params->id;
 	TEE_Free(proc_params);
 	proc_params = NULL;
 
@@ -997,6 +1020,9 @@ uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
 
 	TEE_MemMove(out->memref.buffer, &out_handle, sizeof(uint32_t));
 	out->memref.size = sizeof(uint32_t);
+
+	IMSG("SKSs%" PRIu32 ": derive key Ox%" PRIx32 ", %s",
+	     session_handle, out_handle, sks2str_proc(mecha_id));
 
 bail:
 	release_active_processing(session);
