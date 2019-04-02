@@ -305,6 +305,14 @@ static const struct ck2sks attribute_type[] = {
 	CK2SKS_ID(CKA_COEFFICIENT),
 	CK2SKS_ID(CKA_SUBJECT),
 	CK2SKS_ID(CKA_PUBLIC_KEY_INFO),
+	CK2SKS_ID(CKA_CERTIFICATE_TYPE),
+	CK2SKS_ID(CKA_CERTIFICATE_CATEGORY),
+	CK2SKS_ID(CKA_ISSUER),
+	CK2SKS_ID(CKA_SERIAL_NUMBER),
+	CK2SKS_ID(CKA_URL),
+	CK2SKS_ID(CKA_HASH_OF_SUBJECT_PUBLIC_KEY),
+	CK2SKS_ID(CKA_HASH_OF_ISSUER_PUBLIC_KEY),
+	CK2SKS_ID(CKA_NAME_HASH_ALGORITHM),
 	/* Below are boolean attributes */
 	CK2SKS_ID(CKA_TOKEN),
 	CK2SKS_ID(CKA_PRIVATE),
@@ -457,6 +465,15 @@ static const struct ck2sks key_type[] = {
 };
 
 DEFINE_CK2SKS_FUNCTIONS(key_type, CK_KEY_TYPE)
+
+static const struct ck2sks certificate_type[] = {
+	CK2SKS_ID(CKC_X_509),
+	CK2SKS_ID(CKC_X_509_ATTR_CER),
+	CK2SKS_ID(CKC_WTLS),
+	CK2SKS_ID_BRACE(CK_VENDOR_INVALID_ID, SKS_UNDEFINED_ID),
+};
+
+DEFINE_CK2SKS_FUNCTIONS(certificate_type, CK_CERTIFICATE_TYPE)
 
 static const struct ck2sks ec_kdf_type[] = {
 	CK2SKS_ID(CKD_NULL),
@@ -674,6 +691,7 @@ uint32_t ck2sks_type_in_class(CK_ULONG ck, CK_ULONG class)
 	case CKO_MECHANISM:
 		return ck2sks_mechanism_type(ck);
 	case CKO_CERTIFICATE:
+		return ck2sks_certificate_type(ck);
 	default:
 		return SKS_UNDEFINED_ID;
 	}
@@ -692,6 +710,7 @@ CK_RV sks2ck_type_in_class(CK_ULONG *ck, uint32_t sks, CK_ULONG class)
 	case SKS_CKO_MECHANISM:
 		return sks2ck_mechanism_type(ck, sks);
 	case SKS_CKO_CERTIFICATE:
+		return sks2ck_certificate_type(ck, sks);
 	default:
 		return CKR_GENERAL_ERROR;
 	}

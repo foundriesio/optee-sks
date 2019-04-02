@@ -37,6 +37,7 @@ DECLARE_CK2SKS_FUNCTIONS(ec_kdf_type, CK_EC_KDF_TYPE);
 DECLARE_CK2SKS_FUNCTIONS(rsa_pkcs_mgf_type, CK_RSA_PKCS_MGF_TYPE);
 DECLARE_CK2SKS_FUNCTIONS(rsa_pkcs_oaep_source_type,
 			 CK_RSA_PKCS_OAEP_SOURCE_TYPE);
+DECLARE_CK2SKS_FUNCTIONS(certificate_type, CK_CERTIFICATE_TYPE);
 
 /*
  * Convert structure struct sks_token_info retreived from TA into a

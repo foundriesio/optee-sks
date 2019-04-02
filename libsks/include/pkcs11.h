@@ -233,6 +233,18 @@ typedef CK_KEY_TYPE *		CK_KEY_TYPE_PTR;
 #define CKK_SHA512_HMAC			0x02d
 #define CKK_SHA224_HMAC			0x02e
 
+/* Attribute CKA_CERTIFICATE_TYPE refers to a CK_CERTIFICATE_TYPE typed value */
+typedef CK_ULONG		CK_CERTIFICATE_TYPE;
+typedef CK_CERTIFICATE_TYPE *	CK_CERTIFICATE_TYPE_PTR;
+
+/*
+ * Values for type CK_CERTIFICATE_TYPE
+ */
+#define CKC_VENDOR_DEFINED		(1U << 31)
+#define CKC_X_509				0x000
+#define CKC_X_509_ATTR_CER			0x001
+#define CKC_WTLS				0x002
+
 /*
  * Mechanisms
  *

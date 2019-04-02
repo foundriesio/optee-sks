@@ -173,6 +173,8 @@ static int ck_attr_is_ulong(CK_ATTRIBUTE_TYPE attribute_id)
 	return (ck_attr_is_class(attribute_id) ||
 		ck_attr_is_type(attribute_id) ||
 		attribute_id == CKA_VALUE_LEN ||
+		attribute_id == CKA_CERTIFICATE_CATEGORY ||
+		attribute_id == CKA_NAME_HASH_ALGORITHM ||
 		attribute_id == CKA_MODULUS_BITS);
 }
 
@@ -210,6 +212,12 @@ static CK_RV serialize_ck_attribute(struct serializer *obj, CK_ATTRIBUTE *attr)
 
 	case CKA_KEY_TYPE:
 		sks_data32 = ck2sks_key_type(ck_ulong);
+		sks_pdata = &sks_data32;
+		sks_size = sizeof(uint32_t);
+		break;
+
+	case CKA_CERTIFICATE_TYPE:
+		sks_data32 = ck2sks_certificate_type(ck_ulong);
 		sks_pdata = &sks_data32;
 		sks_size = sizeof(uint32_t);
 		break;
@@ -520,6 +528,13 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 
 	case CKA_KEY_TYPE:
 		rv = sks2ck_key_type(&ck_ulong, sks_data32);
+		if (rv)
+			return rv;
+		memcpy(out->pValue, &ck_ulong, sizeof(CK_ULONG));
+		break;
+
+	case CKA_CERTIFICATE_TYPE:
+		rv = sks2ck_certificate_type(&ck_ulong, sks_data32);
 		if (rv)
 			return rv;
 		memcpy(out->pValue, &ck_ulong, sizeof(CK_ULONG));
