@@ -93,23 +93,23 @@ static void init_pin_keys(struct ck_token *token, unsigned int uid)
 		TEE_InitRefAttribute(&attr, TEE_ATTR_SECRET_VALUE,
 				     pin_key, sizeof(pin_key));
 
-		res = TEE_AllocateTransientObject(TEE_TYPE_AES, 128, key_hdl);
+		res = TEE_AllocateTransientObject(TEE_TYPE_AES, 128, &hdl);
 		if (res)
 			TEE_Panic(0);
 
-		res = TEE_PopulateTransientObject(*key_hdl, &attr, 1);
+		res = TEE_PopulateTransientObject(hdl, &attr, 1);
 		if (res)
 			TEE_Panic(0);
 
 		res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
 						 file, sizeof(file), 0,
-						 *key_hdl,
+						 hdl,
 						 pin_key, sizeof(pin_key),
-						 &hdl);
+						 key_hdl);
 		if (res)
 			TEE_Panic(0);
 
-		TEE_CloseObject(hdl);
+		TEE_FreeTransientObject(hdl);
 		return;
 	}
 
