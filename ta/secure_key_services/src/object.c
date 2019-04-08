@@ -480,6 +480,7 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	switch (get_class(req_attrs)) {
 	case SKS_UNDEFINED_ID:
 	/* Unspecified class searches among data objects */
+	case SKS_CKO_CERTIFICATE:
 	case SKS_CKO_SECRET_KEY:
 	case SKS_CKO_PUBLIC_KEY:
 	case SKS_CKO_PRIVATE_KEY:

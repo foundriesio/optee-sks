@@ -61,6 +61,14 @@ static const struct attr_size attr_ids[] = {
 	SKS_ID_SZ(SKS_CKA_COEFFICIENT, 0),
 	SKS_ID_SZ(SKS_CKA_SUBJECT, 0),
 	SKS_ID_SZ(SKS_CKA_PUBLIC_KEY_INFO, 0),
+	SKS_ID_SZ(SKS_CKA_CERTIFICATE_TYPE, 4),
+	SKS_ID_SZ(SKS_CKA_CERTIFICATE_CATEGORY, 4),
+	SKS_ID_SZ(SKS_CKA_ISSUER, 0),
+	SKS_ID_SZ(SKS_CKA_SERIAL_NUMBER, 0),
+	SKS_ID_SZ(SKS_CKA_URL, 0),
+	SKS_ID_SZ(SKS_CKA_HASH_OF_SUBJECT_PUBLIC_KEY, 0),
+	SKS_ID_SZ(SKS_CKA_HASH_OF_ISSUER_PUBLIC_KEY, 0),
+	SKS_ID_SZ(SKS_CKA_NAME_HASH_ALGORITHM, 4),
 	/* Below are boolean attributes */
 	SKS_ID_SZ(SKS_CKA_TOKEN, 1),
 	SKS_ID_SZ(SKS_CKA_PRIVATE, 1),
@@ -332,6 +340,13 @@ static const struct string_id __maybe_unused string_key_type[] = {
 	SKS_ID(SKS_UNDEFINED_ID)
 };
 
+static const struct string_id __maybe_unused string_certificate_type[] = {
+	SKS_ID(SKS_CKC_X_509),
+	SKS_ID(SKS_CKC_X_509_ATTR_CER),
+	SKS_ID(SKS_CKC_WTLS),
+	SKS_ID(SKS_UNDEFINED_ID)
+};
+
 /* Processing IDs not exported in the TA API */
 static const struct string_id __maybe_unused string_internal_processing[] = {
 	SKS_ID(SKS_PROCESSING_IMPORT),
@@ -383,6 +398,7 @@ size_t sks_attr_is_class(uint32_t attribute_id)
 size_t sks_attr_is_type(uint32_t attribute_id)
 {
 	switch (attribute_id) {
+	case SKS_CKA_CERTIFICATE_TYPE:
 	case SKS_CKA_KEY_TYPE:
 	case SKS_CKA_MECHANISM_TYPE:
 		return sizeof(uint32_t);
@@ -533,6 +549,18 @@ bool key_type_is_asymm_key(uint32_t id)
 	switch (id) {
 	case SKS_CKK_EC:
 	case SKS_CKK_RSA:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool certificate_is_valid(uint32_t id)
+{
+	switch (id) {
+	case SKS_CKC_X_509:
+	case SKS_CKC_X_509_ATTR_CER:
+	case SKS_CKC_WTLS:
 		return true;
 	default:
 		return false;
@@ -732,6 +760,11 @@ const char *sks2str_type(uint32_t id, uint32_t class)
 const char *sks2str_key_type(uint32_t id)
 {
 	return ID2STR(id, string_key_type, "SKS_CKK_");
+}
+
+const char *sks2str_certificate_type(uint32_t id)
+{
+	return ID2STR(id, string_certificate_type, "SKS_CKC_");
 }
 
 const char *sks2str_boolprop(uint32_t id)

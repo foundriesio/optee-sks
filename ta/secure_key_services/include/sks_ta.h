@@ -783,6 +783,14 @@ struct sks_attribute_head {
 #define SKS_CKA_COEFFICIENT			0x00000059
 #define SKS_CKA_SUBJECT				0x0000005a
 #define SKS_CKA_PUBLIC_KEY_INFO			0x0000005b
+#define SKS_CKA_CERTIFICATE_TYPE		0x0000005c
+#define SKS_CKA_CERTIFICATE_CATEGORY		0x0000005d
+#define SKS_CKA_ISSUER				0x0000005e
+#define SKS_CKA_SERIAL_NUMBER			0x0000005f
+#define SKS_CKA_URL				0x00000060
+#define SKS_CKA_HASH_OF_SUBJECT_PUBLIC_KEY	0x00000061
+#define SKS_CKA_HASH_OF_ISSUER_PUBLIC_KEY	0x00000062
+#define SKS_CKA_NAME_HASH_ALGORITHM		0x00000063
 
 // Temporary storage until DER/BigInt conversion is available
 #define SKS_CKA_EC_POINT_X			0x88800001
@@ -818,6 +826,14 @@ struct sks_attribute_head {
 #define SKS_CKK_RSA				0x009
 #define SKS_CKK_DSA				0x00a
 #define SKS_CKK_DH				0x00b
+
+/*
+ * Valid values for attribute SKS_CKA_CERTIFICATE_TYPE
+ * SKS_CKC_<x> corresponds to cryptoki CKC_<x>.
+ */
+#define SKS_CKC_X_509			0x000
+#define SKS_CKC_X_509_ATTR_CER		0x001
+#define SKS_CKC_WTLS			0x002
 
 /*
  * Valid values for attribute SKS_CKA_MECHANISM_TYPE

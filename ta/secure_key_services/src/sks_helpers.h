@@ -35,6 +35,7 @@ int sks_attr2boolprop_shift(uint32_t attr);
 
 bool key_type_is_symm_key(uint32_t id);
 bool key_type_is_asymm_key(uint32_t id);
+bool certificate_is_valid(uint32_t id);
 bool mechanism_is_valid(uint32_t id);
 size_t get_supported_mechanisms(uint32_t *array, size_t array_count);
 bool mechanism_is_supported(uint32_t id);
@@ -56,6 +57,7 @@ const char *sks2str_attr(uint32_t id);
 const char *sks2str_class(uint32_t id);
 const char *sks2str_type(uint32_t id, uint32_t class);
 const char *sks2str_key_type(uint32_t id);
+const char *sks2str_certificate_type(uint32_t id);
 const char *sks2str_boolprop(uint32_t id);
 const char *sks2str_proc(uint32_t id);
 const char *sks2str_proc_flag(uint32_t id);

@@ -496,6 +496,27 @@ static const uint32_t pkcs11_ec_private_key_optional[] = {
 	SKS_CKA_VALUE,
 	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporarily until DER support
 };
+/* PKCS#11 specification for certificate (+pkcs11_any_object_xxx) */
+static const uint32_t pkcs11_cert_boolprops[] = {
+	SKS_CKA_TRUSTED,
+};
+static const uint32_t pkcs11_cert_mandated[] = {
+	SKS_CKA_CERTIFICATE_CATEGORY,
+};
+static const uint32_t pkcs11_cert_optional[] = {
+	SKS_CKA_START_DATE, SKS_CKA_END_DATE,
+	SKS_CKA_PUBLIC_KEY_INFO,
+};
+static const uint32_t pkcs11_cert_x509_mandated[] = {
+	SKS_CKA_SUBJECT,
+};
+static const uint32_t pkcs11_cert_x509_optional[] = {
+	SKS_CKA_ID, SKS_CKA_ISSUER, SKS_CKA_SERIAL_NUMBER,
+	SKS_CKA_VALUE, SKS_CKA_URL,
+	SKS_CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
+	SKS_CKA_HASH_OF_ISSUER_PUBLIC_KEY,
+	SKS_CKA_NAME_HASH_ALGORITHM,
+};
 
 static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 						 struct sks_attrs_head *temp)
@@ -749,6 +770,94 @@ static uint32_t create_pkcs11_priv_key_attributes(struct sks_attrs_head **out,
 	return set_optional_attributes(out, temp, optional, optional_count);
 }
 
+static uint32_t create_pkcs11_cert_attributes(struct sks_attrs_head **out,
+					       struct sks_attrs_head *temp)
+{
+	uint32_t const *boolprops = &pkcs11_cert_boolprops[0];
+	uint32_t const *mandated = &pkcs11_cert_mandated[0];
+	uint32_t const *optional = &pkcs11_cert_optional[0];
+	size_t boolprops_count = ARRAY_SIZE(pkcs11_cert_boolprops);
+	size_t mandated_count = ARRAY_SIZE(pkcs11_cert_mandated);
+	size_t optional_count = ARRAY_SIZE(pkcs11_cert_optional);
+	uint32_t type = 0;
+	uint32_t size = 0;
+	void *value = NULL;
+	uint32_t rv = 0;
+
+	assert(get_class(temp) == SKS_CKO_CERTIFICATE);
+
+	rv = create_pkcs11_storage_attributes(out, temp);
+	if (rv)
+		return rv;
+
+	rv = set_mandatory_boolprops(out, temp, boolprops, boolprops_count);
+	if (rv)
+		return rv;
+
+	rv = set_mandatory_attributes(out, temp, mandated, mandated_count);
+	if (rv)
+		return rv;
+
+	rv = set_optional_attributes(out, temp, optional, optional_count);
+	if (rv)
+		return rv;
+
+	type = get_type(temp);
+	switch (type) {
+	case SKS_CKC_X_509:
+		mandated = &pkcs11_cert_x509_mandated[0];
+		optional = &pkcs11_cert_x509_optional[0];
+		mandated_count = ARRAY_SIZE(pkcs11_cert_x509_mandated);
+		optional_count = ARRAY_SIZE(pkcs11_cert_x509_optional);
+
+		rv = get_attribute_ptr(temp, SKS_CKA_URL, &value, &size);
+		if (rv || !size) {
+			/* CKA_URL not available */
+			rv = get_attribute_ptr(temp, SKS_CKA_VALUE,
+					&value, &size);
+			if (rv || !size) {
+				EMSG("CKA_VALUE must be non-empty");
+				return SKS_CKR_TEMPLATE_INCONSISTENT;
+			}
+		} else {
+			/* CKA_URL available, check for hashes */
+			rv = get_attribute_ptr(temp,
+					SKS_CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
+					&value, &size);
+			if (rv || !size) {
+				EMSG("CKA_HASH_OF_SUBJECT_PUBLIC_KEY empty");
+				return SKS_CKR_TEMPLATE_INCONSISTENT;
+			}
+			rv = get_attribute_ptr(temp,
+					SKS_CKA_HASH_OF_ISSUER_PUBLIC_KEY,
+					&value, &size);
+			if (rv || !size) {
+				EMSG("CKA_HASH_OF_ISSUER_PUBLIC_KEY empty");
+				return SKS_CKR_TEMPLATE_INCONSISTENT;
+			}
+		}
+		break;
+	default:
+		EMSG("Invalid certificate type (0x%" PRIx32 ", %s)",
+				type, sks2str_certificate_type(type));
+		return SKS_CKR_TEMPLATE_INCONSISTENT;
+	}
+
+	rv = add_attribute(out, SKS_CKA_CERTIFICATE_TYPE,
+			   &type, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	/* TODO: CKA_CHECK_VALUE */
+	/* TODO: CKA_PUBLIC_KEY_INFO */
+
+	rv = set_mandatory_attributes(out, temp, mandated, mandated_count);
+	if (rv)
+		return rv;
+
+	return set_optional_attributes(out, temp, optional, optional_count);
+}
+
 /*
  * Create an attribute list for a new object from a template and a parent
  * object (optional) for an object generation function (generate, copy,
@@ -817,6 +926,9 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	case SKS_CKO_PRIVATE_KEY:
 		rv = create_pkcs11_priv_key_attributes(&attrs, temp);
 		break;
+	case SKS_CKO_CERTIFICATE:
+		rv = create_pkcs11_cert_attributes(&attrs, temp);
+		break;
 	default:
 		DMSG("Invalid object class 0x%" PRIx32 "/%s",
 			get_class(temp), sks2str_class(get_class(temp)));
@@ -826,36 +938,27 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	if (rv)
 		goto bail;
 
-	assert(get_attribute(attrs, SKS_CKA_LOCAL, NULL, NULL) ==
-		SKS_NOT_FOUND);
-
-	switch (function) {
-	case SKS_FUNCTION_GENERATE:
-	case SKS_FUNCTION_GENERATE_PAIR:
-		local = SKS_TRUE;
-		break;
-	case SKS_FUNCTION_COPY:
-		local = get_bool(parent, SKS_CKA_LOCAL);
-		break;
-	case SKS_FUNCTION_DERIVE:
-	default:
-		local = SKS_FALSE;
-		break;
-	}
-	rv = add_attribute(&attrs, SKS_CKA_LOCAL, &local, sizeof(local));
-	if (rv)
-		goto bail;
-
 	switch (get_class(attrs)) {
 	case SKS_CKO_SECRET_KEY:
 	case SKS_CKO_PRIVATE_KEY:
 	case SKS_CKO_PUBLIC_KEY:
+		assert(get_attribute(attrs, SKS_CKA_LOCAL, NULL, NULL) ==
+			SKS_NOT_FOUND);
+
+		local = SKS_FALSE;
 		always_sensitive = SKS_FALSE;
 		never_extract = SKS_FALSE;
 
 		switch (function) {
+		case SKS_FUNCTION_GENERATE:
+			always_sensitive = get_bool(attrs, SKS_CKA_SENSITIVE);
+			never_extract = !get_bool(attrs, SKS_CKA_EXTRACTABLE);
+			local = SKS_TRUE;
+			break;
+		case SKS_FUNCTION_GENERATE_PAIR:
+			local = SKS_TRUE;
+			break;
 		case SKS_FUNCTION_DERIVE:
-		case SKS_FUNCTION_COPY:
 			always_sensitive =
 				get_bool(parent, SKS_CKA_ALWAYS_SENSITIVE) &&
 				get_bool(attrs, SKS_CKA_SENSITIVE);
@@ -863,13 +966,23 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 				get_bool(parent, SKS_CKA_NEVER_EXTRACTABLE) &&
 				!get_bool(attrs, SKS_CKA_EXTRACTABLE);
 			break;
-		case SKS_FUNCTION_GENERATE:
-			always_sensitive = get_bool(attrs, SKS_CKA_SENSITIVE);
-			never_extract = !get_bool(attrs, SKS_CKA_EXTRACTABLE);
+		case SKS_FUNCTION_COPY:
+			always_sensitive =
+				get_bool(parent, SKS_CKA_ALWAYS_SENSITIVE) &&
+				get_bool(attrs, SKS_CKA_SENSITIVE);
+			never_extract =
+				get_bool(parent, SKS_CKA_NEVER_EXTRACTABLE) &&
+				!get_bool(attrs, SKS_CKA_EXTRACTABLE);
+			local = get_bool(parent, SKS_CKA_LOCAL);
 			break;
 		default:
 			break;
 		}
+
+		rv = add_attribute(&attrs, SKS_CKA_LOCAL,
+				   &local, sizeof(local));
+		if (rv)
+			goto bail;
 
 		rv = add_attribute(&attrs, SKS_CKA_ALWAYS_SENSITIVE,
 				   &always_sensitive, sizeof(always_sensitive));
@@ -934,6 +1047,7 @@ uint32_t check_access_attrs_against_token(struct pkcs11_session *session,
 	switch(get_class(head)) {
 	case SKS_CKO_SECRET_KEY:
 	case SKS_CKO_PUBLIC_KEY:
+	case SKS_CKO_CERTIFICATE:
 	case SKS_CKO_DATA:
 		if (!get_bool(head, SKS_CKA_PRIVATE))
 			private = false;
@@ -1042,8 +1156,9 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 	case SKS_CKM_ECDH1_DERIVE:
 	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
 	case SKS_CKM_DH_PKCS_DERIVE:
-		if (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
-		    bbool) {
+		if (get_class(head) != SKS_CKO_CERTIFICATE &&
+		    (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
+		    bbool)) {
 			DMSG_BAD_BBOOL(SKS_CKA_LOCAL, proc_id, head);
 			return SKS_CKR_TEMPLATE_INCONSISTENT;
 		}
