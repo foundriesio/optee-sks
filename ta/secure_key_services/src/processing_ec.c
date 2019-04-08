@@ -951,16 +951,14 @@ uint32_t load_tee_ec_key_attrs(TEE_Attribute **tee_attrs, size_t *tee_count,
 					obj, SKS_CKA_EC_PARAMS))
 			count++;
 
-		/* FIXME: get attribute from SKS_CKA_EC_POINT (DER format) */
 		if (sks2tee_load_attr(&attrs[count],
 					TEE_ATTR_ECC_PUBLIC_VALUE_X,
-					obj, SKS_CKA_EC_POINT_X))
+					obj, SKS_CKA_EC_POINT))
 			count++;
 
-		/* FIXME: get attribute from SKS_CKA_EC_POINT (DER format) */
 		if (sks2tee_load_attr(&attrs[count],
 					TEE_ATTR_ECC_PUBLIC_VALUE_Y,
-					obj, SKS_CKA_EC_POINT_Y))
+					obj, SKS_CKA_EC_POINT))
 			count++;
 
 		if (count == 3)
@@ -984,17 +982,14 @@ uint32_t load_tee_ec_key_attrs(TEE_Attribute **tee_attrs, size_t *tee_count,
 					obj, SKS_CKA_VALUE))
 			count++;
 
-
-		/* FIXME: get attribute from SKS_CKA_EC_POINT (DER format) */
 		if (sks2tee_load_attr(&attrs[count],
 					TEE_ATTR_ECC_PUBLIC_VALUE_X,
-					obj, SKS_CKA_EC_POINT_X))
+					obj, SKS_CKA_EC_POINT))
 			count++;
 
-		/* FIXME: get attribute from SKS_CKA_EC_POINT (DER format) */
 		if (sks2tee_load_attr(&attrs[count],
 					TEE_ATTR_ECC_PUBLIC_VALUE_Y,
-					obj, SKS_CKA_EC_POINT_Y))
+					obj, SKS_CKA_EC_POINT))
 			count++;
 
 		if (count == 4)
@@ -1133,8 +1128,17 @@ uint32_t sks2tee_algo_ecdsa(uint32_t *tee_id,
 
 static uint32_t tee2sks_ec_attributes(struct sks_attrs_head **pub_head,
 				 struct sks_attrs_head **priv_head,
-				 TEE_ObjectHandle tee_obj)
+				 TEE_ObjectHandle tee_obj, uint32_t tee_size)
 {
+	void *x_ptr = NULL;
+	void *y_ptr = NULL;
+	uint8_t *ecpoint = NULL;
+	size_t x_size = 0;
+	size_t y_size = 0;
+	size_t psize = 0;
+	size_t qsize = 0;
+	size_t dersize = 0;
+	size_t poffset = 0;
 	uint32_t rv = 0;
 
 	rv = tee2sks_add_attribute(priv_head, SKS_CKA_VALUE,
@@ -1142,26 +1146,71 @@ static uint32_t tee2sks_ec_attributes(struct sks_attrs_head **pub_head,
 	if (rv)
 		goto bail;
 
-	// FIXME: 1 DER formatted x/y point instead of 2 CKA_EC_POINT attributes
-	rv = tee2sks_add_attribute(priv_head, SKS_CKA_EC_POINT_X,
-				   tee_obj, TEE_ATTR_ECC_PUBLIC_VALUE_X);
+	rv = alloc_get_tee_attribute_data(tee_obj, TEE_ATTR_ECC_PUBLIC_VALUE_X,
+					&x_ptr, &x_size);
 	if (rv)
 		goto bail;
 
-	rv = tee2sks_add_attribute(priv_head, SKS_CKA_EC_POINT_Y,
-				   tee_obj, TEE_ATTR_ECC_PUBLIC_VALUE_Y);
+	rv = alloc_get_tee_attribute_data(tee_obj, TEE_ATTR_ECC_PUBLIC_VALUE_Y,
+					&y_ptr, &y_size);
 	if (rv)
-		goto bail;
+		goto x_cleanup;
 
-	// FIXME: 1 DER formatted x/y point instead of 2 CKA_EC_POINT attributes
-	rv = tee2sks_add_attribute(pub_head, SKS_CKA_EC_POINT_X,
-				   tee_obj, TEE_ATTR_ECC_PUBLIC_VALUE_X);
+	psize = (tee_size + 7) / 8;
+	if (x_size > psize || y_size > psize) {
+		rv = SKS_BAD_PARAM;
+		goto p_cleanup;
+	}
+
+	qsize = 1 + 2 * psize;
+	/* TODO: Support DER long definitive form, needed for 64 key size */
+	if (qsize < 0x80) {
+		dersize = qsize + 2;
+	} else {
+		EMSG("DER long definitive form not yet supported");
+		rv = SKS_CKR_MECHANISM_INVALID;
+		goto p_cleanup;
+	}
+
+	ecpoint = TEE_Malloc(dersize, TEE_MALLOC_FILL_ZERO);
+	if (!ecpoint) {
+		rv = SKS_MEMORY;
+		goto p_cleanup;
+	}
+
+	/* DER encoding */
+	ecpoint[0] = 0x04;
+	ecpoint[1] = qsize & 0x7f;
+	/* Only UNCOMPRESSED ECPOINT is currently supported */
+	ecpoint[2] = 0x04;
+
+	poffset = 0;
+	if (x_size < psize)
+		poffset = psize - x_size;
+	TEE_MemMove(ecpoint + 3 + poffset, x_ptr, x_size);
+
+	poffset = 0;
+	if (y_size < psize)
+		poffset = psize - y_size;
+	TEE_MemMove(ecpoint + 3 + psize + poffset, y_ptr, y_size);
+
+	/*
+	 * Add EC_POINT on both private and public key objects as
+	 * TEE_PopulateTransientObject requires public x/y values
+	 * for TEE_TYPE_ECDSA_KEYPAIR.
+	 */
+	rv = add_attribute(priv_head, SKS_CKA_EC_POINT, ecpoint, dersize);
 	if (rv)
-		goto bail;
+		goto priv_cleanup;
 
-	rv = tee2sks_add_attribute(pub_head, SKS_CKA_EC_POINT_Y,
-				   tee_obj, TEE_ATTR_ECC_PUBLIC_VALUE_Y);
+	rv = add_attribute(pub_head, SKS_CKA_EC_POINT, ecpoint, dersize);
 
+priv_cleanup:
+	TEE_Free(ecpoint);
+p_cleanup:
+	TEE_Free(y_ptr);
+x_cleanup:
+	TEE_Free(x_ptr);
 bail:
 	return rv;
 }
@@ -1185,11 +1234,7 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 		return SKS_CKR_TEMPLATE_INCONSISTENT;
 
 	if (!get_attribute_ptr(*pub_head, SKS_CKA_EC_POINT, NULL, NULL) ||
-	    !get_attribute_ptr(*pub_head, SKS_CKA_EC_POINT_X, NULL, NULL) ||
-	    !get_attribute_ptr(*pub_head, SKS_CKA_EC_POINT_Y, NULL, NULL) ||
 	    !get_attribute_ptr(*priv_head, SKS_CKA_VALUE, NULL, NULL) ||
-	    !get_attribute_ptr(*priv_head, SKS_CKA_EC_POINT_X, NULL, NULL) ||
-	    !get_attribute_ptr(*priv_head, SKS_CKA_EC_POINT_X, NULL, NULL) ||
 	    !get_attribute_ptr(*priv_head, SKS_CKA_EC_POINT, NULL, NULL)) {
 		EMSG("Unexpected attribute(s) found");
 		trace_attributes("public-key", *pub_head);
@@ -1207,17 +1252,6 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 		return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
 
 	tee_curve = ec_params2tee_curve(a_ptr, a_size);
-
-	if (get_attribute_ptr(*priv_head, SKS_CKA_EC_PARAMS, &a_ptr, &a_size)) {
-		EMSG("Not EC_PARAMS attribute found");
-		return SKS_CKR_ATTRIBUTE_TYPE_INVALID;
-	}
-
-	if (tee_size != ec_params2tee_keysize(a_ptr, a_size) ||
-	    tee_curve != ec_params2tee_curve(a_ptr, a_size)) {
-		EMSG("Incompatible EC curves");
-		return SKS_CKR_TEMPLATE_INCONSISTENT;
-	}
 
 	TEE_InitValueAttribute(&tee_key_attr[0], TEE_ATTR_ECC_CURVE,
 				tee_curve, 0);
@@ -1242,7 +1276,17 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 		goto bail;
 	}
 
-	rv = tee2sks_ec_attributes(pub_head, priv_head, tee_obj);
+	/*
+	 * Private key needs the same EC_PARAMS as used by the public key.
+	 * Since it is also common for userspace to provide an empty private
+	 * EC_PARAMS, make sure to remove before adding the correct one.
+	 */
+	remove_attribute(priv_head, SKS_CKA_EC_PARAMS);
+	rv = add_attribute(priv_head, SKS_CKA_EC_PARAMS, a_ptr, a_size);
+	if (rv)
+		goto bail;
+
+	rv = tee2sks_ec_attributes(pub_head, priv_head, tee_obj, tee_size);
 
 bail:
 	if (tee_obj != TEE_HANDLE_NULL)

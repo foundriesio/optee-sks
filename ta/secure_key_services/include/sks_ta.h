@@ -814,10 +814,6 @@ struct sks_attribute_head {
 #define SKS_CKA_NAME_HASH_ALGORITHM		0x00000063
 #define SKS_CKA_KEY_GEN_MECHANISM		0x00000064
 
-// Temporary storage until DER/BigInt conversion is available
-#define SKS_CKA_EC_POINT_X			0x88800001
-#define SKS_CKA_EC_POINT_Y			0x88800002
-
 /*
  * Valid values for attribute SKS_CKA_CLASS
  * SKS_CKO_<x> corresponds to cryptoki CKO_<x>.

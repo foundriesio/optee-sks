@@ -487,14 +487,12 @@ static const uint32_t pkcs11_ec_public_key_mandated[] = {
 };
 static const uint32_t pkcs11_ec_public_key_optional[] = {
 	SKS_CKA_EC_POINT,
-	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporarily until DER support
 };
 static const uint32_t pkcs11_ec_private_key_mandated[] = {
 	SKS_CKA_EC_PARAMS,
 };
 static const uint32_t pkcs11_ec_private_key_optional[] = {
-	SKS_CKA_VALUE,
-	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporarily until DER support
+	SKS_CKA_VALUE, SKS_CKA_EC_POINT,
 };
 /* PKCS#11 specification for certificate (+pkcs11_any_object_xxx) */
 static const uint32_t pkcs11_cert_boolprops[] = {
