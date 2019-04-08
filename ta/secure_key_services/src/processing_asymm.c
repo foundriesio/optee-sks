@@ -383,6 +383,7 @@ uint32_t step_asymm_operation(struct pkcs11_session *session,
 	uint32_t data32 = 0;
 	bool output_data = false;
 	struct active_processing *proc = session->processing;
+	TEE_OperationInfo opinfo;
 
 	switch (step) {
 	case SKS_FUNC_STEP_ONESHOT:
@@ -446,8 +447,34 @@ uint32_t step_asymm_operation(struct pkcs11_session *session,
 	/* These ECDSA need to use the computed hash as input data */
 	switch (proc->mecha_type) {
 	case SKS_CKM_ECDSA:
-		// TODO: check input size is enough
+		/* Input size depends on the key size */
 		if (!in_size) {
+			rv = SKS_FAILED;
+			goto bail;
+		}
+		TEE_GetOperationInfo(proc->tee_op_handle, &opinfo);
+		switch (opinfo.algorithm) {
+		case TEE_ALG_ECDSA_P192:
+			if (in_size > 24)
+				in_size = 24;
+			break;
+		case TEE_ALG_ECDSA_P224:
+			if (in_size > 28)
+				in_size = 28;
+			break;
+		case TEE_ALG_ECDSA_P256:
+			if (in_size > 32)
+				in_size = 32;
+			break;
+		case TEE_ALG_ECDSA_P384:
+			if (in_size > 48)
+				in_size = 48;
+			break;
+		case TEE_ALG_ECDSA_P521:
+			if (in_size > 64)
+				in_size = 64;
+			break;
+		default:
 			rv = SKS_FAILED;
 			goto bail;
 		}
