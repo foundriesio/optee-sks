@@ -476,10 +476,10 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	uint32_t token_id = 0;
 	struct ck_token *token = NULL;
 	const char manuf[] = SKS_CRYPTOKI_TOKEN_MANUFACTURER;
-	const char sernu[] = SKS_CRYPTOKI_TOKEN_SERIAL_NUMBER;
 	const char model[] = SKS_CRYPTOKI_TOKEN_MODEL;
 	const char hwver[] = SKS_CRYPTOKI_TOKEN_HW_VERSION;
 	const char fwver[] = SKS_CRYPTOKI_TOKEN_FW_VERSION;
+	char sernu[] = SKS_CRYPTOKI_TOKEN_SERIAL_NUMBER;
 	struct sks_token_info info;
 
 	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
@@ -505,6 +505,9 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	token = get_token(token_id);
 	if (!token)
 		return SKS_CKR_SLOT_ID_INVALID;
+
+	if (snprintf(sernu + sizeof(sernu) - 2, 2, "%1d", token_id) >= 2)
+		TEE_Panic(0);
 
 	TEE_MemFill(&info, 0, sizeof(info));
 
