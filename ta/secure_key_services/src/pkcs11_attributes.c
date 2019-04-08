@@ -418,7 +418,7 @@ static const uint32_t pkcs11_any_object_boolprops[] = {
 	SKS_CKA_TOKEN, SKS_CKA_PRIVATE,
 	SKS_CKA_MODIFIABLE, SKS_CKA_COPYABLE, SKS_CKA_DESTROYABLE,
 };
-static const uint32_t pkcs11_any_object_optional[] = {
+static const uint32_t pkcs11_any_object_mandated[] = {
 	SKS_CKA_LABEL,
 };
 /* PKCS#11 specification for raw data object (+pkcs11_any_object_xxx) */
@@ -501,9 +501,9 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 						 struct sks_attrs_head *temp)
 {
 	uint32_t const *boolprops = &pkcs11_any_object_boolprops[0];
-	uint32_t const *optional = &pkcs11_any_object_optional[0];
+	uint32_t const *mandated = &pkcs11_any_object_mandated[0];
 	size_t boolprops_count = ARRAY_SIZE(pkcs11_any_object_boolprops);
-	size_t optional_count = ARRAY_SIZE(pkcs11_any_object_optional);
+	size_t mandated_count = ARRAY_SIZE(pkcs11_any_object_mandated);
 	uint32_t class = 0;
 	uint32_t rv = 0;
 
@@ -526,7 +526,7 @@ static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
 	if (rv)
 		return rv;
 
-	return set_optional_attributes(out, temp, optional, optional_count);
+	return set_mandatory_attributes(out, temp, mandated, mandated_count);
 }
 
 static uint32_t create_pkcs11_genkey_attributes(struct sks_attrs_head **out,
