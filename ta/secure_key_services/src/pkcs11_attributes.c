@@ -290,6 +290,8 @@ static uint8_t *pkcs11_object_default_boolprop(uint32_t attribute)
 	case SKS_CKA_MODIFIABLE:
 	case SKS_CKA_COPYABLE:
 	case SKS_CKA_DESTROYABLE:
+	case SKS_CKA_SIGN:
+	case SKS_CKA_VERIFY:
 		return (uint8_t *)&bool_true;
 	case SKS_CKA_TOKEN:
 	case SKS_CKA_PRIVATE:
@@ -298,8 +300,6 @@ static uint8_t *pkcs11_object_default_boolprop(uint32_t attribute)
 	case SKS_CKA_DERIVE:
 	case SKS_CKA_ENCRYPT:
 	case SKS_CKA_DECRYPT:
-	case SKS_CKA_SIGN:
-	case SKS_CKA_VERIFY:
 	case SKS_CKA_SIGN_RECOVER:
 	case SKS_CKA_VERIFY_RECOVER:
 	case SKS_CKA_WRAP:
