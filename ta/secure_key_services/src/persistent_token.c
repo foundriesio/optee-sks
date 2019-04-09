@@ -275,6 +275,78 @@ uint32_t register_persistent_object(struct ck_token *token, TEE_UUID *uuid)
 	return SKS_OK;
 }
 
+static uint32_t token_load_obj_attribs(struct sks_object *obj)
+{
+	uint32_t rv = 0;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	TEE_ObjectHandle hdl = obj->attribs_hdl;
+	TEE_ObjectInfo info;
+	struct sks_attrs_head *attr = NULL;
+	uint32_t read_bytes = 0;
+
+	if (hdl != TEE_HANDLE_NULL) {
+		IMSG("Handle attributes already set for this object");
+		return SKS_OK;
+	}
+
+	res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
+					   obj->uuid, sizeof(*obj->uuid),
+					   TEE_DATA_FLAG_ACCESS_READ,
+					   &hdl);
+	if (res) {
+		EMSG("OpenPersistent failed 0x%" PRIx32, res);
+		return tee2sks_error(res);
+	}
+
+	TEE_MemFill(&info, 0, sizeof(info));
+	res = TEE_GetObjectInfo1(hdl, &info);
+	if (res) {
+		EMSG("GetObjectInfo failed 0x%" PRIx32, res);
+		rv = tee2sks_error(res);
+		goto bail;
+	}
+
+	attr = TEE_Malloc(info.dataSize, TEE_MALLOC_FILL_ZERO);
+	if (!attr) {
+		rv = SKS_MEMORY;
+		goto bail;
+	}
+
+	res = TEE_ReadObjectData(hdl, attr, info.dataSize, &read_bytes);
+	if (!res) {
+		res = TEE_SeekObjectData(hdl, 0, TEE_DATA_SEEK_SET);
+		if (res)
+			EMSG("Seek to 0 failed 0x%" PRIx32, res);
+	}
+
+	if (res) {
+		rv = tee2sks_error(res);
+		EMSG("Read %" PRIu32 " bytes, failed 0x%" PRIx32,
+			read_bytes, res);
+		goto bail;
+	}
+	if (read_bytes != info.dataSize) {
+		EMSG("Read %" PRIu32 " bytes, expected 0x%" PRIu32,
+			read_bytes, info.dataSize);
+		rv = SKS_ERROR;
+		goto bail;
+	}
+
+	obj->attributes = attr;
+	attr = NULL;
+	obj->attribs_hdl = hdl;
+	hdl = TEE_HANDLE_NULL;
+	rv = SKS_OK;
+
+bail:
+	TEE_Free(attr);
+	if (obj->attribs_hdl == TEE_HANDLE_NULL && hdl != TEE_HANDLE_NULL) {
+		TEE_CloseObject(hdl);
+	}
+
+	return rv;
+}
+
 /*
  * Return the token instance, either initialized from reset or initialized
  * from the token persistent state if found.
@@ -355,6 +427,9 @@ struct ck_token *init_token_db(unsigned int token_id)
 			obj = create_token_object_instance(NULL, uuid);
 			if (!obj)
 				TEE_Panic(0);
+
+			if (token_load_obj_attribs(obj) != SKS_OK)
+				EMSG("Unable to load object attributes from db");
 
 			LIST_INSERT_HEAD(&token->object_list, obj, link);
 		}
