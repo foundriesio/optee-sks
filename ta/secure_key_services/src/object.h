@@ -11,6 +11,7 @@
 #include <tee_internal_api.h>
 
 struct pkcs11_session;
+struct ck_token;
 
 struct sks_object {
 	LIST_ENTRY(sks_object) link;
@@ -37,6 +38,9 @@ struct sks_object *create_token_object_instance(struct sks_attrs_head *head,
 
 uint32_t create_object(void *session, struct sks_attrs_head *attributes,
 			uint32_t *handle);
+
+void cleanup_persistent_object(struct sks_object *obj,
+			struct ck_token *token);
 
 void destroy_object(struct pkcs11_session *session, struct sks_object *object,
 		    bool session_object_only);

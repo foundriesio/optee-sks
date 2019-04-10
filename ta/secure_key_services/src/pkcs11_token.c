@@ -269,6 +269,7 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	uint8_t *cpin = NULL;
 	int pin_rc = 0;
 	struct pkcs11_client *client;
+	struct sks_object *obj = NULL;
 
 	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 
@@ -380,6 +381,18 @@ inited:
 				   SKS_CKFT_USER_PIN_TO_BE_CHANGED);
 
 	update_persistent_db(token, 0, sizeof(*token->db_main));
+
+	/* Remove all persistent objects */
+	if (token->db_objs && token->db_objs->count > 0) {
+		while (!LIST_EMPTY(&token->object_list)) {
+			obj = LIST_FIRST(&token->object_list);
+#ifdef DEBUG
+			MSG_RAW("[destroy] obj uuid %pUl", (void *)obj->uuid);
+#endif
+			unregister_persistent_object(token, obj->uuid);
+			cleanup_persistent_object(obj, token);
+		}
+	}
 
 	label[SKS_TOKEN_LABEL_SIZE] = '\0';
 	IMSG("SKSt%" PRIu32 ": initialized \"%s\"", token_id, label);
