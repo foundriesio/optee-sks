@@ -114,7 +114,7 @@ struct processing_id {
 #else
 #define SKS_PROCESSING_ID(_id) \
 			{ .id = _id, .supported = true }
-#define SKS_UNSUPPORTED_PROCESSING_ID(_id, _size) \
+#define SKS_UNSUPPORTED_PROCESSING_ID(_id) \
 			{ .id = _id, .supported = false }
 
 #endif
