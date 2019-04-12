@@ -20,7 +20,7 @@
 #define PADDED_STRING_COPY(_dst, _src) \
 	do { \
 		memset((char *)_dst, ' ', sizeof(_dst)); \
-		strncpy((char *)_dst, _src, sizeof(_dst)); \
+		strncpy((char *)_dst, _src, strlen(_src)); \
 	} while (0)
 
 /**
