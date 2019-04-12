@@ -618,9 +618,6 @@ static uint32_t supported_mechanism_info_flag(uint32_t proc_id)
 	case SKS_CKM_AES_ECB:
 	case SKS_CKM_AES_CBC:
 	case SKS_CKM_AES_CBC_PAD:
-		flags = SKS_CKFM_ENCRYPT | SKS_CKFM_DECRYPT |
-			SKS_CKFM_WRAP | SKS_CKFM_UNWRAP | SKS_CKFM_DERIVE;
-		break;
 	case SKS_CKM_AES_CTR:
 	case SKS_CKM_AES_CTS:
 	case SKS_CKM_AES_GCM:

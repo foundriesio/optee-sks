@@ -81,9 +81,9 @@ static const __maybe_unused struct pkcs11_mechachism_modes pkcs11_modes[] = {
 	 *				|   / \   / \   / \  |   / \  |  |  |
 	 * Mechanism			Di|En|De|Si|Ve|Sr|Vr|Dr|Wr|Uw|Ge|Gp|1
 	 */
-	SKS_M(AES_ECB,			0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
-	SKS_M(AES_CBC,			0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
-	SKS_M(AES_CBC_PAD,		0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
+	SKS_M(AES_ECB,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+	SKS_M(AES_CBC,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+	SKS_M(AES_CBC_PAD,		0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
 	SKS_M(AES_CTS,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
 	SKS_M(AES_CTR,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
 	SKS_M(AES_GCM,			0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
