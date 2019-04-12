@@ -100,10 +100,14 @@ static const CK_FUNCTION_LIST libsks_function_list = {
 CK_RV C_Initialize(CK_VOID_PTR init_args)
 {
 	(void)init_args;
-	CK_C_INITIALIZE_ARGS_PTR args = (CK_C_INITIALIZE_ARGS_PTR)init_args;
+	CK_C_INITIALIZE_ARGS_PTR args = NULL;
 
-	/* Argument currently unused */
-	(void)args;
+	if (init_args) {
+		args = (CK_C_INITIALIZE_ARGS_PTR)init_args;
+		/* Reserved must be set to NULL in this version of PKCS#11 */
+		if (args->reserved)
+			return CKR_ARGUMENTS_BAD;
+	}
 
 	if (lib_inited)
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
