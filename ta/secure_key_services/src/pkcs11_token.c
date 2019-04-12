@@ -709,8 +709,8 @@ static uint32_t supported_mechanism_info_flag(uint32_t proc_id)
 }
 
 static void supported_mechanism_key_size(uint32_t proc_id,
-					 uint32_t *max_key_size,
 					 uint32_t *min_key_size,
+					 uint32_t *max_key_size,
 					 bool bit_size_only)
 {
 	uint32_t mult = bit_size_only ? 8 : 1;
