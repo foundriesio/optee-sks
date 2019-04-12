@@ -197,11 +197,15 @@ CK_RV sks_ck_token_mechanism_ids(CK_SLOT_ID slot,
 				 CK_ULONG_PTR count)
 {
 	uint32_t ctrl[1] = { slot };
-	size_t outsize = *count * sizeof(uint32_t);
+	size_t outsize = 0;
 	void *outbuf = NULL;
 	CK_RV rv;
 
+	if (!count)
+		return CKR_ARGUMENTS_BAD;
+
 	if (mechanisms) {
+		outsize = *count * sizeof(uint32_t);
 		outbuf = malloc(outsize);
 		if (!outbuf)
 			return CKR_HOST_MEMORY;
