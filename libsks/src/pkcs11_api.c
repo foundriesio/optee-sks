@@ -123,6 +123,10 @@ CK_RV C_Finalize(CK_VOID_PTR res)
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
+	/* Reserved must be set to NULL in this version of PKCS#11 */
+	if (res)
+		return CKR_ARGUMENTS_BAD;
+
 	sks_invoke_terminate();
 
 	lib_inited = 0;
