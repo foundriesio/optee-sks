@@ -572,11 +572,6 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < mechanisms_count * sizeof(uint32_t)) {
-		out->memref.size = mechanisms_count * sizeof(uint32_t);
-		return SKS_SHORT_BUFFER;
-	}
-
 	if ((uintptr_t)out->memref.buffer & 0x3UL)
 		return SKS_BAD_PARAM;
 
@@ -589,6 +584,11 @@ uint32_t entry_ck_token_mecha_ids(TEE_Param *ctrl,
 	token = get_token(token_id);
 	if (!token)
 		return SKS_CKR_SLOT_ID_INVALID;
+
+	if (out->memref.size < mechanisms_count * sizeof(uint32_t)) {
+		out->memref.size = mechanisms_count * sizeof(uint32_t);
+		return SKS_SHORT_BUFFER;
+	}
 
 	out->memref.size = sizeof(uint32_t) *
 		get_supported_mechanisms(out->memref.buffer, mechanisms_count);
