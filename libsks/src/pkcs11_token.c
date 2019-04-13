@@ -102,10 +102,15 @@ int sks_ck_slot_get_info(CK_SLOT_ID slot, CK_SLOT_INFO_PTR info)
 	CK_SLOT_INFO *ck_info = info;
 	struct sks_slot_info sks_info;
 	size_t out_size = sizeof(sks_info);
+	CK_RV rv = CKR_GENERAL_ERROR;
 
-	if (ck_invoke_ta_in_out(NULL, SKS_CMD_CK_SLOT_INFO, &ctrl, sizeof(ctrl),
-				NULL, 0, &sks_info, &out_size))
-		return CKR_DEVICE_ERROR;
+	if (!info)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = ck_invoke_ta_in_out(NULL, SKS_CMD_CK_SLOT_INFO, &ctrl,
+			sizeof(ctrl), NULL, 0, &sks_info, &out_size);
+	if (rv)
+		return rv;
 
 	if (sks2ck_slot_info(ck_info, &sks_info)) {
 		LOG_ERROR("unexpected bad token info structure\n");
@@ -125,6 +130,9 @@ CK_RV sks_ck_token_get_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 	TEEC_SharedMemory *shm;
 	size_t size;
 	CK_RV rv = CKR_GENERAL_ERROR;
+
+	if (!info)
+		return CKR_ARGUMENTS_BAD;
 
 	ctrl[0] = (uint32_t)slot;
 	size = 0;
