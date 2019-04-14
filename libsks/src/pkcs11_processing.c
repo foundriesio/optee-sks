@@ -36,6 +36,9 @@ CK_RV ck_create_object(CK_SESSION_HANDLE session,
 	uint32_t session_handle = session;
 	size_t key_handle_size = sizeof(key_handle);
 
+	if (!attribs || !count || !handle)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = serialize_ck_attributes(&obj, attribs, count);
 	if (rv)
 		goto bail;
