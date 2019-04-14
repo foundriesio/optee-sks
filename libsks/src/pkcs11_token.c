@@ -268,10 +268,8 @@ CK_RV sks_ck_token_mechanism_info(CK_SLOT_ID slot,
 	rv = ck_invoke_ta_in_out(NULL, SKS_CMD_CK_MECHANISM_INFO,
 				 &ctrl, sizeof(ctrl),
 				 NULL, 0, &outbuf, &outsize);
-	if (rv) {
-		LOG_ERROR("Unexpected bad state (%x)\n", (unsigned)rv);
-		return CKR_DEVICE_ERROR;
-	}
+	if (rv)
+		return rv;
 
 	if (sks2ck_mechanism_info(info, &outbuf)) {
 		LOG_ERROR("unexpected bad mechanism info structure\n");
