@@ -605,6 +605,33 @@ bail:
 	return rv;
 }
 
+CK_RV ck_get_object_size(CK_SESSION_HANDLE session,
+			     CK_OBJECT_HANDLE obj,
+			     CK_ULONG_PTR out_size)
+{
+	CK_RV rv;
+	uint32_t ctrl[2] = { (uint32_t)session, (uint32_t)obj };
+	uint32_t obj_size = 0;
+	size_t size = sizeof(obj_size);
+
+	if (!out_size)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = ck_invoke_ta_in_out(ck_session2sks_ctx(session),
+				SKS_CMD_GET_OBJECT_SIZE, ctrl,
+				sizeof(ctrl), NULL, 0, &obj_size,
+				&size);
+	if (rv)
+		return rv;
+
+	if (obj_size == SKS_CK_UNAVAILABLE_INFORMATION)
+		*out_size = CK_UNAVAILABLE_INFORMATION;
+	else
+		*out_size = obj_size;
+
+	return rv;
+}
+
 CK_RV ck_get_attribute_value(CK_SESSION_HANDLE session,
 			     CK_OBJECT_HANDLE obj,
 			     CK_ATTRIBUTE_PTR attribs,

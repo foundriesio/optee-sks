@@ -736,14 +736,33 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE session,
 		      CK_OBJECT_HANDLE obj,
 		      CK_ULONG_PTR out_size)
 {
-	(void)session;
-	(void)obj;
-	(void)out_size;
+	CK_RV rv;
 
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = ck_get_object_size(session, obj, out_size);
+
+	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+	case CKR_DEVICE_ERROR:
+	case CKR_DEVICE_MEMORY:
+	case CKR_DEVICE_REMOVED:
+	case CKR_FUNCTION_FAILED:
+	case CKR_GENERAL_ERROR:
+	case CKR_HOST_MEMORY:
+	case CKR_INFORMATION_SENSITIVE:
+	case CKR_OBJECT_HANDLE_INVALID:
+	case CKR_OK:
+	case CKR_SESSION_CLOSED:
+	case CKR_SESSION_HANDLE_INVALID:
+		break;
+	default:
+		assert(!rv);
+	}
+
+	return rv;
 }
 
 CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session,
