@@ -1018,6 +1018,7 @@ CK_RV serialize_ck_mecha_params(struct serializer *obj,
 	case CKM_SHA384_RSA_PKCS:
 	case CKM_SHA512_RSA_PKCS:
 	case CKM_SHA224_RSA_PKCS:
+	case CKM_DES_KEY_GEN:
 		/* No parameter expected, size shall be 0 */
 		if (mechanism->ulParameterLen)
 			return CKR_MECHANISM_PARAM_INVALID;
