@@ -1960,7 +1960,7 @@ CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE session)
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_PARALLEL;
 }
 
 CK_RV C_CancelFunction(CK_SESSION_HANDLE session)
@@ -1970,7 +1970,7 @@ CK_RV C_CancelFunction(CK_SESSION_HANDLE session)
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_PARALLEL;
 }
 
 
