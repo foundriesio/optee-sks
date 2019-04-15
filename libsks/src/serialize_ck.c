@@ -540,6 +540,16 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 		memcpy(out->pValue, &ck_ulong, sizeof(CK_ULONG));
 		break;
 
+	case CKA_KEY_GEN_MECHANISM:
+		memcpy(&sks_data32, in->data, sizeof(uint32_t));
+		if (sks_data32 == SKS_CK_UNAVAILABLE_INFORMATION)
+			ck_ulong = CK_UNAVAILABLE_INFORMATION;
+		else
+			ck_ulong = sks_data32;
+		memcpy(out->pValue, &ck_ulong, sizeof(CK_ULONG));
+		rv = CKR_OK;
+		break;
+
 	case CKA_WRAP_TEMPLATE:
 	case CKA_UNWRAP_TEMPLATE:
 		rv = deserialize_indirect_attribute(in, out->pValue);

@@ -324,6 +324,7 @@ static const struct ck2sks attribute_type[] = {
 	CK2SKS_ID(CKA_HASH_OF_SUBJECT_PUBLIC_KEY),
 	CK2SKS_ID(CKA_HASH_OF_ISSUER_PUBLIC_KEY),
 	CK2SKS_ID(CKA_NAME_HASH_ALGORITHM),
+	CK2SKS_ID(CKA_KEY_GEN_MECHANISM),
 	/* Below are boolean attributes */
 	CK2SKS_ID(CKA_TOKEN),
 	CK2SKS_ID(CKA_PRIVATE),
@@ -667,6 +668,7 @@ size_t ck_attr_is_type(uint32_t id)
 	case CKA_KEY_TYPE:
 	case CKA_HW_FEATURE_TYPE:
 	case CKA_MECHANISM_TYPE:
+	case CKA_KEY_GEN_MECHANISM:
 		return sizeof(CK_ULONG);
 	default:
 		return 0;
