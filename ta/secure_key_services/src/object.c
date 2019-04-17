@@ -634,6 +634,52 @@ uint32_t entry_find_objects_final(uintptr_t tee_session, TEE_Param *ctrl,
 	return SKS_OK;
 }
 
+
+/*
+ * Entry for command SKS_CMD_GET_OBJECT_SIZE
+ */
+uint32_t entry_get_object_size(uintptr_t tee_session, TEE_Param *ctrl,
+				   TEE_Param *in, TEE_Param *out)
+{
+	struct serialargs ctrlargs;
+	uint32_t session_handle = 0;
+	uint32_t object_handle = 0;
+	struct pkcs11_session *session = NULL;
+	struct sks_object *object = NULL;
+	uint32_t rv = 0;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
+
+	if (!ctrl || in || !out)
+		return SKS_BAD_PARAM;
+
+	if (out->memref.size < sizeof(uint32_t))
+		return SKS_BAD_PARAM;
+
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	rv = serialargs_get(&ctrlargs, &object_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
+		return SKS_CKR_SESSION_HANDLE_INVALID;
+
+	object = sks_handle2object(object_handle, session);
+	if (!object)
+		return SKS_CKR_OBJECT_HANDLE_INVALID;
+
+	*(uint32_t *)out->memref.buffer = SKS_CK_UNAVAILABLE_INFORMATION;
+	out->memref.size = sizeof(uint32_t);
+
+	return rv;
+}
+
 /*
  * Entry for command SKS_CMD_GET_ATTRIBUTE_VALUE
  */

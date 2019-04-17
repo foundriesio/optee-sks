@@ -311,6 +311,10 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 		rc = entry_find_objects_final(teesess, ctrl, p1_in, p2_out);
 		break;
 
+	case SKS_CMD_GET_OBJECT_SIZE:
+		rc = entry_get_object_size(teesess, ctrl, p1_in, p2_out);
+		break;
+
 	case SKS_CMD_GET_ATTRIBUTE_VALUE:
 		rc = entry_get_attribute_value(teesess, ctrl, p1_in, p2_out);
 		break;

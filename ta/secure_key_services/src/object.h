@@ -60,6 +60,9 @@ uint32_t entry_find_objects(uintptr_t teesess, TEE_Param *ctrl,
 uint32_t entry_find_objects_final(uintptr_t teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out);
 
+uint32_t entry_get_object_size(uintptr_t teesess, TEE_Param *ctrl,
+			       TEE_Param *in, TEE_Param *out);
+
 uint32_t entry_get_attribute_value(uintptr_t teesess, TEE_Param *ctrl,
 				   TEE_Param *in, TEE_Param *out);
 
