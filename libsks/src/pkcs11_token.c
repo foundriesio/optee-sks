@@ -296,6 +296,9 @@ CK_RV sks_ck_open_session(CK_SLOT_ID slot,
 	size_t out_sz = sizeof(handle);
 	CK_RV rv;
 
+	if (!session)
+		return CKR_ARGUMENTS_BAD;
+
 	if (cookie || callback) {
 		LOG_ERROR("C_OpenSession does not handle callback yet\n");
 		return CKR_FUNCTION_NOT_SUPPORTED;
