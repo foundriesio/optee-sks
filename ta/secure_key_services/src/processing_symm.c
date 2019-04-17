@@ -86,7 +86,9 @@ static uint32_t sks2tee_algorithm(uint32_t *tee_id,
 	return SKS_OK;
 }
 
-static uint32_t sks2tee_key_type(uint32_t *tee_type, struct sks_object *obj)
+static uint32_t sks2tee_key_type(uint32_t *tee_type,
+				  struct sks_attribute_head *proc_params,
+				  struct sks_object *obj)
 {
 	static const uint32_t sks2tee_key_type[][2] = {
 		{ SKS_CKK_AES, TEE_TYPE_AES },
@@ -98,22 +100,51 @@ static uint32_t sks2tee_key_type(uint32_t *tee_type, struct sks_object *obj)
 		{ SKS_CKK_SHA384_HMAC, TEE_TYPE_HMAC_SHA384 },
 		{ SKS_CKK_SHA512_HMAC, TEE_TYPE_HMAC_SHA512 },
 	};
-	const size_t last = sizeof(sks2tee_key_type) / (2 * sizeof(uint32_t));
+	static const uint32_t sks_mech2tee_type[][2] = {
+		{ SKS_CKM_MD5_HMAC, TEE_TYPE_HMAC_MD5 },
+		{ SKS_CKM_SHA_1_HMAC, TEE_TYPE_HMAC_SHA1 },
+		{ SKS_CKM_SHA224_HMAC, TEE_TYPE_HMAC_SHA224 },
+		{ SKS_CKM_SHA256_HMAC, TEE_TYPE_HMAC_SHA256 },
+		{ SKS_CKM_SHA384_HMAC, TEE_TYPE_HMAC_SHA384 },
+		{ SKS_CKM_SHA512_HMAC, TEE_TYPE_HMAC_SHA512 },
+	};
+	size_t last = 0;
 	size_t n = 0;
 	uint32_t type = 0;
-
-	type = get_type(obj->attributes);
+	uint32_t key_type = 0;
 
 	assert(get_class(obj->attributes) == SKS_CKO_SECRET_KEY);
 
+	key_type = get_type(obj->attributes);
+	last = sizeof(sks2tee_key_type) / (2 * sizeof(uint32_t));
 	for (n = 0; n < last; n++) {
-		if (sks2tee_key_type[n][0] == type) {
-			*tee_type = sks2tee_key_type[n][1];
-			return SKS_OK;
+		if (sks2tee_key_type[n][0] == key_type) {
+			type = sks2tee_key_type[n][1];
+			break;
+		}
+	}
+	if (n == last)
+		return SKS_NOT_FOUND;
+
+	/*
+	 * HMAC secret corresponds to the generic secret key type
+	 * or the mechanism specific key type. If generic, find the
+	 * corresponding TEE_TYPE based on the mechanism used.
+	 */
+	if (type == TEE_TYPE_GENERIC_SECRET) {
+		last = sizeof(sks_mech2tee_type) /
+				(2 * sizeof(uint32_t));
+		for (n = 0; n < last; n++) {
+			if (sks_mech2tee_type[n][0] == proc_params->id) {
+				type = sks_mech2tee_type[n][1];
+				break;
+			}
 		}
 	}
 
-	return SKS_NOT_FOUND;
+	*tee_type = type;
+
+	return SKS_OK;
 }
 
 static uint32_t allocate_tee_operation(struct pkcs11_session *session,
@@ -159,6 +190,7 @@ static uint32_t allocate_tee_operation(struct pkcs11_session *session,
 }
 
 static uint32_t load_tee_key(struct pkcs11_session *session,
+				struct sks_attribute_head *proc_params,
 				struct sks_object *obj)
 {
 	TEE_Attribute tee_attr;
@@ -180,7 +212,7 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 		return SKS_FAILED;
 	}
 
-	rv = sks2tee_key_type(&key_type, obj);
+	rv = sks2tee_key_type(&key_type, proc_params, obj);
 	if (rv)
 		return rv;
 
@@ -292,7 +324,7 @@ uint32_t init_symm_operation(struct pkcs11_session *session,
 	if (rv)
 		return rv;
 
-	rv = load_tee_key(session, obj);
+	rv = load_tee_key(session, proc_params, obj);
 	if (rv)
 		return rv;
 
