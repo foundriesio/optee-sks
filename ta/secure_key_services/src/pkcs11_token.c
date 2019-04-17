@@ -813,16 +813,6 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 	if (!ctrl || in || !out)
 		return SKS_BAD_PARAM;
 
-	if (out->memref.size < sizeof(info)) {
-		out->memref.size = sizeof(info);
-		return SKS_SHORT_BUFFER;
-	}
-
-	if ((uintptr_t)out->memref.buffer & 0x3UL)
-		return SKS_BAD_PARAM;
-
-	info = (struct sks_mechanism_info *)out->memref.buffer;
-
 	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
 
 	rv = serialargs_get(&ctrlargs, &token_id, sizeof(uint32_t));
@@ -839,6 +829,16 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 
 	if (!mechanism_is_supported(type))
 		return SKS_CKR_MECHANISM_INVALID;
+
+	if (out->memref.size < sizeof(info)) {
+		out->memref.size = sizeof(info);
+		return SKS_SHORT_BUFFER;
+	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
+
+	info = (struct sks_mechanism_info *)out->memref.buffer;
 
 	info->flags = supported_mechanism_info_flag(type);
 
