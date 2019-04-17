@@ -182,9 +182,15 @@ static uint32_t allocate_tee_operation(struct pkcs11_session *session,
 
 	res = TEE_AllocateOperation(&session->processing->tee_op_handle,
 				    algo, mode, size);
-	if (res)
+	switch (res) {
+	case TEE_ERROR_NOT_SUPPORTED:
+		return SKS_CKR_MECHANISM_INVALID;
+	case TEE_SUCCESS:
+		break;
+	default:
 		EMSG("TEE_AllocateOp. failed %" PRIx32 " %" PRIx32 " %" PRIx32,
 			algo, mode, size);
+	}
 
 	return tee2sks_error(res);
 }
