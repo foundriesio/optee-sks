@@ -179,6 +179,9 @@ CK_RV sks_ck_init_token(CK_SLOT_ID slot,
 	char *ctrl;
 	size_t offset;
 
+	if (!pin || !label)
+		return CKR_ARGUMENTS_BAD;
+
 	ctrl = malloc(ctrl_size);
 	if (!ctrl)
 		return CKR_HOST_MEMORY;
