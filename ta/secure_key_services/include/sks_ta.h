@@ -279,12 +279,29 @@ struct sks_mechanism_info {
  */
 #define SKS_CMD_CK_SESSION_INFO		0x0000000c
 
+/*
+ * Values for sks_session_info::state.
+ * SKS_CKSS_<x> strictly matches cryptoki CKS_<x> related to session state.
+ */
+#define SKS_CKSS_RO_PUBLIC_SESSION	0
+#define SKS_CKSS_RO_USER_FUNCTIONS	1
+#define SKS_CKSS_RW_PUBLIC_SESSION	2
+#define SKS_CKSS_RW_USER_FUNCTIONS	3
+#define SKS_CKSS_RW_SO_FUNCTIONS	4
+
 struct sks_session_info {
 	uint32_t slot_id;
 	uint32_t state;
 	uint32_t flags;
 	uint32_t error_code;
 };
+
+/*
+ * Values for sks_session_info::flags.
+ * SKS_CKFS_<x> strictly matches cryptoki CKF_<x> related to session flags.
+ */
+#define SKS_CKFS_RW_SESSION			(1U << 1)
+#define SKS_CKFS_SERIAL_SESSION		(1U << 2)
 
 /*
  * SKS_CMD_CK_CLOSE_ALL_SESSIONS - Close all client sessions on slot/token
