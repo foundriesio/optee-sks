@@ -257,6 +257,9 @@ CK_RV sks_ck_token_mechanism_info(CK_SLOT_ID slot,
 	struct sks_mechanism_info outbuf;
 	size_t outsize = sizeof(outbuf);
 
+	if (!info)
+		return CKR_ARGUMENTS_BAD;
+
 	ctrl[0] = (uint32_t)slot;
 	ctrl[1] = ck2sks_mechanism_type(type);
 	if (ctrl[1] == SKS_UNDEFINED_ID) {
