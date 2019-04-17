@@ -1793,6 +1793,15 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session,
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
+	if (!mechanism || !pub_key || !priv_key)
+		return CKR_ARGUMENTS_BAD;
+
+	if (pub_count && !pub_attribs)
+		return CKR_ARGUMENTS_BAD;
+
+	if (priv_count && !priv_attribs)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = ck_guess_key_type(mechanism, pub_attribs, &pub_count,
 			       &pub_attribs_n);
 	if (rv != CKR_OK)
