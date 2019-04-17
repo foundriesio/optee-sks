@@ -1373,7 +1373,7 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 		/* Get key size */
 		rv = get_u32_attribute(secret, SKS_CKA_VALUE_LEN, &key_length);
 		if (rv)
-			return rv;
+			return SKS_CKR_TEMPLATE_INCONSISTENT;
 	}
 	if (public) {
 		switch (get_type(public)) {
@@ -1384,7 +1384,7 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 			rv = get_u32_attribute(public, SKS_CKA_MODULUS_BITS,
 						&key_length);
 			if (rv)
-				return rv;
+				return SKS_CKR_TEMPLATE_INCONSISTENT;
 			break;
 		case SKS_CKK_EC:
 			break;
@@ -1404,7 +1404,7 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 			rv = get_u32_attribute(private, SKS_CKA_MODULUS_BITS,
 						&key_length);
 			if (rv)
-				return rv;
+				return SKS_CKR_TEMPLATE_INCONSISTENT;
 			break;
 		case SKS_CKK_EC:
 			/* No need to get key size */
