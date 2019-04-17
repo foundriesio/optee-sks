@@ -206,6 +206,9 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 	case SKS_CMD_CK_CLOSE_ALL_SESSIONS:
 		rc = entry_ck_token_close_all(teesess, ctrl, p1_in, p2_out);
 		break;
+	case SKS_CMD_CK_SESSION_INFO:
+		rc = entry_ck_token_session_info(teesess, ctrl, p1_in, p2_out);
+		break;
 
 	case SKS_CMD_IMPORT_OBJECT:
 		rc = entry_import_object(teesess, ctrl, p1_in, p2_out);

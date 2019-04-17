@@ -303,6 +303,8 @@ uint32_t entry_ck_token_close_session(uintptr_t teesess, TEE_Param *ctrl,
 				      TEE_Param *in, TEE_Param *out);
 uint32_t entry_ck_token_close_all(uintptr_t teesess, TEE_Param *ctrl,
 				  TEE_Param *in, TEE_Param *out);
+uint32_t entry_ck_token_session_info(uintptr_t tee_session, TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out);
 
 uint32_t entry_init_pin(uintptr_t tee_session, TEE_Param *ctrl,
 			TEE_Param *in, TEE_Param *out);

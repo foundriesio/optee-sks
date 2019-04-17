@@ -1155,6 +1155,72 @@ uint32_t entry_ck_token_close_all(uintptr_t tee_session, TEE_Param *ctrl,
 	return SKS_OK;
 }
 
+/* ctrl=[session-handle], in=unused, out=[session-info] */
+uint32_t entry_ck_token_session_info(uintptr_t tee_session, TEE_Param *ctrl,
+				  TEE_Param *in, TEE_Param *out)
+{
+	uint32_t rv = 0;
+	struct serialargs ctrlargs;
+	uint32_t session_handle = 0;
+	struct pkcs11_session *session = NULL;
+	struct sks_session_info info;
+
+	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
+	TEE_MemFill(&info, 0, sizeof(info));
+
+	if (!ctrl || in || !out || ctrl->memref.size < sizeof(uint32_t))
+		return SKS_BAD_PARAM;
+
+	serialargs_init(&ctrlargs, ctrl->memref.buffer, ctrl->memref.size);
+
+	rv = serialargs_get(&ctrlargs, &session_handle, sizeof(uint32_t));
+	if (rv)
+		return rv;
+
+	session = sks_handle2session(session_handle, tee_session);
+	if (!session)
+		return SKS_CKR_SESSION_HANDLE_INVALID;
+
+	if (out->memref.size < sizeof(struct sks_session_info)) {
+		out->memref.size = sizeof(struct sks_session_info);
+		return SKS_SHORT_BUFFER;
+	}
+
+	if ((uintptr_t)out->memref.buffer & 0x3UL)
+		return SKS_BAD_PARAM;
+
+	info.slot_id = get_token_id(session->token);
+	switch (session->state) {
+	case PKCS11_SESSION_PUBLIC_READ_WRITE:
+		info.state = SKS_CKSS_RW_PUBLIC_SESSION;
+		break;
+	case PKCS11_SESSION_PUBLIC_READ_ONLY:
+		info.state = SKS_CKSS_RO_PUBLIC_SESSION;
+		break;
+	case PKCS11_SESSION_USER_READ_WRITE:
+		info.state = SKS_CKSS_RW_USER_FUNCTIONS;
+		break;
+	case PKCS11_SESSION_USER_READ_ONLY:
+		info.state = SKS_CKSS_RO_USER_FUNCTIONS;
+		break;
+	case PKCS11_SESSION_SO_READ_WRITE:
+		info.state = SKS_CKSS_RW_SO_FUNCTIONS;
+		break;
+	default:
+		TEE_Panic(0);
+	}
+	info.flags = SKS_CKFS_SERIAL_SESSION;
+	if (session->state == PKCS11_SESSION_USER_READ_WRITE ||
+			session->state == PKCS11_SESSION_PUBLIC_READ_WRITE)
+		info.flags |= SKS_CKFS_RW_SESSION;
+	info.error_code = 0;
+
+	/* Return to caller with data */
+	TEE_MemMove(out->memref.buffer, &info, sizeof(info));
+
+	return SKS_OK;
+}
+
 static uint32_t set_pin(struct pkcs11_session *session,
 			uint8_t *new_pin, size_t new_pin_size,
 			uint32_t user_type)
