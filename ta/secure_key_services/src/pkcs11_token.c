@@ -282,6 +282,10 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
+	token = get_token(token_id);
+	if (!token)
+		return SKS_CKR_SLOT_ID_INVALID;
+
 	rv = serialargs_get(&ctrlargs, &pin_size, sizeof(uint32_t));
 	if (rv)
 		return rv;
@@ -296,10 +300,6 @@ uint32_t entry_ck_token_initialize(TEE_Param *ctrl,
 	rv = serialargs_get(&ctrlargs, &label, SKS_TOKEN_LABEL_SIZE);
 	if (rv)
 		return rv;
-
-	token = get_token(token_id);
-	if (!token)
-		return SKS_CKR_SLOT_ID_INVALID;
 
 	if (token->db_main->flags & SKS_CKFT_SO_PIN_LOCKED) {
 		IMSG("SKSt%u: SO PIN locked", token_id);
