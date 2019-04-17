@@ -49,6 +49,8 @@ CK_RV sks2ck_token_info(CK_TOKEN_INFO_PTR ck_info,
 			struct sks_token_info *sks_info);
 CK_RV sks2ck_slot_info(CK_SLOT_INFO_PTR ck_info,
 			struct sks_slot_info *sks_info);
+CK_RV sks2ck_session_info(CK_SESSION_INFO_PTR ck_info,
+			struct sks_session_info *sks_info);
 
 /* Backward compat on deprecated functions */
 static inline CK_RV sks2ck_attribute_id(CK_ATTRIBUTE_TYPE *ck, uint32_t sks)

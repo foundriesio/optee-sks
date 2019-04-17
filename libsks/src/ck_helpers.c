@@ -118,6 +118,17 @@ CK_RV sks2ck_token_info(CK_TOKEN_INFO_PTR ck_info,
 	return CKR_OK;
 }
 
+CK_RV sks2ck_session_info(CK_SESSION_INFO_PTR ck_info,
+			   struct sks_session_info *sks_info)
+{
+	ck_info->slotID = sks_info->slot_id;
+	ck_info->state = sks_info->state;
+	ck_info->flags = sks_info->flags;
+	ck_info->ulDeviceError = sks_info->error_code;
+
+	return CKR_OK;
+}
+
 /*
  * Helpers for CK/SKS conversions: tables of identifiers
  *

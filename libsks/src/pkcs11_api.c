@@ -452,9 +452,6 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE session,
 	if (!lib_inited)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	if (!info)
-		return CKR_ARGUMENTS_BAD;
-
 	return sks_ck_get_session_info(session, info);
 }
 

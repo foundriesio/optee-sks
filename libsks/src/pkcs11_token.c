@@ -339,11 +339,36 @@ CK_RV sks_ck_get_session_info(CK_SESSION_HANDLE session,
 			      CK_SESSION_INFO_PTR info)
 {
 	uint32_t ctrl[1] = { (uint32_t)session };
-	size_t info_size = sizeof(CK_SESSION_INFO);
+	CK_SESSION_INFO *s_info = info;
+	TEEC_SharedMemory *shm = NULL;
+	CK_RV rv = CKR_GENERAL_ERROR;
+	size_t info_size = sizeof(struct sks_session_info);
 
-	return ck_invoke_ta_in_out(NULL, SKS_CMD_CK_SESSION_INFO,
+	if (!info)
+		return CKR_ARGUMENTS_BAD;
+
+	shm = sks_alloc_shm_out(NULL, info_size);
+	if (!shm)
+		return CKR_HOST_MEMORY;
+
+	rv = ck_invoke_ta_in_out(NULL, SKS_CMD_CK_SESSION_INFO,
 				   &ctrl, sizeof(ctrl),
-				   NULL, 0, info, &info_size);
+				   NULL, 0, shm, NULL);
+	if (rv)
+		goto bail;
+
+	if (shm->size < info_size) {
+		LOG_ERROR("unexpected bad session info size\n");
+		rv = CKR_DEVICE_ERROR;
+		goto bail;
+	}
+
+	rv = sks2ck_session_info(s_info, shm->buffer);
+
+bail:
+	sks_free_shm(shm);
+
+	return rv;
 }
 
 /**
