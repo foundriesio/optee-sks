@@ -119,6 +119,7 @@ struct pkcs11_session;
 /* Create an attribute list for a new object (TODO: add parent attribs) */
 uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 					 void *template, size_t template_size,
+					 uint32_t proc_id,
 					 struct sks_attrs_head *parent,
 					 enum processing_func func);
 

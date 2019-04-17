@@ -175,7 +175,8 @@ uint32_t entry_import_object(uintptr_t tee_session,
 	 * Free temporary template once done.
 	 */
 	rv = create_attributes_from_template(&head, template, template_size,
-					     NULL, SKS_FUNCTION_IMPORT);
+					     SKS_UNDEFINED_ID, NULL,
+					     SKS_FUNCTION_IMPORT);
 	TEE_Free(template);
 	template = NULL;
 	if (rv)
@@ -359,7 +360,8 @@ uint32_t entry_generate_secret(uintptr_t tee_session,
 	 * Free temporary template once done.
 	 */
 	rv = create_attributes_from_template(&head, template, template_size,
-					     NULL, SKS_FUNCTION_GENERATE);
+					     proc_params->id, NULL,
+					     SKS_FUNCTION_GENERATE);
 	if (rv)
 		goto bail;
 
@@ -534,7 +536,8 @@ uint32_t entry_generate_key_pair(uintptr_t teesess,
 	template_size = sizeof(*template) + template->attrs_size;
 
 	rv = create_attributes_from_template(&pub_head, template, template_size,
-					     NULL, SKS_FUNCTION_GENERATE_PAIR);
+					     proc_params->id, NULL,
+					     SKS_FUNCTION_GENERATE_PAIR);
 	if (rv)
 		goto bail;
 
@@ -548,7 +551,8 @@ uint32_t entry_generate_key_pair(uintptr_t teesess,
 	template_size = sizeof(*template) + template->attrs_size;
 
 	rv = create_attributes_from_template(&priv_head, template, template_size,
-					     NULL, SKS_FUNCTION_GENERATE_PAIR);
+					     proc_params->id, NULL,
+					     SKS_FUNCTION_GENERATE_PAIR);
 	if (rv)
 		goto bail;
 
@@ -942,7 +946,7 @@ uint32_t entry_derive_key(uintptr_t tee_session, TEE_Param *ctrl,
 		goto bail;
 
 	rv = create_attributes_from_template(&head, template, template_size,
-					     parent_obj->attributes,
+					     proc_params->id, parent_obj->attributes,
 					     SKS_FUNCTION_DERIVE);
 	if (rv)
 		goto bail;

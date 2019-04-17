@@ -878,6 +878,7 @@ static uint32_t create_pkcs11_cert_attributes(struct sks_attrs_head **out,
  */
 uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 					 void *template, size_t template_size,
+					 uint32_t proc_id,
 					 struct sks_attrs_head *parent,
 					 enum processing_func function)
 {
@@ -887,6 +888,8 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	uint8_t local = 0;
 	uint8_t always_sensitive = 0;
 	uint8_t never_extract = 0;
+	uint32_t class = SKS_UNDEFINED_ID;
+	uint32_t type = SKS_UNDEFINED_ID;
 
 #ifdef DEBUG	/* Sanity: check function argument */
 	trace_attributes_from_api_head("template", template, template_size);
@@ -906,6 +909,37 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	rv = sanitize_client_object(&temp, template, template_size);
 	if (rv)
 		goto bail;
+
+	/* If class/type not defined, match from mechanism */
+	if (get_class(temp) == SKS_UNDEFINED_ID &&
+			get_type(temp) == SKS_UNDEFINED_ID) {
+		switch (proc_id) {
+		case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+			class = SKS_CKO_SECRET_KEY;
+			type = SKS_CKK_GENERIC_SECRET;
+			break;
+		case SKS_CKM_AES_KEY_GEN:
+			class = SKS_CKO_SECRET_KEY;
+			type = SKS_CKK_AES;
+			break;
+		case SKS_CKM_EC_KEY_PAIR_GEN:
+			type = SKS_CKK_DH;
+			break;
+		case SKS_CKM_RSA_PKCS_KEY_PAIR_GEN:
+			type = SKS_CKK_RSA;
+			break;
+		default:
+			EMSG("Unable to define class/type from mechanism");
+			rv = SKS_CKR_TEMPLATE_INCOMPLETE;
+			goto bail;
+		}
+		if (class != SKS_UNDEFINED_ID)
+			add_attribute(&temp, SKS_CKA_CLASS,
+						&class, sizeof(uint32_t));
+		if (type != SKS_UNDEFINED_ID)
+			add_attribute(&temp, SKS_CKA_KEY_TYPE,
+						&type, sizeof(uint32_t));
+	}
 
 	if (!sanitize_consistent_class_and_type(temp)) {
 		EMSG("inconsistent class/type");
