@@ -244,7 +244,7 @@ static uint32_t sanitize_indirect_attr(struct sks_attrs_head **dst,
 	uint32_t class = get_class(*dst);
 
 	if (class == SKS_UNDEFINED_ID)
-		return SKS_ERROR;
+		return SKS_NOT_FOUND;
 
 	/*
 	 * Serialized attributes: current applicable only the key templates which
