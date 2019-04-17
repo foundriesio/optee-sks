@@ -233,6 +233,12 @@ CK_RV ck_generate_key(CK_SESSION_HANDLE session,
 	uint32_t key_handle;
 	size_t key_handle_size = sizeof(key_handle);
 
+	if (!mechanism || !handle)
+		return CKR_ARGUMENTS_BAD;
+
+	if (count && !attribs)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = serialize_ck_mecha_params(&smecha, mechanism);
 	if (rv)
 		return rv;
@@ -286,6 +292,9 @@ CK_RV ck_generate_key_pair(CK_SESSION_HANDLE session,
 	size_t ctrl_size;
 	uint32_t key_handle[2];
 	size_t key_handle_size = sizeof(key_handle);
+
+	if (!mechanism || !pub_key || !priv_key)
+		return CKR_ARGUMENTS_BAD;
 
 	rv = serialize_ck_mecha_params(&smecha, mechanism);
 	if (rv)
