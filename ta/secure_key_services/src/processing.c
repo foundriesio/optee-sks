@@ -343,6 +343,15 @@ uint32_t entry_generate_secret(uintptr_t tee_session,
 	if (rv)
 		goto bail;
 
+	switch (proc_params->id) {
+	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
+	case SKS_CKM_AES_KEY_GEN:
+		break;
+	default:
+		rv = SKS_CKR_MECHANISM_INVALID;
+		goto bail;
+	}
+
 	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
 	if (rv)
 		goto bail;
@@ -527,6 +536,15 @@ uint32_t entry_generate_key_pair(uintptr_t teesess,
 						SKS_FUNC_STEP_INIT);
 	if (rv)
 		goto bail;
+
+	switch (proc_params->id) {
+	case SKS_CKM_EC_KEY_PAIR_GEN:
+	case SKS_CKM_RSA_PKCS_KEY_PAIR_GEN:
+		break;
+	default:
+		rv = SKS_CKR_MECHANISM_INVALID;
+		goto bail;
+	}
 
 	/* Get and check public key attributes */
 	rv = serialargs_alloc_get_attributes(&ctrlargs, &template);
