@@ -808,6 +808,7 @@ struct sks_attribute_head {
 #define SKS_CKA_HASH_OF_SUBJECT_PUBLIC_KEY	0x00000061
 #define SKS_CKA_HASH_OF_ISSUER_PUBLIC_KEY	0x00000062
 #define SKS_CKA_NAME_HASH_ALGORITHM		0x00000063
+#define SKS_CKA_KEY_GEN_MECHANISM		0x00000064
 
 // Temporary storage until DER/BigInt conversion is available
 #define SKS_CKA_EC_POINT_X			0x88800001

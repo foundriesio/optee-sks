@@ -69,6 +69,7 @@ static const struct attr_size attr_ids[] = {
 	SKS_ID_SZ(SKS_CKA_HASH_OF_SUBJECT_PUBLIC_KEY, 0),
 	SKS_ID_SZ(SKS_CKA_HASH_OF_ISSUER_PUBLIC_KEY, 0),
 	SKS_ID_SZ(SKS_CKA_NAME_HASH_ALGORITHM, 4),
+	SKS_ID_SZ(SKS_CKA_KEY_GEN_MECHANISM, 4),
 	/* Below are boolean attributes */
 	SKS_ID_SZ(SKS_CKA_TOKEN, 1),
 	SKS_ID_SZ(SKS_CKA_PRIVATE, 1),
@@ -401,6 +402,7 @@ size_t sks_attr_is_type(uint32_t attribute_id)
 	case SKS_CKA_CERTIFICATE_TYPE:
 	case SKS_CKA_KEY_TYPE:
 	case SKS_CKA_MECHANISM_TYPE:
+	case SKS_CKA_KEY_GEN_MECHANISM:
 		return sizeof(uint32_t);
 	default:
 		return 0;
