@@ -885,6 +885,7 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 	struct sks_attrs_head *temp = NULL;
 	struct sks_attrs_head *attrs = NULL;
 	uint32_t rv = 0;
+	uint32_t key_gen_m = 0;
 	uint8_t local = 0;
 	uint8_t always_sensitive = 0;
 	uint8_t never_extract = 0;
@@ -1017,6 +1018,15 @@ uint32_t create_attributes_from_template(struct sks_attrs_head **out,
 				   &local, sizeof(local));
 		if (rv)
 			goto bail;
+
+		/* TODO: Set valid key gen mechanism when local */
+		if (local == SKS_FALSE) {
+			key_gen_m = SKS_CK_UNAVAILABLE_INFORMATION;
+			rv = add_attribute(&attrs, SKS_CKA_KEY_GEN_MECHANISM,
+					&key_gen_m, sizeof(key_gen_m));
+			if (rv)
+				goto bail;
+		}
 
 		rv = add_attribute(&attrs, SKS_CKA_ALWAYS_SENSITIVE,
 				   &always_sensitive, sizeof(always_sensitive));
