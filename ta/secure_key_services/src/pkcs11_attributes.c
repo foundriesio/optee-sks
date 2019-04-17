@@ -1201,6 +1201,7 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
 	case SKS_CKM_DH_PKCS_DERIVE:
 		if (get_class(head) != SKS_CKO_CERTIFICATE &&
+		    get_class(head) != SKS_CKO_DATA &&
 		    (get_attribute(head, SKS_CKA_LOCAL, &bbool, NULL) ||
 		    bbool)) {
 			DMSG_BAD_BBOOL(SKS_CKA_LOCAL, proc_id, head);
