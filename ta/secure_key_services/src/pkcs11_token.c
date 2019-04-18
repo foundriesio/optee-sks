@@ -552,7 +552,8 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	TEE_MemFill(info.utcTime, 0, sizeof(info.utcTime));
 
 	/* Return to caller with data */
-	TEE_MemMove(out->memref.buffer, &info, sizeof(info));
+	out->memref.size = sizeof(struct sks_token_info);
+	TEE_MemMove(out->memref.buffer, &info, out->memref.size);
 
 	return SKS_OK;
 }
