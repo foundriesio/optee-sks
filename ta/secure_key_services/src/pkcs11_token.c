@@ -19,8 +19,8 @@
 #include "serializer.h"
 #include "sks_helpers.h"
 
-/* Provide 3 slots/tokens, ID is token index */
-#define TOKEN_COUNT	3
+/* ID is token index */
+#define TOKEN_COUNT	CFG_SKS_TA_TOKEN_COUNT
 
 /* Static allocation of tokens runtime instances (reset to 0 at load) */
 struct ck_token ck_token[TOKEN_COUNT];
