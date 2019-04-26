@@ -483,6 +483,12 @@ uint32_t step_asymm_operation(struct pkcs11_session *session,
 			rv = SKS_FAILED;
 			goto bail;
 		}
+		/* Validate second input buffer size if verify */
+		if (function == SKS_FUNCTION_VERIFY &&
+				in2_size != 2 * in_size) {
+			rv = SKS_CKR_SIGNATURE_LEN_RANGE;
+			goto bail;
+		}
 		break;
 	case SKS_CKM_ECDSA_SHA1:
 		in_buf = proc->extra_ctx;
