@@ -509,6 +509,9 @@ uint32_t tee2sks_error(TEE_Result res)
 	case TEE_ERROR_MAC_INVALID:
 		return SKS_CKR_SIGNATURE_INVALID;
 
+	case TEE_ERROR_SIGNATURE_INVALID:
+		return SKS_CKR_SIGNATURE_INVALID;
+
 	default:
 		return SKS_CKR_GENERAL_ERROR;
 	}
