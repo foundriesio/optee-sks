@@ -728,6 +728,8 @@ struct sks_attribute_head {
 #define SKS_CKR_ATTRIBUTE_SENSITIVE		0x0000002d
 #define SKS_CKR_SIGNATURE_LEN_RANGE		0x0000002e
 #define SKS_CKR_KEY_TYPE_INCONSISTENT		0x0000002f
+#define SKS_CKR_DATA_LEN_RANGE			0x00000030
+#define SKS_CKR_ENCRYPTED_DATA_LEN_RANGE	0x00000031
 
 /* Status without strict equivalence in Cryptoki API */
 #define SKS_NOT_FOUND				0x00001000

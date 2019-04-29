@@ -372,6 +372,50 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		return SKS_ERROR;
 	}
 
+	/* Validate input buffer size */
+	switch (proc->mecha_type) {
+	case SKS_CKM_AES_ECB:
+	case SKS_CKM_AES_CBC:
+		switch (function) {
+		case SKS_FUNCTION_ENCRYPT:
+			if ((in_size % 16) != 0)
+				return SKS_CKR_DATA_LEN_RANGE;
+			break;
+		case SKS_FUNCTION_DECRYPT:
+			if ((in_size % 16) != 0)
+				return SKS_CKR_ENCRYPTED_DATA_LEN_RANGE;
+			break;
+		default:
+			break;
+		}
+		break;
+	case SKS_CKM_AES_CBC_PAD:
+		switch (function) {
+		case SKS_FUNCTION_DECRYPT:
+			if ((in_size % 16) != 0)
+				return SKS_CKR_ENCRYPTED_DATA_LEN_RANGE;
+			break;
+		default:
+			break;
+		}
+		break;
+	case SKS_CKM_AES_CTS:
+		switch (function) {
+		case SKS_FUNCTION_ENCRYPT:
+			if (in_size < 16)
+				return SKS_CKR_DATA_LEN_RANGE;
+			break;
+		case SKS_FUNCTION_DECRYPT:
+			if (in_size < 16)
+				return SKS_CKR_ENCRYPTED_DATA_LEN_RANGE;
+			break;
+		default:
+			break;
+		}
+	default:
+		break;
+	}
+
 	/*
 	 * Feed active operation with with data
 	 * (SKS_FUNC_STEP_UPDATE/_ONESHOT)
