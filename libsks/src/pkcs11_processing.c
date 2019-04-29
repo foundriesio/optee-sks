@@ -145,7 +145,7 @@ CK_RV ck_encdecrypt_update(CK_SESSION_HANDLE session,
 	rv = ck_invoke_ta_in_out(ck_session2sks_ctx(session), decrypt ?
 				 SKS_CMD_DECRYPT_UPDATE :
 				 SKS_CMD_ENCRYPT_UPDATE,
-				 &ctrl, ctrl_size, in_buf, in_size,
+				 &ctrl, ctrl_size, in_buf, in_buf ? in_size : 0,
 				 out_buf, out_len ? &out_size : NULL);
 
 	if (out_len && (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL))
@@ -181,7 +181,7 @@ CK_RV ck_encdecrypt_oneshot(CK_SESSION_HANDLE session,
 	rv = ck_invoke_ta_in_out(ck_session2sks_ctx(session), decrypt ?
 				 SKS_CMD_DECRYPT_ONESHOT :
 				 SKS_CMD_ENCRYPT_ONESHOT,
-				 &ctrl, ctrl_size, in_buf, in_size,
+				 &ctrl, ctrl_size, in_buf, in_buf ? in_size : 0,
 				 out_buf, out_len ? &out_size : NULL);
 
 	if (out_len && (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL))
