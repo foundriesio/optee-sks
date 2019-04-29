@@ -656,6 +656,9 @@ CK_RV ck_get_attribute_value(CK_SESSION_HANDLE session,
 	uint32_t obj_handle = obj;
 	size_t handle_size = sizeof(obj_handle);
 
+	if (!attribs)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = serialize_ck_attributes(&sattr, attribs, count);
 	if (rv)
 		goto bail;
