@@ -929,6 +929,7 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE session,
 	rv = ck_encdecrypt_init(session, mechanism, key, CK_FALSE);
 
 	switch (rv) {
+	case CKR_ARGUMENTS_BAD:
 	case CKR_CRYPTOKI_NOT_INITIALIZED:
 	case CKR_DEVICE_ERROR:
 	case CKR_DEVICE_MEMORY:

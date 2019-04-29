@@ -89,6 +89,9 @@ CK_RV ck_encdecrypt_init(CK_SESSION_HANDLE session,
 	char *ctrl = NULL;
 	size_t ctrl_size;
 
+	if (!mechanism)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = serialize_ck_mecha_params(&obj, mechanism);
 	if (rv)
 		return rv;
