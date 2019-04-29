@@ -187,6 +187,9 @@ CK_RV ck_encdecrypt_oneshot(CK_SESSION_HANDLE session,
 	if (out_len && (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL))
 		*out_len = out_size;
 
+	if (out_len && !out_buf && rv == CKR_BUFFER_TOO_SMALL)
+		rv = CKR_OK;
+
 	return rv;
 }
 
