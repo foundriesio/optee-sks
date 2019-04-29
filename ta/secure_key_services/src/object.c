@@ -727,7 +727,7 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 
 	obj = sks_handle2object(object_handle, session);
 	if (!obj) {
-		rv = SKS_BAD_PARAM;
+		rv = SKS_CKR_OBJECT_HANDLE_INVALID;
 		goto bail;
 	}
 
