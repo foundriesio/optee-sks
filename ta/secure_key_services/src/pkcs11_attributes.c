@@ -1590,11 +1590,15 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 	case SKS_CKM_ECDH1_COFACTOR_DERIVE:
 	case SKS_CKM_ECMQV_DERIVE:
 	case SKS_CKM_ECDH_AES_KEY_WRAP:
-		if (key_type != SKS_CKK_EC ||
-		    (key_class != SKS_CKO_PUBLIC_KEY &&
-		     key_class != SKS_CKO_PRIVATE_KEY)) {
+		if (key_type != SKS_CKK_EC) {
 			EMSG("Invalid key %s for mechanism %s",
 				sks2str_type(key_type, key_class),
+				sks2str_proc(proc_id));
+			return SKS_CKR_KEY_TYPE_INCONSISTENT;
+		}
+		if (key_class != SKS_CKO_PUBLIC_KEY &&
+		     key_class != SKS_CKO_PRIVATE_KEY) {
+			EMSG("Invalid key class for mechanism %s",
 				sks2str_proc(proc_id));
 			return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 		}
@@ -1615,11 +1619,15 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 	case SKS_CKM_SHA224_RSA_PKCS:
 	case SKS_CKM_SHA224_RSA_PKCS_PSS:
 	case SKS_CKM_RSA_AES_KEY_WRAP:
-		if (key_type != SKS_CKK_RSA ||
-		    (key_class != SKS_CKO_PUBLIC_KEY &&
-		     key_class != SKS_CKO_PRIVATE_KEY)) {
+		if (key_type != SKS_CKK_RSA) {
 			EMSG("Invalid key %s for mechanism %s",
 				sks2str_type(key_type, key_class),
+				sks2str_proc(proc_id));
+			return SKS_CKR_KEY_TYPE_INCONSISTENT;
+		}
+		if (key_class != SKS_CKO_PUBLIC_KEY &&
+		     key_class != SKS_CKO_PRIVATE_KEY) {
+			EMSG("Invalid key class for mechanism %s",
 				sks2str_proc(proc_id));
 			return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 		}
