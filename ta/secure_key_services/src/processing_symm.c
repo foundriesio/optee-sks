@@ -611,7 +611,7 @@ bail:
 		if (io2)
 			io2->memref.size = out_size;
 		else
-			rv = SKS_ERROR;
+			rv = SKS_BAD_PARAM;
 	}
 
 	return rv;
