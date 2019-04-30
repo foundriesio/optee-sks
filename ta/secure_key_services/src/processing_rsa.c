@@ -508,7 +508,7 @@ uint32_t generate_rsa_keys(struct sks_attribute_head *proc_params,
 
 bail:
 	if (tee_obj != TEE_HANDLE_NULL)
-		TEE_CloseObject(tee_obj);
+		TEE_FreeTransientObject(tee_obj);
 
 	return rv;
 }

@@ -262,7 +262,7 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 			break;
 		}
 
-		TEE_CloseObject(obj->key_handle);
+		TEE_FreeTransientObject(obj->key_handle);
 		obj->key_handle = TEE_HANDLE_NULL;
 	}
 
