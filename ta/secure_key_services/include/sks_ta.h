@@ -848,6 +848,9 @@ struct sks_attribute_head {
 #define SKS_CKK_RSA				0x009
 #define SKS_CKK_DSA				0x00a
 #define SKS_CKK_DH				0x00b
+#define SKS_CKK_DES				0x00c
+#define SKS_CKK_DES2				0x00d
+#define SKS_CKK_DES3				0x00e
 
 /*
  * Valid values for attribute SKS_CKA_CERTIFICATE_TYPE
@@ -917,6 +920,12 @@ struct sks_attribute_head {
 #define SKS_CKM_SHA384				0x035
 #define SKS_CKM_SHA512				0x036
 #define SKS_CKM_DH_PKCS_DERIVE			0x037
+#define SKS_CKM_DES_KEY_GEN			0x038
+#define SKS_CKM_DES_ECB			0x039
+#define SKS_CKM_DES_CBC			0x040
+#define SKS_CKM_DES_MAC			0x041
+#define SKS_CKM_DES_MAC_GENERAL		0x042
+#define SKS_CKM_DES_CBC_PAD			0x043
 
 /* SKS added IDs for operation without cryptoki mechanism ID defined */
 #define SKS_PROCESSING_IMPORT			0x1000
