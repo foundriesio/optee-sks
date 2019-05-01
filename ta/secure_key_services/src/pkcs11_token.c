@@ -439,6 +439,8 @@ uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	const char hwver[2] = SKS_CRYPTOKI_SLOT_HW_VERSION;
 	const char fwver[2] = SKS_CRYPTOKI_SLOT_FW_VERSION;
 	struct sks_slot_info info;
+	char dev_uuid[37]; /* UUID as string */
+	TEE_UUID dev_id;
 
 	TEE_MemFill(&ctrlargs, 0, sizeof(ctrlargs));
 	TEE_MemFill(&info, 0, sizeof(info));
@@ -466,7 +468,21 @@ uint32_t entry_ck_slot_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 
 	TEE_MemFill(&info, 0, sizeof(info));
 
-	PADDED_STRING_COPY(info.slotDescription, desc);
+	/* Set slot description to the device UUID if available */
+	if (TEE_GetPropertyAsUUID(TEE_PROPSET_TEE_IMPLEMENTATION,
+				"gpd.tee.deviceID", &dev_id) == TEE_SUCCESS) {
+		snprintf(dev_uuid, sizeof(dev_uuid),
+			"%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+			dev_id.timeLow, dev_id.timeMid,
+			dev_id.timeHiAndVersion,
+			dev_id.clockSeqAndNode[0], dev_id.clockSeqAndNode[1],
+			dev_id.clockSeqAndNode[2], dev_id.clockSeqAndNode[3],
+			dev_id.clockSeqAndNode[4], dev_id.clockSeqAndNode[5],
+			dev_id.clockSeqAndNode[6], dev_id.clockSeqAndNode[7]);
+		PADDED_STRING_COPY(info.slotDescription, dev_uuid);
+	} else {
+		PADDED_STRING_COPY(info.slotDescription, desc);
+	}
 	PADDED_STRING_COPY(info.manufacturerID, manuf);
 
 	info.flags |= SKS_CKFS_TOKEN_PRESENT;
