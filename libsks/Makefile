@@ -29,7 +29,6 @@ LIBSKS_SRCS		+= serialize_ck.c
 LIBSKS_SRCS		+= pkcs11_processing.c
 
 LIBSKS_INCLUDES		= ${CURDIR}/include
-LIBSKS_INCLUDES 	+= ${CURDIR}/../public
 
 LIBSKS_CFLAGS		:= $(addprefix -I, $(LIBSKS_INCLUDES)) \
 				$(CFLAGS) -D_GNU_SOURCE -fPIC
