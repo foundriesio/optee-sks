@@ -7,6 +7,7 @@
 #include <sks_internal_abi.h>
 #include <sks_ta.h>
 #include <string.h>
+#include <util.h>
 #include <tee_internal_api.h>
 
 #include "attributes.h"

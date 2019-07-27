@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <compiler.h>
+#include <util.h>
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
 
