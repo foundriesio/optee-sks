@@ -918,7 +918,7 @@ size_t ec_params2tee_keysize(void *ec_params, size_t size)
 }
 
 /*
- * This function intentionnally panics if the curve is not found.
+ * This function intentionally panics if the curve is not found.
  * Use ec_params2tee_keysize() to check the curve is supported by
  * the internal core API.
  */

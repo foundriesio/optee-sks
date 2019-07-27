@@ -321,7 +321,7 @@ static uint8_t *pkcs11_object_default_boolprop(uint32_t attribute)
 /*
  * Object expects several boolean attributes to be set to a default value
  * or to a validate client configuration value. This function append the input
- * attrubute (id/size/value) in the serailzed object.
+ * attribute (id/size/value) in the serialized object.
  */
 static uint32_t pkcs11_import_object_boolprop(struct sks_attrs_head **out,
 					      struct sks_attrs_head *template,
@@ -405,10 +405,10 @@ static uint32_t set_optional_attributes(struct sks_attrs_head **out,
 }
 
 /*
- * Below are listed the mandated or optional epected attributes for
+ * Below are listed the mandated or optional expected attributes for
  * PKCS#11 storage objects.
  *
- * Note: boolprops (manadated boolean attributes) SKS_CKA_ALWAYS_SENSITIVE,
+ * Note: boolprops (mandated boolean attributes) SKS_CKA_ALWAYS_SENSITIVE,
  * and SKS_CKA_NEVER_EXTRACTABLE are set by the token, not provided
  * in the client template.
  */
@@ -487,14 +487,14 @@ static const uint32_t pkcs11_ec_public_key_mandated[] = {
 };
 static const uint32_t pkcs11_ec_public_key_optional[] = {
 	SKS_CKA_EC_POINT,
-	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporaary until DER support
+	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporarily until DER support
 };
 static const uint32_t pkcs11_ec_private_key_mandated[] = {
 	SKS_CKA_EC_PARAMS,
 };
 static const uint32_t pkcs11_ec_private_key_optional[] = {
 	SKS_CKA_VALUE,
-	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporaary until DER support
+	SKS_CKA_EC_POINT_X, SKS_CKA_EC_POINT_Y, // temporarily until DER support
 };
 
 static uint32_t create_pkcs11_storage_attributes(struct sks_attrs_head **out,
@@ -754,17 +754,17 @@ static uint32_t create_pkcs11_priv_key_attributes(struct sks_attrs_head **out,
  * object (optional) for an object generation function (generate, copy,
  * derive...).
  *
- * PKCS#11 directves on the supplied template:
- * - template has aninvalid attribute ID: return ATTRIBUTE_TYPE_INVALID
+ * PKCS#11 directives on the supplied template:
+ * - template has an invalid attribute ID: return ATTRIBUTE_TYPE_INVALID
  * - template has an invalid value for an attribute: return ATTRIBUTE_VALID_INVALID
- * - template has value for a read-only attribute: retrun ATTRIBUTE_READ_ONLY
+ * - template has value for a read-only attribute: return ATTRIBUTE_READ_ONLY
  * - template+default+parent => still miss an attribute: return TEMPLATE_INCONSISTENT
  *
  * INFO on SKS_CMD_COPY_OBJECT:
  * - parent SKS_CKA_COPYIABLE=false => return ACTION_PROHIBITED.
  * - template can specify SKS_CKA_TOKEN, SKS_CKA_PRIVATE, SKS_CKA_MODIFIABLE,
  *   SKS_CKA_DESTROYABLE.
- * - SENSITIVE can change from flase to true, not from true to false.
+ * - SENSITIVE can change from false to true, not from true to false.
  * - LOCAL is the parent LOCAL
  */
 uint32_t create_attributes_from_template(struct sks_attrs_head **out,
@@ -1030,11 +1030,11 @@ uint32_t check_created_attrs_against_processing(uint32_t proc_id,
 	uint8_t bbool = 0;
 
 	/*
-	 * Processings that do not create secrets are not expected to call
+	 * Processing that do not create secrets are not expected to call
 	 * this function which would panic.
 	 */
 	/*
-	 * FIXME: rellay need to check LOCAL here, it was safely set from
+	 * FIXME: really need to check LOCAL here, it was safely set from
 	 * create_attributes_from_template().
 	 */
 	switch (proc_id) {
@@ -1256,7 +1256,7 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 
 	/*
 	 * Check key size for symmetric keys and RSA keys
-	 * EC is bound to domains, no need to chekc here.
+	 * EC is bound to domains, no need to check here.
 	 */
 	switch (get_type(key1)) {
 	case SKS_CKK_EC:
@@ -1277,7 +1277,7 @@ uint32_t check_created_attrs(struct sks_attrs_head *key1,
 	return SKS_OK;
 }
 
-/* Check processing ID against attributre ALLOWED_PROCESSINGS if any */
+/* Check processing ID against attribute ALLOWED_PROCESSINGS if any */
 static bool parent_key_complies_allowed_processings(uint32_t proc_id,
 						    struct sks_attrs_head *head)
 {

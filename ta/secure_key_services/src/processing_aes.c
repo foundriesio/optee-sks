@@ -153,7 +153,7 @@ uint32_t tee_ae_decrypt_update(struct active_processing *processing,
 		return SKS_OK;
 	}
 
-	/* Size of data that are not potential tag in pendings and input data */
+	/* Size of data that are not potential tag in pending and input data */
 	data_len = in_size + ctx->pending_size - ctx->tag_byte_len;
 
 	if (ctx->pending_size &&
@@ -197,7 +197,7 @@ uint32_t tee_ae_decrypt_update(struct active_processing *processing,
 			}
 		}
 
-		/* Save pontential tag bytes for later */
+		/* Save potential tag bytes for later */
 		TEE_MemMove(ctx->pending_tag, ctx->pending_tag + len,
 			    ctx->pending_size - len);
 
@@ -329,7 +329,7 @@ uint32_t tee_ae_decrypt_final(struct active_processing *processing,
 		return reveale_ae_data(ctx, out, out_size);
 
 	if (ctx->pending_size != ctx->tag_byte_len) {
-		DMSG("Not enougth samples: %u/%u",
+		DMSG("Not enough samples: %u/%u",
 			ctx->pending_size, ctx->tag_byte_len);
 		return SKS_FAILED;	// FIXME: CKR_ENCRYPTED_DATA_LEN_RANGE
 	}

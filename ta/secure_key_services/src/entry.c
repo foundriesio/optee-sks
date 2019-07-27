@@ -14,7 +14,7 @@
 #include "processing.h"
 #include "sks_helpers.h"
 
-/* Client session context: currently only use the alloced address */
+/* Client session context: currently only use the allocated address */
 struct tee_session {
 	int foo;
 };
@@ -78,13 +78,13 @@ static uint32_t entry_ping(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 /*
  * Entry point for SKS TA commands
  *
- * ABI: param#0 is the control buffer with serialazed arguments.
+ * ABI: param#0 is the control buffer with serialized arguments.
  *	param#1 is an input/output data buffer
  *	param#2 is an input/output data buffer (also used to return handles)
  *	param#3 is not used
  *
  * Param#0 ctrl, if defined is an in/out buffer, is used to send back to
- * the client a Cryptoki status ID that superseeds the TEE result code which
+ * the client a Cryptoki status ID that supersedes the TEE result code which
  * will be force to TEE_SUCCESS. Note that some Cryptoki error status are
  * sent straight through TEE result code. See sks2tee_noerr().
  */
@@ -101,7 +101,7 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 	TEE_Result res = TEE_ERROR_GENERIC;
 	uint32_t rc = 0;
 
-	/* param#0: input buffer with request serialazed arguments */
+	/* param#0: input buffer with request serialized arguments */
 	switch (TEE_PARAM_TYPE_GET(ptypes, 0)) {
 	case TEE_PARAM_TYPE_NONE:
 		break;
@@ -359,7 +359,7 @@ TEE_Result TA_InvokeCommandEntryPoint(void *tee_session, uint32_t cmd,
 
 bad_types:
 	DMSG("Bad parameter types used at SKS TA entry:");
-	DMSG("- parameter #0: formated input request buffer or none");
+	DMSG("- parameter #0: formatted input request buffer or none");
 	DMSG("- parameter #1: processed input data buffer or none");
 	DMSG("- parameter #2: processed output data buffer or none");
 	DMSG("- parameter #3: none");

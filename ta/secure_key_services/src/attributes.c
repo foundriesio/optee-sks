@@ -184,7 +184,7 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
 
 		found++;
 		if (found > max_check) {
-			DMSG("Too many attribute occurences");
+			DMSG("Too many attribute occurrences");
 			return SKS_FAILED;
 		}
 
@@ -225,7 +225,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	/* Can't return a pointer to a boolprop attribute */
 	if (head_contains_boolprops(head) && attribute_is_in_head(attribute)) {
-		EMSG("Can't get poitner to an attribute in the head");
+		EMSG("Can't get pointer to an attribute in the head");
 		TEE_Panic(0);
 	}
 #endif
@@ -405,7 +405,7 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	/*
-	 * All boolprops attributes must ne explicitly defined
+	 * All boolprops attributes must be explicitly defined
 	 * as an attribute reference in the reference object.
 	 */
 	assert(!head_contains_boolprops(ref));
@@ -541,7 +541,7 @@ static uint32_t __trace_attributes(char *prefix, void *src, void *end)
 
 	/* Sanity */
 	if (cur != (char *)end) {
-		EMSG("Warning: unexpect alignment in object attibutes");
+		EMSG("Warning: unexpected alignment in object attributes");
 	}
 
 	TEE_Free(prefix2);

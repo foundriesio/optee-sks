@@ -532,7 +532,7 @@ uint32_t entry_ck_token_info(TEE_Param *ctrl, TEE_Param *in, TEE_Param *out)
 	TEE_MemMove(&info.hardwareVersion, &hwver, sizeof(hwver));
 	TEE_MemMove(&info.firmwareVersion, &fwver, sizeof(hwver));
 
-	// TODO: get time and convert from refence into YYYYMMDDhhmmss/UTC
+	// TODO: get time and convert from reference into YYYYMMDDhhmmss/UTC
 	TEE_MemFill(info.utcTime, 0, sizeof(info.utcTime));
 
 	/* Return to caller with data */
@@ -848,7 +848,7 @@ static void set_session_state(struct pkcs11_client *client,
 
 	/*
 	 * No need to check all client session, only the first session on
-	 * target token gives client loggin configuration.
+	 * target token gives client login configuration.
 	 */
 	TAILQ_FOREACH(sess, &client->session_list, link) {
 		assert(sess != session);
@@ -991,7 +991,7 @@ static uint32_t open_ck_session(uintptr_t tee_session, TEE_Param *ctrl,
 
 	client = tee_session2client(tee_session);
 	if (!client) {
-		EMSG("Unexpected invlaid TEE session handle");
+		EMSG("Unexpected invalid TEE session handle");
 		return SKS_FAILED;
 	}
 
@@ -1066,7 +1066,7 @@ static void close_ck_session(struct pkcs11_session *session)
 	handle_put(&session->client->session_handle_db, session->handle);
 	handle_db_destroy(&session->object_handle_db);
 
-	// If no more session, next opened one will simply be Public loggin
+	// If no more session, next opened one will simply be Public login
 
 	session->token->session_count--;
 	if (pkcs11_session_is_read_write(session))

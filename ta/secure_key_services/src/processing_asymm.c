@@ -363,7 +363,7 @@ uint32_t init_asymm_operation(struct pkcs11_session *session,
  * @function -
  * @step - step ID in the processing (oneshot, update,final)
  * @in - input data reference #1
- * @io2 - nput/output data reference #2 (direction depends on function)
+ * @io2 - input/output data reference #2 (direction depends on function)
  */
 uint32_t step_asymm_operation(struct pkcs11_session *session,
 			      enum processing_func function,

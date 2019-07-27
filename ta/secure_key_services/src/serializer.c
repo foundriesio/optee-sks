@@ -169,7 +169,7 @@ uint32_t serialargs_alloc_get_attributes(struct serialargs *args __unused,
  * serialize - serialize input data in buffer
  *
  * Serialize data in provided buffer.
- * Insure 64byte alignement of appended data in the buffer.
+ * Insure 64byte alignment of appended data in the buffer.
  */
 uint32_t serialize(char **bstart, size_t *blen, void *data, size_t len)
 {

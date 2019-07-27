@@ -44,7 +44,7 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			struct sks_object *obj, uint32_t sks_id);
 
 /*
- * Convert SKS retrun code into a GPD TEE result ID when matching.
+ * Convert SKS return code into a GPD TEE result ID when matching.
  * If not, return a TEE success (_noerr) or generic error (_error).
  */
 TEE_Result sks2tee_noerr(uint32_t rv);

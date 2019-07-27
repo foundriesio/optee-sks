@@ -33,15 +33,15 @@
 
 /*
  * Utils to check compliance of attributes at various processing steps.
- * Any rocessing operation is exclusively one of the following.
+ * Any processing operation is exclusively one of the following.
  *
  * Case 1: Create a secret from some local random value (C_CreateKey & friends)
- * - client provides a attributs list template, pkcs11 complete with default
+ * - client provides a attributes list template, pkcs11 complete with default
  *   attribute values. Object is created if attributes are consistent and
  *   comply token/session stte.
  * - SKS sequence:
  *   - check/set token/session state
- *   - create a attribute list from client template and defualt values.
+ *   - create a attribute list from client template and default values.
  *   - check new secret attributes complies requested mechanism .
  *   - check new secret attributes complies token/session state.
  *   - Generate the value for the secret.
@@ -50,11 +50,11 @@
 
  *
  * Case 2: Create a secret from a client clear data (C_CreateObject)
- * - client provides a attributs list template, pkcs11 complete with default
- *   attribute values. Object is created if attributes are consitent and
+ * - client provides a attributes list template, pkcs11 complete with default
+ *   attribute values. Object is created if attributes are consistent and
  *   comply token/session state.
  *   - check/set token/session state
- *   - create a attribute list from client template and defualt values.
+ *   - create a attribute list from client template and default values.
  *   - check new secret attributes complies requested mechanism (raw-import).
  *   - check new secret attributes complies token/session state.
  *   - Set some runtime attributes in the new secret.

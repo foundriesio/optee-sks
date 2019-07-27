@@ -65,11 +65,11 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
  * the input attribute ID.
  *
  * If *count != 0, return the address and size of the attributes found, up to
- * the occurence number *conut. attr and attri_size and expected large
- * enougth. attr is the output array of the values found. attr_size is the
+ * the occurrence number *count. attr and attr_size and expected large
+ * enough. attr is the output array of the values found. attr_size is the
  * output array of the size of each values found.
  *
- * If attr_size != NULL, return in in *attr_size attribute value size .
+ * If attr_size != NULL, return in in *attr_size attribute value size.
  * If attr != NULL return in *attr the address in memory of the attribute value.
  */
 void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
@@ -77,7 +77,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 
 /*
  * If attributes is not found return SKS_NOT_FOUND.
- * If attr_size != NULL, return in in *attr_size attribute value size .
+ * If attr_size != NULL, return in in *attr_size attribute value size.
  * If attr != NULL return in *attr the address in memory of the attribute value.
  *
  * Return a SKS_OK or SKS_NOT_FOUND on success, or a SKS return code.
@@ -85,7 +85,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 			   void **attr_ptr, size_t *attr_size);
 /*
- * If attributes is not found, rturn SKS_NOT_FOUND.
+ * If attribute is not found, return SKS_NOT_FOUND.
  * If attr_size != NULL, check *attr_size matches attributes size of return
  * SKS_SHORT_BUFFER with expected size in *attr_size.
  * If attr != NULL and attr_size is NULL or gives expected buffer size,

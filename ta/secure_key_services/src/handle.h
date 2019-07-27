@@ -38,7 +38,7 @@ void handle_db_destroy(struct handle_db *db);
 uint32_t handle_get(struct handle_db *db, void *ptr);
 
 /*
- * Deallocate a handle. Returns the assiciated pointer of the handle
+ * Deallocate a handle. Returns the associated pointer of the handle
  * the the handle was valid or NULL if it's invalid.
  */
 void *handle_put(struct handle_db *db, uint32_t handle);

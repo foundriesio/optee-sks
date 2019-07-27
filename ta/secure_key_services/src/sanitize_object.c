@@ -160,7 +160,7 @@ static uint32_t sanitize_boolprop(struct sks_attrs_head **dst,
 	uint32_t *boolprop_ptr = NULL;
 	uint32_t *sanity_ptr = NULL;
 
-	/* Get the booloean property shift position and value */
+	/* Get the boolean property shift position and value */
 	shift = sks_attr2boolprop_shift(cli_ref->id);
 	if (shift < 0)
 		return SKS_NOT_FOUND;
@@ -336,7 +336,7 @@ uint32_t sanitize_client_object(struct sks_attrs_head **dst,
 
 	/* sanity */
 	if (cur != end) {
-		EMSG("Unexpected alignment inssue");
+		EMSG("Unexpected alignment issue");
 		rc = SKS_FAILED;
 		goto bail;
 	}

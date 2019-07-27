@@ -172,7 +172,7 @@ uint32_t entry_import_object(uintptr_t tee_session,
 
 	/*
 	 * Prepare a clean initial state for the requested object attributes.
-	 * Free temorary template once done.
+	 * Free temporary template once done.
 	 */
 	rv = create_attributes_from_template(&head, template, template_size,
 					     NULL, SKS_FUNCTION_IMPORT);
@@ -356,7 +356,7 @@ uint32_t entry_generate_secret(uintptr_t tee_session,
 
 	/*
 	 * Prepare a clean initial state for the requested object attributes.
-	 * Free temorary template once done.
+	 * Free temporary template once done.
 	 */
 	rv = create_attributes_from_template(&head, template, template_size,
 					     NULL, SKS_FUNCTION_GENERATE);
@@ -380,7 +380,7 @@ uint32_t entry_generate_secret(uintptr_t tee_session,
 
 	/*
 	 * Execute target processing and add value as attribute SKS_CKA_VALUE.
-	 * Symm key generation: depens on target processing to be used.
+	 * Symm key generation: depends on target processing to be used.
 	 */
 	switch (proc_params->id) {
 	case SKS_CKM_GENERIC_SECRET_KEY_GEN:
@@ -643,7 +643,7 @@ bail:
  * @ctrl = [session-handle]
  * @in = input data or none
  * @out = output data or none
- * @function - encrypt, decrypt, sign, verify, disgest, ...
+ * @function - encrypt, decrypt, sign, verify, digest, ...
  *
  * The generic part come that all the commands uses the same
  * input/output invocation parameters format (ctrl/in/out).
@@ -734,7 +734,7 @@ bail:
  * @ctrl = [session-handle]
  * @in = input data or none
  * @out = output data or none
- * @function - encrypt, decrypt, sign, verify, disgest, ...
+ * @function - encrypt, decrypt, sign, verify, digest, ...
  * @step - update, oneshot, final
  *
  * The generic part come that all the commands uses the same
@@ -767,7 +767,7 @@ uint32_t entry_processing_step(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	// TODO: check user authen and object activiation dates
+	// TODO: check user authen and object activation dates
 	mecha_type = session->processing->mecha_type;
 	rv = check_mechanism_against_processing(session, mecha_type,
 						function, step);
@@ -795,7 +795,7 @@ bail:
 			release_active_processing(session);
 		break;
 	default:
-		/* ONESHOT and FINAL terminates procceesing on success */
+		/* ONESHOT and FINAL terminates processing on success */
 		if (rv != SKS_SHORT_BUFFER)
 			release_active_processing(session);
 		break;
@@ -810,7 +810,7 @@ bail:
  * @ctrl = [session-handle]
  * @in = input data or none
  * @out = output data or none
- * @function - encrypt, decrypt, sign, verify, disgest, ...
+ * @function - encrypt, decrypt, sign, verify, digest, ...
  * @step - update, oneshot, final
  *
  * The generic part come that all the commands uses the same
@@ -845,7 +845,7 @@ uint32_t entry_verify_oneshot(uintptr_t tee_session, TEE_Param *ctrl,
 	if (rv)
 		return rv;
 
-	// TODO: check user authen and object activiation dates
+	// TODO: check user authen and object activation dates
 	mecha_type = session->processing->mecha_type;
 	rv = check_mechanism_against_processing(session, mecha_type,
 						function, step);

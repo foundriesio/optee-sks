@@ -23,7 +23,7 @@
  * SKS uses a serialized format for defining the attributes of an object. The
  * attributes content starts with a header structure header followed by each
  * attributes, stored in serialized fields:
- * - the 32bit identificator of the attribute
+ * - the 32bit identifier of the attribute
  * - the 32bit value attribute byte size
  * - the effective value of the attribute (variable size)
  */
@@ -38,7 +38,7 @@ struct sks_ref {
  *
  * @attrs_size; byte size of the serialized data
  * @attrs_count; number of items in the blob
- * @class - object class id (from CK litterature): key, certif, etc...
+ * @class - object class id (from CK literature): key, certif, etc...
  * @type - object type id, per class, i.e aes or des3 in the key class.
  * @boolpropl - 32bit bitmask storing boolean properties #0 to #31.
  * @boolproph - 32bit bitmask storing boolean properties #32 to #64.

@@ -499,7 +499,7 @@ uint32_t entry_find_objects_init(uintptr_t tee_session, TEE_Param *ctrl,
 	 * candidates that match caller attributes. First scan all current
 	 * session objects (that are visible to the session). Then scan all
 	 * remaining persistent object for which no session object handle was
-	 * publised to the client.
+	 * published to the client.
 	 */
 
 	LIST_FOREACH(obj, &session->object_list, link) {
@@ -652,7 +652,7 @@ uint32_t entry_find_objects(uintptr_t tee_session, TEE_Param *ctrl,
 
 	}
 
-	/* Update output buffer accoriding the number of handles provided */
+	/* Update output buffer according the number of handles provided */
 	out->memref.size = count * sizeof(uint32_t);
 
 	IMSG("SKSs%" PRIu32 ": finding objects", session_handle);

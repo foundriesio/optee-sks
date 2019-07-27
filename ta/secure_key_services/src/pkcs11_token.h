@@ -60,10 +60,10 @@ TAILQ_HEAD(session_list, pkcs11_session);
  * @label - pkcs11 formatted token label, set by client
  * @flags - pkcs11 token flags
  * @so_pin_count - counter on security officer login failure
- * @so_pin_size - byte size of the provisionned SO PIN
+ * @so_pin_size - byte size of the provisioned SO PIN
  * @so_pin - stores the SO PIN
  * @user_pin_count - counter on user login failure
- * @user_pin_size - byte size of the provisionned user PIN
+ * @user_pin_size - byte size of the provisioned user PIN
  * @user_pin - stores the user PIN
  */
 struct token_persistent_main {
@@ -118,8 +118,8 @@ struct ck_token {
 };
 
 /*
- * A session can enter a processing state (encrypt, decrypt, disgest, ...
- * only from the inited state. A sesion must return the the inited
+ * A session can enter a processing state (encrypt, decrypt, digest, ...
+ * only from the initialized state. A session must return the initialized
  * state (from a processing finalization request) before entering another
  * processing state.
  */
@@ -161,7 +161,7 @@ struct active_processing {
 };
 
 /*
- * Pkcs11 objects serach context
+ * Pkcs11 objects search context
  *
  * @attributes - matching attributes list searched (null if no search)
  * @count - number of matching handle found
@@ -194,9 +194,9 @@ struct pkcs11_client {
 /*
  * Structure tracking the PKCS#11 sessions
  *
- * @link - list of the session belowing to a client
+ * @link - list of the session belonging to a client
  * @tee_session - TEE session handle used by PKCS11 session client
- * @client - client the session belongs to (FIXME: redondant with tee_session)
+ * @client - client the session belongs to (FIXME: redundant with tee_session)
  * @token - token this session belongs to
  * @handle - identifier of the session published to the client
  * @object_list - entry of the session objects list
