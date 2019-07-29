@@ -329,7 +329,7 @@ uint32_t tee_ae_decrypt_final(struct active_processing *processing,
 		return reveale_ae_data(ctx, out, out_size);
 
 	if (ctx->pending_size != ctx->tag_byte_len) {
-		DMSG("Not enough samples: %u/%u",
+		DMSG("Not enough samples: %zu/%zu",
 			ctx->pending_size, ctx->tag_byte_len);
 		return SKS_FAILED;	// FIXME: CKR_ENCRYPTED_DATA_LEN_RANGE
 	}

@@ -443,7 +443,7 @@ uint32_t trace_attributes_from_api_head(const char *prefix,
 	TEE_MemMove(&head, ref, sizeof(head));
 
 	if (size > sizeof(head) + head.attrs_size) {
-		EMSG("template overflows client buffer (%u/%u)",
+		EMSG("template overflows client buffer (%zu/%zu)",
 			size, sizeof(head) + head.attrs_size);
 		return SKS_FAILED;
 	}
