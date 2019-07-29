@@ -231,7 +231,7 @@ bail:
 size_t get_object_key_bit_size(struct sks_object *obj)
 {
 	void *a_ptr = NULL;
-	size_t a_size = 0;
+	uint32_t a_size = 0;
 	struct sks_attrs_head *attrs = obj->attributes;
 
 	switch (get_type(attrs)) {
@@ -271,7 +271,7 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 {
 	uint32_t rv = 0;
 	void *data;
-	size_t data_size;
+	uint32_t data_size;
 	uint32_t value_len;
 	void *value;
 
@@ -434,7 +434,7 @@ uint32_t alloc_get_tee_attribute_data(TEE_ObjectHandle tee_obj,
 {
 	TEE_Result res = TEE_ERROR_GENERIC;
 	void *ptr = NULL;
-	size_t sz = 0;
+	uint32_t sz = 0;
 
 	res = TEE_GetObjectBufferAttribute(tee_obj, attribute, NULL, &sz);
 	if (res != TEE_ERROR_SHORT_BUFFER)

@@ -1172,7 +1172,7 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 {
 	uint32_t rv = 0;
 	void *a_ptr = NULL;
-	size_t a_size = 0;
+	uint32_t a_size = 0;
 	uint32_t tee_size = 0;
 	uint32_t tee_curve = 0;
 	TEE_ObjectHandle tee_obj = TEE_HANDLE_NULL;

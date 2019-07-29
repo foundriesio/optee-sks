@@ -212,7 +212,7 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
 }
 
 void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
-			void **attr, size_t *attr_size, size_t *count)
+			void **attr, uint32_t *attr_size, size_t *count)
 {
 	char *cur = (char *)head + sizeof(struct sks_attrs_head);
 	char *end = cur + head->attrs_size;
@@ -220,7 +220,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 	size_t max_found = *count;
 	size_t found = 0;
 	void **attr_ptr = attr;
-	size_t *attr_size_ptr = attr_size;
+	uint32_t *attr_size_ptr = attr_size;
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
 	/* Can't return a pointer to a boolprop attribute */
@@ -265,7 +265,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
 }
 
 uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
-			   void **attr_ptr, size_t *attr_size)
+			   void **attr_ptr, uint32_t *attr_size)
 {
 	size_t count = 1;
 
@@ -305,11 +305,11 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
 }
 
 uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
-			void *attr, size_t *attr_size)
+			void *attr, uint32_t *attr_size)
 {
 	uint32_t rc = 0;
 	void *attr_ptr = NULL;
-	size_t size = 0;
+	uint32_t size = 0;
 	uint8_t __maybe_unused bbool = 0;
 	int __maybe_unused shift = 0;
 
@@ -366,7 +366,7 @@ bool get_bool(struct sks_attrs_head *head, uint32_t attribute)
 {
 	uint32_t __maybe_unused rc = 0;
 	uint8_t bbool = 0;
-	size_t size = sizeof(bbool);
+	uint32_t size = sizeof(bbool);
 	int __maybe_unused shift = 0;
 
 #ifdef SKS_SHEAD_WITH_BOOLPROPS
@@ -414,7 +414,7 @@ bool attributes_match_reference(struct sks_attrs_head *candidate,
 	for (count = 0; count < ref->attrs_count; count++) {
 		struct sks_ref sks_ref;
 		void *found = NULL;
-		size_t size = 0;
+		uint32_t size = 0;
 		int shift = 0;
 
 		TEE_MemMove(&sks_ref, ref_attr, sizeof(sks_ref));

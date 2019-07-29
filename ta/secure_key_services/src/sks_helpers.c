@@ -598,7 +598,7 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			struct sks_object *obj, uint32_t sks_id)
 {
 	void *a_ptr = NULL;
-	size_t a_size = 0;
+	uint32_t a_size = 0;
 	uint32_t data32 = 0;
 
 	switch (tee_id) {

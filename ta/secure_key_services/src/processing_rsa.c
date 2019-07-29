@@ -437,7 +437,7 @@ uint32_t generate_rsa_keys(struct sks_attribute_head *proc_params,
 {
 	uint32_t rv;
 	void *a_ptr;
-	size_t a_size;
+	uint32_t a_size;
 	TEE_ObjectHandle tee_obj;
 	TEE_Result res;
 	uint32_t tee_size;

@@ -73,7 +73,7 @@ uint32_t remove_attribute_check(struct sks_attrs_head **head, uint32_t attribute
  * If attr != NULL return in *attr the address in memory of the attribute value.
  */
 void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
-			void **attr, size_t *attr_size, size_t *count);
+			void **attr, uint32_t *attr_size, size_t *count);
 
 /*
  * If attributes is not found return SKS_NOT_FOUND.
@@ -83,7 +83,7 @@ void get_attribute_ptrs(struct sks_attrs_head *head, uint32_t attribute,
  * Return a SKS_OK or SKS_NOT_FOUND on success, or a SKS return code.
  */
 uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
-			   void **attr_ptr, size_t *attr_size);
+			   void **attr_ptr, uint32_t *attr_size);
 /*
  * If attribute is not found, return SKS_NOT_FOUND.
  * If attr_size != NULL, check *attr_size matches attributes size of return
@@ -94,12 +94,12 @@ uint32_t get_attribute_ptr(struct sks_attrs_head *head, uint32_t attribute,
  * Return a SKS_OK or SKS_NOT_FOUND on success, or a SKS return code.
  */
 uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
-			void *attr, size_t *attr_size);
+			void *attr, uint32_t *attr_size);
 
 static inline uint32_t get_u32_attribute(struct sks_attrs_head *head,
 					 uint32_t attribute, uint32_t *attr)
 {
-	size_t size = sizeof(uint32_t);
+	uint32_t size = sizeof(uint32_t);
 	uint32_t rv = get_attribute(head, attribute, attr, &size);
 
 	if (size != sizeof(uint32_t))
@@ -139,7 +139,7 @@ static inline uint32_t get_type(struct sks_attrs_head *head)
 static inline uint32_t get_class(struct sks_attrs_head *head)
 {
 	uint32_t class;
-	size_t size = sizeof(class);
+	uint32_t size = sizeof(class);
 
 	if (get_attribute(head, SKS_CKA_CLASS, &class, &size))
 		return SKS_UNDEFINED_ID;
@@ -149,7 +149,7 @@ static inline uint32_t get_class(struct sks_attrs_head *head)
 static inline uint32_t get_type(struct sks_attrs_head *head)
 {
 	uint32_t type;
-	size_t size = sizeof(type);
+	uint32_t size = sizeof(type);
 
 	if (get_attribute(head, SKS_CKA_KEY_TYPE, &type, &size))
 		return SKS_UNDEFINED_ID;

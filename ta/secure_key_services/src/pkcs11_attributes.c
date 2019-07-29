@@ -329,7 +329,7 @@ static uint32_t pkcs11_import_object_boolprop(struct sks_attrs_head **out,
 {
 	uint32_t rv = 0;
 	uint8_t bbool = 0;
-	size_t size = sizeof(uint8_t);
+	uint32_t size = sizeof(uint8_t);
 	void *attr = NULL;
 
 	rv = get_attribute(template, attribute, &bbool, &size);
@@ -366,7 +366,7 @@ static uint32_t __unused set_mandatory_attributes(struct sks_attrs_head **out,
 	size_t n = 0;
 
 	for (n = 0; n < bp_count; n++) {
-		size_t size = 0;
+		uint32_t size = 0;
 		void *value = NULL;
 
 		if (get_attribute_ptr(temp, bp[n], &value, &size)) {
@@ -390,7 +390,7 @@ static uint32_t set_optional_attributes(struct sks_attrs_head **out,
 	size_t n = 0;
 
 	for (n = 0; n < bp_count; n++) {
-		size_t size = 0;
+		uint32_t size = 0;
 		void *value = NULL;
 
 		if (get_attribute_ptr(temp, bp[n], &value, &size))
@@ -1282,7 +1282,7 @@ static bool parent_key_complies_allowed_processings(uint32_t proc_id,
 						    struct sks_attrs_head *head)
 {
 	char *attr = NULL;
-	size_t size = 0;
+	uint32_t size = 0;
 	uint32_t proc = 0;
 	size_t count = 0;
 
@@ -1504,9 +1504,9 @@ uint32_t add_missing_attribute_id(struct sks_attrs_head **attrs1,
 {
 	uint32_t rv = 0;
 	void *id1 = NULL;
-	size_t id1_size = 0;
+	uint32_t id1_size = 0;
 	void *id2 = NULL;
-	size_t id2_size = 0;
+	uint32_t id2_size = 0;
 
 	rv = get_attribute_ptr(*attrs1, SKS_CKA_ID, &id1, &id1_size);
 	if (rv) {
@@ -1556,7 +1556,7 @@ bool attribute_is_exportable(struct sks_attribute_head *req_attr,
 			     struct sks_object *obj)
 {
 	uint8_t boolval = 0;
-	size_t boolsize = 0;
+	uint32_t boolsize = 0;
 	uint32_t rv = 0;
 
 	switch (req_attr->id) {
