@@ -1083,7 +1083,21 @@ uint32_t sks2tee_ecdh_param_pub(struct sks_attribute_head *proc_params,
 
 	*pub_size = temp;
 
-	return serialargs_get_ptr(&args, pub_data, temp);
+	rv = serialargs_get(&args, &temp, sizeof(uint8_t));
+	if (rv)
+		return rv;
+
+	if (temp != 0x02 && temp != 0x03 && temp != 0x04)
+		return SKS_BAD_PARAM;
+
+	if (temp != 04) {
+		EMSG("DER compressed public key format not yet supported");
+		return SKS_CKR_MECHANISM_INVALID;
+	}
+
+	*pub_size -= sizeof(uint8_t);
+
+	return serialargs_get_ptr(&args, pub_data, *pub_size);
 }
 
 uint32_t sks2tee_algo_ecdsa(uint32_t *tee_id,
