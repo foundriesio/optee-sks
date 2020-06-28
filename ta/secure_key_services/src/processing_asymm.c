@@ -613,19 +613,13 @@ uint32_t do_asymm_derivation(struct pkcs11_session *session,
 	TEE_ObjectHandle out_handle = TEE_HANDLE_NULL;
 	void *a_ptr = NULL;
 	size_t a_size = 0;
-	uint32_t key_bit_size = 0;
 	uint32_t key_byte_size = 0;
 
 	TEE_MemFill(tee_attrs, 0, sizeof(tee_attrs));
 
-	rv = get_u32_attribute(*head, SKS_CKA_VALUE_LEN, &key_bit_size);
+	rv = get_u32_attribute(*head, SKS_CKA_VALUE_LEN, &key_byte_size);
 	if (rv)
 		return rv;
-
-	if (get_type(*head) != SKS_CKK_GENERIC_SECRET)
-		key_bit_size *= 8;
-
-	key_byte_size = (key_bit_size + 7) / 8;
 
 	res = TEE_AllocateTransientObject(TEE_TYPE_GENERIC_SECRET,
 					  key_byte_size * 8, &out_handle);
@@ -673,7 +667,7 @@ uint32_t do_asymm_derivation(struct pkcs11_session *session,
 	if (rv)
 		goto bail;
 
-	if (a_size * 8 < key_bit_size) {
+	if (a_size < key_byte_size) {
 		rv = SKS_CKR_KEY_SIZE_RANGE;
 	} else {
 		rv = add_attribute(head, SKS_CKA_VALUE, a_ptr, key_byte_size);
