@@ -287,9 +287,6 @@ static uint32_t generate_random_key_value(struct sks_attrs_head **head)
 	}
 	TEE_MemMove(&value_len, data, data_size);
 
-	if (get_type(*head) == SKS_CKK_GENERIC_SECRET)
-		value_len = (value_len + 7) / 8;
-
 	value = TEE_Malloc(value_len, TEE_USER_MEM_HINT_NO_FILL_ZERO);
 	if (!value)
 		return SKS_MEMORY;
