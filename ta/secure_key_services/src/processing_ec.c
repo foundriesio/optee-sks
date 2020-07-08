@@ -1097,6 +1097,11 @@ uint32_t sks2tee_ecdh_param_pub(struct sks_attribute_head *proc_params,
 
 	*pub_size -= sizeof(uint8_t);
 
+	if (*pub_size >= 0x80) {
+		EMSG("DER long definitive form not yet supported");
+		return SKS_CKR_MECHANISM_INVALID;
+	}
+
 	return serialargs_get_ptr(&args, pub_data, *pub_size);
 }
 
