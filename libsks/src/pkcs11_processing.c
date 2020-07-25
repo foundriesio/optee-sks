@@ -446,8 +446,14 @@ CK_RV ck_signverify_oneshot(CK_SESSION_HANDLE session,
 					&ctrl, ctrl_size, in_buf, in_size,
 					sign_buf, sign_size);
 
-	if (sign && sign_len && (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL))
+	if (sign && sign_len && (rv == CKR_OK || rv == CKR_BUFFER_TOO_SMALL)) {
 		*sign_len = sign_size;
+		/* NULL sign_buffer and valid sign_len should return CKR_OK as
+		 * it is used to determine the length of the buffer needed to
+		 * hold the signature. */
+		if (sign_buf == NULL)
+			rv = CKR_OK;
+	}
 
 	return rv;
 }
