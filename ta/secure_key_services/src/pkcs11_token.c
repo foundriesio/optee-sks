@@ -864,7 +864,7 @@ uint32_t entry_ck_token_mecha_info(TEE_Param *ctrl,
 
 	out->memref.size = sizeof(struct sks_mechanism_info);
 
-	IMSG("SKSt%" PRIu32 ": mechanism 0x%" PRIx32 " info", token_id, type);
+	DMSG("SKSt%" PRIu32 ": mechanism 0x%" PRIx32 " info", token_id, type);
 
 	return SKS_OK;
 }

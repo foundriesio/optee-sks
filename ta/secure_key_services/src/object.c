@@ -586,7 +586,7 @@ uint32_t entry_find_objects(uintptr_t tee_session, TEE_Param *ctrl,
 	/* Update output buffer according the number of handles provided */
 	out->memref.size = count * sizeof(uint32_t);
 
-	IMSG("SKSs%" PRIu32 ": finding objects", session_handle);
+	DMSG("SKSs%" PRIu32 ": finding objects", session_handle);
 
 	return SKS_OK;
 }
@@ -821,7 +821,7 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 	/* Move updated template to out buffer */
 	TEE_MemMove(out->memref.buffer, template, out->memref.size);
 
-	IMSG("SKSs%" PRIu32 ": get attributes 0x%" PRIx32,
+	DMSG("SKSs%" PRIu32 ": get attributes 0x%" PRIx32,
 	     session_handle, object_handle);
 
 bail:
