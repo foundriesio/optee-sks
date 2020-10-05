@@ -401,6 +401,9 @@ struct ck_token *init_token_db(unsigned int token_id)
 		if (res || size != sizeof(*db_objs))
 			TEE_Panic(0);
 
+		if (!db_objs->count)
+			goto done;
+
 		size += db_objs->count * sizeof(TEE_UUID);
 		ptr = TEE_Realloc(db_objs, size);
 		if (!ptr)
@@ -483,7 +486,7 @@ struct ck_token *init_token_db(unsigned int token_id)
 		/* Can't do anything... */
 		return NULL;
 	}
-
+done:
 	token->db_main = db_main;
 	token->db_objs = db_objs;
 	token->db_hdl = db_hdl;
