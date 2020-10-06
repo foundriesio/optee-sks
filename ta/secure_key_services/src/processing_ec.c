@@ -4,6 +4,7 @@
  */
 
 #include <assert.h>
+#include <config.h>
 #include <sks_internal_abi.h>
 #include <sks_ta.h>
 #include <string.h>
@@ -1240,12 +1241,15 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 {
 	uint32_t rv = 0;
 	void *a_ptr = NULL;
+	void *b_ptr = NULL;
 	uint32_t a_size = 0;
+	uint32_t b_size = 0;
 	uint32_t tee_size = 0;
 	uint32_t tee_curve = 0;
 	TEE_ObjectHandle tee_obj = TEE_HANDLE_NULL;
-	TEE_Attribute tee_key_attr[1];
+	TEE_Attribute tee_key_attr[2];
 	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t tee_count = 0;
 
 	TEE_MemFill(tee_key_attr, 0, sizeof(tee_key_attr));
 
@@ -1274,6 +1278,20 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 
 	TEE_InitValueAttribute(&tee_key_attr[0], TEE_ATTR_ECC_CURVE,
 				tee_curve, 0);
+	tee_count++;
+
+	if (IS_ENABLED(CFG_CORE_SE05X)) {
+		/* pass the label to the private exponent */
+		rv = get_attribute_ptr(*pub_head, SKS_CKA_LABEL,
+				       &b_ptr, &b_size);
+
+		if (rv == SKS_OK && b_size == 11 && !memcmp(b_ptr, "SE_", 3)) {
+			TEE_InitRefAttribute(&tee_key_attr[tee_count],
+					     TEE_ATTR_ECC_PRIVATE_VALUE,
+					     b_ptr, b_size);
+			tee_count++;
+		}
+	}
 
 	/* Create an ECDSA TEE key: will match PKCS11 ECDSA and ECDH */
 	res = TEE_AllocateTransientObject(TEE_TYPE_ECDSA_KEYPAIR,
@@ -1289,7 +1307,7 @@ uint32_t generate_ec_keys(struct sks_attribute_head *proc_params,
 		goto bail;
 	}
 
-	res = TEE_GenerateKey(tee_obj, tee_size, &tee_key_attr[0], 1);
+	res = TEE_GenerateKey(tee_obj, tee_size, &tee_key_attr[0], tee_count);
 	if (res) {
 		rv = tee2sks_error(res);
 		goto bail;

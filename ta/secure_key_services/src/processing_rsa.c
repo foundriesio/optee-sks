@@ -6,6 +6,8 @@
 
 #include <assert.h>
 #include <compiler.h>
+#include <config.h>
+#include <string.h>
 #include <tee_api_defines.h>
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
@@ -441,7 +443,7 @@ uint32_t generate_rsa_keys(struct sks_attribute_head *proc_params,
 	TEE_ObjectHandle tee_obj;
 	TEE_Result res;
 	uint32_t tee_size;
-	TEE_Attribute tee_attrs[1];
+	TEE_Attribute tee_attrs[2];
 	uint32_t tee_count = 0;
 
 	if (!proc_params || !*pub_head || !*priv_head) {
@@ -467,6 +469,19 @@ uint32_t generate_rsa_keys(struct sks_attribute_head *proc_params,
 				     a_ptr, a_size);
 
 		tee_count++;
+	}
+
+	if (IS_ENABLED(CFG_CORE_SE05X)) {
+		/* pass the label to the private exponent */
+		rv = get_attribute_ptr(*pub_head, SKS_CKA_LABEL,
+				       &a_ptr, &a_size);
+
+		if (rv == SKS_OK && a_size == 11 && !memcmp(a_ptr, "SE_", 3)) {
+			TEE_InitRefAttribute(&tee_attrs[tee_count],
+					     TEE_ATTR_RSA_PRIVATE_EXPONENT,
+					     a_ptr, a_size);
+			tee_count++;
+		}
 	}
 
 	if (!get_attribute(*pub_head, SKS_CKA_MODULUS, NULL, NULL) ||
