@@ -6,10 +6,8 @@ CROSS_COMPILE ?= $(TA_CROSS_COMPILE)
 endif
 export CROSS_COMPILE
 
-CFG_TEE_TA_LOG_LEVEL ?= 2
-CPPFLAGS += -DCFG_TEE_TA_LOG_LEVEL=$(CFG_TEE_TA_LOG_LEVEL)
-
 -include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
+-include $(TA_DEV_KIT_DIR)/host_include/conf.mk
 
 ifeq ($(wildcard $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk), )
 clean:
