@@ -765,29 +765,39 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 	for (; cur < end; cur += len) {
 		struct sks_attribute_head *cli_ref =
 			(struct sks_attribute_head *)(void *)cur;
+		struct sks_attribute_head cli_head;
+		void *data_ptr = NULL;
 
-		len = sizeof(*cli_ref) + cli_ref->size;
+		/* Make copy of header so that is aligned properly */
+		TEE_MemMove(&cli_head, cli_ref, sizeof(cli_head));
+
+		len = sizeof(*cli_ref) + cli_head.size;
 
 		/* Check 1. */
-		if (!attribute_is_exportable(cli_ref, obj)) {
-			cli_ref->size = SKS_CK_UNAVAILABLE_INFORMATION;
+		if (!attribute_is_exportable(&cli_head, obj)) {
+			cli_head.size = SKS_CK_UNAVAILABLE_INFORMATION;
+			TEE_MemMove(&cli_ref->size, &cli_head.size,
+					sizeof(cli_head.size));
 			attr_sensitive = 1;
 			continue;
 		}
+
+		/* Get real data pointer from template data */
+		data_ptr = cli_ref->data;
 
 		/*
 		 * We assume that if size is 0, pValue was NULL, so we return
 		 * the size of the required buffer for it (3., 4.)
 		 */
-		rv = get_attribute(obj->attributes, cli_ref->id,
-				   cli_ref->size ? cli_ref->data : NULL,
-				   &(cli_ref->size));
+		rv = get_attribute(obj->attributes, cli_head.id,
+				   cli_head.size ? data_ptr : NULL,
+				   &cli_head.size);
 		/* Check 2. */
 		switch (rv) {
 		case SKS_OK:
 			break;
 		case SKS_NOT_FOUND:
-			cli_ref->size = SKS_CK_UNAVAILABLE_INFORMATION;
+			cli_head.size = SKS_CK_UNAVAILABLE_INFORMATION;
 			attr_type_invalid = 1;
 			break;
 		case SKS_SHORT_BUFFER:
@@ -797,6 +807,9 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 			rv = SKS_ERROR;
 			goto bail;
 		}
+
+		TEE_MemMove(&cli_ref->size, &cli_head.size,
+				sizeof(cli_head.size));
 	}
 
 	/*
