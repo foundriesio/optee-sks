@@ -783,14 +783,13 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 		}
 
 		/* Get real data pointer from template data */
-		data_ptr = cli_ref->data;
+		data_ptr = cli_head.size ? cli_ref->data : NULL;
 
 		/*
 		 * We assume that if size is 0, pValue was NULL, so we return
 		 * the size of the required buffer for it (3., 4.)
 		 */
-		rv = get_attribute(obj->attributes, cli_head.id,
-				   cli_head.size ? data_ptr : NULL,
+		rv = get_attribute(obj->attributes, cli_head.id, data_ptr,
 				   &cli_head.size);
 		/* Check 2. */
 		switch (rv) {
@@ -801,7 +800,8 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 			attr_type_invalid = 1;
 			break;
 		case SKS_SHORT_BUFFER:
-			buffer_too_small = 1;
+			if (data_ptr)
+				buffer_too_small = 1;
 			break;
 		default:
 			rv = SKS_ERROR;

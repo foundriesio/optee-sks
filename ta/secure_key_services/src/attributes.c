@@ -347,7 +347,7 @@ uint32_t get_attribute(struct sks_attrs_head *head, uint32_t attribute,
 	return rc;
 
 found:
-	if (attr_size && *attr_size != size) {
+	if (attr_size && *attr_size < size) {
 		*attr_size = size;
 		/* This reuses buffer-to-small for any bad size matching */
 		return SKS_SHORT_BUFFER;

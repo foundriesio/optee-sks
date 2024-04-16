@@ -489,7 +489,7 @@ out:
 }
 
 static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
-				      CK_ATTRIBUTE_PTR out)
+				      uint8_t *data, CK_ATTRIBUTE_PTR out)
 {
 	CK_ULONG ck_ulong;
 	uint32_t sks_data32 = 0;
@@ -505,7 +505,7 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 		if (out->ulValueLen != sizeof(CK_ULONG))
 			 out->ulValueLen = sizeof(CK_ULONG);
 
-		memcpy(&sks_data32, in->data, sizeof(uint32_t));
+		memcpy(&sks_data32, data, sizeof(uint32_t));
 	}
 
 	if (out->ulValueLen < in->size) {
@@ -539,7 +539,7 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 		break;
 
 	case CKA_KEY_GEN_MECHANISM:
-		memcpy(&sks_data32, in->data, sizeof(uint32_t));
+		memcpy(&sks_data32, data, sizeof(uint32_t));
 		if (sks_data32 == SKS_CK_UNAVAILABLE_INFORMATION)
 			ck_ulong = CK_UNAVAILABLE_INFORMATION;
 		else
@@ -555,12 +555,13 @@ static CK_RV deserialize_ck_attribute(struct sks_attribute_head *in,
 
 	case CKA_ALLOWED_MECHANISMS:
 		n = out->ulValueLen / sizeof(CK_ULONG);
-		rv = sks2ck_mechanism_type_list(out->pValue, in->data, n);
+		rv = sks2ck_mechanism_type_list(out->pValue, data, n);
 		break;
 
 	/* Attributes which data value do not need conversion (aside ulong) */
 	default:
-		memcpy(out->pValue, in->data, in->size);
+		memcpy(out->pValue, data, in->size);
+		out->ulValueLen = in->size;
 		rv = CKR_OK;
 		break;
 	}
@@ -586,16 +587,25 @@ CK_RV deserialize_ck_attributes(uint8_t *in, CK_ATTRIBUTE_PTR attributes,
 	for (n = count; n > 0; n--, cur_attr++, curr_head += len) {
 		struct sks_attribute_head *cli_ref =
 			(struct sks_attribute_head *)(void *)curr_head;
+		struct sks_attribute_head cli_head = { 0 };
+		void *data_ptr = NULL;
 
-		len = sizeof(*cli_ref);
-		/*
-		 * Can't trust size becuase it was set to reflect
-		 * required buffer.
-		 */
-		if (cur_attr->pValue)
-			len += cli_ref->size;
+		/* Make copy if header so that is aligned properly. */
+		memcpy(&cli_head, cli_ref, sizeof(cli_head));
 
-		rv = deserialize_ck_attribute(cli_ref, cur_attr);
+		/* Get real data pointer from template data */
+		data_ptr = cli_ref->data;
+
+		len = sizeof(cli_head);
+		/* Advance by size provisioned in input serialized buffer */
+		if (cur_attr->pValue) {
+			if (ck_attr_is_ulong(cur_attr->type))
+				len += sizeof(uint32_t);
+			else
+				len += cur_attr->ulValueLen;
+		}
+
+		rv = deserialize_ck_attribute(&cli_head, data_ptr, cur_attr);
 		if (rv)
 			goto out;
 	}
